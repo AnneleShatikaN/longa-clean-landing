@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { UserRole } from './AuthContext';
 
@@ -51,6 +52,12 @@ export interface Booking {
   duration: number;
   notes?: string;
   createdAt: string;
+  // New fields for hybrid payout calculation
+  jobType: ServiceType;
+  commissionPercentage?: number; // For one-off jobs
+  providerFee?: number; // For subscription jobs
+  completionDate?: string;
+  expectedPayout?: number;
 }
 
 export interface Payout {
@@ -63,6 +70,7 @@ export interface Payout {
   netPayout: number;
   status: 'pending' | 'processing' | 'completed';
   date: string;
+  calculationMethod: 'commission' | 'fixed-fee' | 'mixed';
 }
 
 interface DataContextType {
@@ -79,7 +87,7 @@ interface DataContextType {
   
   // Bookings
   bookings: Booking[];
-  createBooking: (booking: Omit<Booking, 'id' | 'createdAt'>) => Promise<void>;
+  createBooking: (booking: Omit<Booking, 'id' | 'createdAt' | 'expectedPayout'>) => Promise<void>;
   updateBookingStatus: (id: number, status: Booking['status']) => Promise<void>;
   
   // Payouts
@@ -175,19 +183,125 @@ const initialUsers: AppUser[] = [
 ];
 
 const initialBookings: Booking[] = [
-  { id: 1001, clientId: 1, clientName: 'John Doe', providerId: 2, providerName: 'Mary Smith', serviceId: 1, serviceName: 'House Cleaning', amount: 150, status: 'completed', date: '2024-05-25', time: '10:00 AM', duration: 120, notes: 'Regular weekly cleaning', createdAt: '2024-05-20' },
-  { id: 1002, clientId: 3, clientName: 'Sarah Wilson', providerId: 2, providerName: 'Mary Smith', serviceId: 2, serviceName: 'Garden Maintenance', amount: 200, status: 'accepted', date: '2024-05-28', time: '2:00 PM', duration: 180, notes: 'Hedge trimming and lawn care', createdAt: '2024-05-25' },
-  { id: 1003, clientId: 1, clientName: 'John Doe', providerId: 4, providerName: 'Mike Johnson', serviceId: 3, serviceName: 'Laundry Service', amount: 80, status: 'pending', date: '2024-05-30', time: '9:00 AM', duration: 60, notes: 'Large load of clothes', createdAt: '2024-05-28' },
-  { id: 1004, clientId: 3, clientName: 'Sarah Wilson', providerId: 2, providerName: 'Mary Smith', serviceId: 1, serviceName: 'House Cleaning', amount: 150, status: 'completed', date: '2024-05-20', time: '11:00 AM', duration: 120, notes: 'Deep cleaning service', createdAt: '2024-05-18' }
+  { 
+    id: 1001, 
+    clientId: 1, 
+    clientName: 'John Doe', 
+    providerId: 2, 
+    providerName: 'Mary Smith', 
+    serviceId: 1, 
+    serviceName: 'House Cleaning', 
+    amount: 150, 
+    status: 'completed', 
+    date: '2024-05-25', 
+    time: '10:00 AM', 
+    duration: 120, 
+    notes: 'Regular weekly cleaning', 
+    createdAt: '2024-05-20',
+    jobType: 'one-off',
+    commissionPercentage: 15,
+    completionDate: '2024-05-25',
+    expectedPayout: 127.5
+  },
+  { 
+    id: 1002, 
+    clientId: 3, 
+    clientName: 'Sarah Wilson', 
+    providerId: 2, 
+    providerName: 'Mary Smith', 
+    serviceId: 2, 
+    serviceName: 'Garden Maintenance', 
+    amount: 800, 
+    status: 'accepted', 
+    date: '2024-05-28', 
+    time: '2:00 PM', 
+    duration: 180, 
+    notes: 'Hedge trimming and lawn care', 
+    createdAt: '2024-05-25',
+    jobType: 'subscription',
+    providerFee: 680,
+    expectedPayout: 680
+  },
+  { 
+    id: 1003, 
+    clientId: 1, 
+    clientName: 'John Doe', 
+    providerId: 4, 
+    providerName: 'Mike Johnson', 
+    serviceId: 3, 
+    serviceName: 'Laundry Service', 
+    amount: 80, 
+    status: 'pending', 
+    date: '2024-05-30', 
+    time: '9:00 AM', 
+    duration: 60, 
+    notes: 'Large load of clothes', 
+    createdAt: '2024-05-28',
+    jobType: 'one-off',
+    commissionPercentage: 20,
+    expectedPayout: 64
+  },
+  { 
+    id: 1004, 
+    clientId: 3, 
+    clientName: 'Sarah Wilson', 
+    providerId: 2, 
+    providerName: 'Mary Smith', 
+    serviceId: 1, 
+    serviceName: 'House Cleaning', 
+    amount: 150, 
+    status: 'completed', 
+    date: '2024-05-20', 
+    time: '11:00 AM', 
+    duration: 120, 
+    notes: 'Deep cleaning service', 
+    createdAt: '2024-05-18',
+    jobType: 'one-off',
+    commissionPercentage: 15,
+    completionDate: '2024-05-20',
+    expectedPayout: 127.5
+  }
 ];
 
 const initialPayouts: Payout[] = [
-  { id: 1, providerId: 2, providerName: 'Mary Smith', bookingIds: [1001, 1004], totalEarnings: 255, commission: 45, netPayout: 255, status: 'pending', date: '2024-05-25' },
-  { id: 2, providerId: 4, providerName: 'Mike Johnson', bookingIds: [1003], totalEarnings: 68, commission: 12, netPayout: 68, status: 'processing', date: '2024-05-24' }
+  { 
+    id: 1, 
+    providerId: 2, 
+    providerName: 'Mary Smith', 
+    bookingIds: [1001, 1004], 
+    totalEarnings: 255, 
+    commission: 45, 
+    netPayout: 255, 
+    status: 'pending', 
+    date: '2024-05-25',
+    calculationMethod: 'commission'
+  },
+  { 
+    id: 2, 
+    providerId: 4, 
+    providerName: 'Mike Johnson', 
+    bookingIds: [1003], 
+    totalEarnings: 64, 
+    commission: 16, 
+    netPayout: 64, 
+    status: 'processing', 
+    date: '2024-05-24',
+    calculationMethod: 'commission'
+  }
 ];
 
 // Simulate API delay
 const simulateDelay = (ms: number = 1000) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper function to calculate expected payout
+const calculateExpectedPayout = (booking: Partial<Booking>, service: Service): number => {
+  if (service.type === 'one-off' && service.commissionPercentage) {
+    return booking.amount! - (booking.amount! * (service.commissionPercentage / 100));
+  } else if (service.type === 'subscription' && service.providerFee) {
+    return service.providerFee;
+  }
+  return 0;
+};
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [services, setServices] = useState<Service[]>(initialServices);
@@ -296,16 +410,31 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const createBooking = async (bookingData: Omit<Booking, 'id' | 'createdAt'>) => {
+  const createBooking = async (bookingData: Omit<Booking, 'id' | 'createdAt' | 'expectedPayout'>) => {
     setBookingsLoading(true);
     setError(null);
     try {
       await simulateDelay(1000);
+      
+      // Get service to calculate expected payout
+      const service = services.find(s => s.id === bookingData.serviceId);
+      if (!service) {
+        throw new Error('Service not found');
+      }
+
+      // Calculate expected payout and add job type info
+      const expectedPayout = calculateExpectedPayout(bookingData, service);
+      
       const newBooking: Booking = {
         ...bookingData,
         id: Math.max(...bookings.map(b => b.id)) + 1,
-        createdAt: new Date().toISOString().split('T')[0]
+        createdAt: new Date().toISOString().split('T')[0],
+        jobType: service.type,
+        commissionPercentage: service.type === 'one-off' ? service.commissionPercentage : undefined,
+        providerFee: service.type === 'subscription' ? service.providerFee : undefined,
+        expectedPayout
       };
+      
       setBookings(prev => [...prev, newBooking]);
 
       // Update service booking count
@@ -326,42 +455,70 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await simulateDelay(500);
-      setBookings(prev => prev.map(booking => 
-        booking.id === id ? { ...booking, status } : booking
-      ));
+      
+      setBookings(prev => prev.map(booking => {
+        if (booking.id === id) {
+          const updatedBooking = { ...booking, status };
+          
+          // If completing the job, set completion date
+          if (status === 'completed') {
+            updatedBooking.completionDate = new Date().toISOString().split('T')[0];
+          }
+          
+          return updatedBooking;
+        }
+        return booking;
+      }));
 
       // If booking is completed, create payout if it doesn't exist
       if (status === 'completed') {
         const booking = bookings.find(b => b.id === id);
-        if (booking) {
+        if (booking && booking.expectedPayout) {
           const existingPayout = payouts.find(p => 
             p.providerId === booking.providerId && p.status === 'pending'
           );
 
           if (existingPayout) {
             // Add to existing payout
-            setPayouts(prev => prev.map(payout => 
-              payout.id === existingPayout.id 
-                ? {
-                    ...payout,
-                    bookingIds: [...payout.bookingIds, id],
-                    totalEarnings: payout.totalEarnings + Math.round(booking.amount * 0.85),
-                    commission: payout.commission + Math.round(booking.amount * 0.15)
-                  }
-                : payout
-            ));
+            setPayouts(prev => prev.map(payout => {
+              if (payout.id === existingPayout.id) {
+                const newTotalEarnings = payout.totalEarnings + booking.expectedPayout!;
+                const commission = booking.jobType === 'one-off' 
+                  ? (booking.amount * (booking.commissionPercentage! / 100))
+                  : 0;
+                
+                return {
+                  ...payout,
+                  bookingIds: [...payout.bookingIds, id],
+                  totalEarnings: newTotalEarnings,
+                  commission: payout.commission + commission,
+                  netPayout: newTotalEarnings,
+                  calculationMethod: payout.calculationMethod === 'commission' && booking.jobType === 'subscription'
+                    ? 'mixed' as const
+                    : payout.calculationMethod === 'fixed-fee' && booking.jobType === 'one-off'
+                    ? 'mixed' as const
+                    : booking.jobType === 'one-off' ? 'commission' as const : 'fixed-fee' as const
+                };
+              }
+              return payout;
+            }));
           } else {
             // Create new payout
+            const commission = booking.jobType === 'one-off' 
+              ? (booking.amount * (booking.commissionPercentage! / 100))
+              : 0;
+
             const newPayout: Payout = {
               id: Math.max(...payouts.map(p => p.id)) + 1,
               providerId: booking.providerId,
               providerName: booking.providerName,
               bookingIds: [id],
-              totalEarnings: Math.round(booking.amount * 0.85),
-              commission: Math.round(booking.amount * 0.15),
-              netPayout: Math.round(booking.amount * 0.85),
+              totalEarnings: booking.expectedPayout,
+              commission,
+              netPayout: booking.expectedPayout,
               status: 'pending',
-              date: new Date().toISOString().split('T')[0]
+              date: new Date().toISOString().split('T')[0],
+              calculationMethod: booking.jobType === 'one-off' ? 'commission' : 'fixed-fee'
             };
             setPayouts(prev => [...prev, newPayout]);
           }

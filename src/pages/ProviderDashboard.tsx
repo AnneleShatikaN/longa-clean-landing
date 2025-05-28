@@ -1,12 +1,14 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
   Calendar, User, LogOut, MapPin, DollarSign, Clock, 
-  Phone, Mail, Star, Filter, Bell 
+  Phone, Mail, Star, Filter, Bell, Calculator, Percent, Banknote
 } from 'lucide-react';
 import JobFilters from '@/components/JobFilters';
 import AvailabilityToggle from '@/components/AvailabilityToggle';
@@ -28,6 +30,11 @@ interface Job {
   completedDate?: string;
   rating?: number;
   reviewComment?: string;
+  // New fields for payout calculation
+  jobType: 'one-off' | 'subscription';
+  expectedPayout: number;
+  commissionPercentage?: number;
+  providerFee?: number;
 }
 
 interface Notification {
@@ -42,6 +49,7 @@ interface Notification {
 
 const ProviderDashboard = () => {
   const { user, logout } = useAuth();
+  const { bookings, updateBookingStatus } = useData();
   const navigate = useNavigate();
 
   // State management
@@ -50,71 +58,24 @@ const ProviderDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
 
-  const [jobs, setJobs] = useState<Job[]>([
-    { 
-      id: 1, 
-      service: 'House Cleaning', 
-      clientName: 'Sarah Johnson',
-      clientPhone: '+264 81 123 4567',
-      clientEmail: 'sarah.j@email.com',
-      location: 'Klein Windhoek', 
-      amount: 150, 
-      date: '2024-05-30', 
-      status: 'requested', 
-      duration: '3 hours' 
-    },
-    { 
-      id: 2, 
-      service: 'Garden Maintenance', 
-      clientName: 'David Miller',
-      clientPhone: '+264 81 234 5678',
-      clientEmail: 'david.m@email.com',
-      location: 'Olympia', 
-      amount: 200, 
-      date: '2024-05-31', 
-      status: 'requested', 
-      duration: '4 hours' 
-    },
-    { 
-      id: 3, 
-      service: 'Car Wash', 
-      clientName: 'Lisa Brown',
-      clientPhone: '+264 81 345 6789',
-      clientEmail: 'lisa.b@email.com',
-      location: 'Windhoek Central', 
-      amount: 120, 
-      date: '2024-06-01', 
-      status: 'requested', 
-      duration: '2 hours' 
-    },
-    { 
-      id: 4, 
-      service: 'Deep Cleaning', 
-      clientName: 'Mike Wilson',
-      clientPhone: '+264 81 456 7890',
-      clientEmail: 'mike.w@email.com',
-      location: 'Eros', 
-      amount: 300, 
-      date: '2024-05-28', 
-      status: 'accepted', 
-      duration: '5 hours' 
-    },
-    { 
-      id: 5, 
-      service: 'Laundry Service', 
-      clientName: 'Emma Davis',
-      clientPhone: '+264 81 567 8901',
-      clientEmail: 'emma.d@email.com',
-      location: 'Auasblick', 
-      amount: 80, 
-      date: '2024-05-25', 
-      status: 'completed', 
-      duration: '2 hours',
-      completedDate: '2024-05-25',
-      rating: 5,
-      reviewComment: 'Excellent service! Very professional and thorough.'
-    },
-  ]);
+  // Convert bookings to jobs format with enhanced payout info
+  const jobs: Job[] = bookings.map(booking => ({
+    id: booking.id,
+    service: booking.serviceName,
+    clientName: booking.clientName,
+    clientPhone: '+264 81 123 4567', // Mock data
+    clientEmail: 'client@email.com', // Mock data
+    location: 'Windhoek', // Mock data
+    amount: booking.amount,
+    date: booking.date,
+    status: booking.status as 'requested' | 'accepted' | 'completed',
+    duration: `${Math.floor(booking.duration / 60)}h ${booking.duration % 60}m`,
+    completedDate: booking.completionDate,
+    jobType: booking.jobType,
+    expectedPayout: booking.expectedPayout || 0,
+    commissionPercentage: booking.commissionPercentage,
+    providerFee: booking.providerFee
+  }));
 
   const [notifications, setNotifications] = useState<Notification[]>([
     {
@@ -165,10 +126,8 @@ const ProviderDashboard = () => {
   ];
 
   // Job management functions
-  const acceptJob = (jobId: number) => {
-    setJobs(jobs.map(job => 
-      job.id === jobId ? { ...job, status: 'accepted' as const } : job
-    ));
+  const acceptJob = async (jobId: number) => {
+    await updateBookingStatus(jobId, 'accepted');
     
     addNotification({
       type: 'new_job',
@@ -179,17 +138,12 @@ const ProviderDashboard = () => {
   };
 
   const declineJob = (jobId: number) => {
-    setJobs(jobs.filter(job => job.id !== jobId));
+    // For now, just remove from local state (in real app, would update backend)
+    console.log(`Declined job ${jobId}`);
   };
 
-  const completeJob = (jobId: number) => {
-    setJobs(jobs.map(job => 
-      job.id === jobId ? { 
-        ...job, 
-        status: 'completed' as const,
-        completedDate: new Date().toISOString().split('T')[0]
-      } : job
-    ));
+  const completeJob = async (jobId: number) => {
+    await updateBookingStatus(jobId, 'completed');
     
     addNotification({
       type: 'job_completed',
@@ -235,10 +189,6 @@ const ProviderDashboard = () => {
     return matchesSearch && matchesStatus && matchesLocation;
   });
 
-  const calculateEarnings = (amount: number) => {
-    return Math.round(amount * 0.85);
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
@@ -248,11 +198,33 @@ const ProviderDashboard = () => {
     }
   };
 
+  const getJobTypeColor = (jobType: 'one-off' | 'subscription') => {
+    return jobType === 'one-off' 
+      ? 'bg-blue-100 text-blue-800' 
+      : 'bg-green-100 text-green-800';
+  };
+
+  const getPayoutCalculationInfo = (job: Job) => {
+    if (job.jobType === 'one-off') {
+      return {
+        icon: Percent,
+        label: `${job.commissionPercentage}% commission`,
+        calculation: `N$${job.amount} - ${job.commissionPercentage}% = N$${job.expectedPayout}`
+      };
+    } else {
+      return {
+        icon: Banknote,
+        label: 'Fixed fee',
+        calculation: `Fixed provider fee: N$${job.expectedPayout}`
+      };
+    }
+  };
+
   const availableJobs = filteredJobs.filter(job => job.status === 'requested');
   const myJobs = filteredJobs.filter(job => job.status === 'accepted' || job.status === 'completed');
   const totalEarnings = jobs
     .filter(job => job.status === 'completed')
-    .reduce((sum, job) => sum + calculateEarnings(job.amount), 0);
+    .reduce((sum, job) => sum + job.expectedPayout, 0);
   const completedJobs = jobs.filter(job => job.status === 'completed').length;
   const currentMonthEarnings = monthlyEarnings[monthlyEarnings.length - 1]?.earnings || 0;
 
@@ -316,77 +288,92 @@ const ProviderDashboard = () => {
                   Available Jobs ({availableJobs.length})
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {availableJobs.map((job) => (
-                    <Card key={job.id} className="hover:shadow-md transition-shadow border-purple-100">
-                      <CardHeader className="pb-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <CardTitle className="text-lg font-semibold text-gray-900">
-                              {job.service}
-                            </CardTitle>
-                            <p className="text-sm text-gray-600 flex items-center mt-1">
-                              <User className="h-4 w-4 mr-1" />
-                              {job.clientName}
-                            </p>
-                          </div>
-                          <Badge className={getStatusColor(job.status)}>
-                            {job.status}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="space-y-3">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <MapPin className="h-4 w-4 mr-2" />
-                            {job.location}
-                          </div>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            {job.date}
-                          </div>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Clock className="h-4 w-4 mr-2" />
-                            {job.duration}
-                          </div>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Phone className="h-4 w-4 mr-2" />
-                            {job.clientPhone}
-                          </div>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Mail className="h-4 w-4 mr-2" />
-                            {job.clientEmail}
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm text-gray-600">
-                              <span className="font-medium text-purple-600">
-                                N${calculateEarnings(job.amount)}
-                              </span>
-                              <span className="text-xs text-gray-500 ml-1">
-                                (85% of N${job.amount})
-                              </span>
+                  {availableJobs.map((job) => {
+                    const payoutInfo = getPayoutCalculationInfo(job);
+                    const PayoutIcon = payoutInfo.icon;
+                    
+                    return (
+                      <Card key={job.id} className="hover:shadow-md transition-shadow border-purple-100">
+                        <CardHeader className="pb-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className="text-lg font-semibold text-gray-900">
+                                {job.service}
+                              </CardTitle>
+                              <p className="text-sm text-gray-600 flex items-center mt-1">
+                                <User className="h-4 w-4 mr-1" />
+                                {job.clientName}
+                              </p>
+                            </div>
+                            <div className="flex flex-col space-y-1">
+                              <Badge className={getStatusColor(job.status)}>
+                                {job.status}
+                              </Badge>
+                              <Badge className={getJobTypeColor(job.jobType)}>
+                                {job.jobType}
+                              </Badge>
                             </div>
                           </div>
-                          <div className="flex space-x-2 pt-2">
-                            <Button 
-                              onClick={() => acceptJob(job.id)}
-                              className="flex-1 bg-green-600 hover:bg-green-700"
-                              size="sm"
-                            >
-                              Accept
-                            </Button>
-                            <Button 
-                              onClick={() => declineJob(job.id)}
-                              variant="outline"
-                              className="flex-1"
-                              size="sm"
-                            >
-                              Decline
-                            </Button>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="space-y-3">
+                            <div className="flex items-center text-sm text-gray-600">
+                              <MapPin className="h-4 w-4 mr-2" />
+                              {job.location}
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Calendar className="h-4 w-4 mr-2" />
+                              {job.date}
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Clock className="h-4 w-4 mr-2" />
+                              {job.duration}
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Phone className="h-4 w-4 mr-2" />
+                              {job.clientPhone}
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Mail className="h-4 w-4 mr-2" />
+                              {job.clientEmail}
+                            </div>
+                            
+                            {/* Payout Information */}
+                            <div className="bg-purple-50 p-3 rounded-lg">
+                              <div className="flex items-center text-sm text-purple-700 mb-1">
+                                <PayoutIcon className="h-4 w-4 mr-2" />
+                                {payoutInfo.label}
+                              </div>
+                              <div className="text-lg font-semibold text-purple-600">
+                                Expected: N${job.expectedPayout}
+                              </div>
+                              <div className="text-xs text-purple-600 mt-1">
+                                {payoutInfo.calculation}
+                              </div>
+                            </div>
+                            
+                            <div className="flex space-x-2 pt-2">
+                              <Button 
+                                onClick={() => acceptJob(job.id)}
+                                className="flex-1 bg-green-600 hover:bg-green-700"
+                                size="sm"
+                              >
+                                Accept
+                              </Button>
+                              <Button 
+                                onClick={() => declineJob(job.id)}
+                                variant="outline"
+                                className="flex-1"
+                                size="sm"
+                              >
+                                Decline
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
                 {availableJobs.length === 0 && (
                   <Card>
@@ -412,68 +399,79 @@ const ProviderDashboard = () => {
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Earnings</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payout Info</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {myJobs.map((job) => (
-                          <tr key={job.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {job.service}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {job.clientName}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              <div className="flex flex-col">
-                                <span>{job.clientPhone}</span>
-                                <span className="text-xs text-gray-500">{job.clientEmail}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              <div className="flex flex-col">
-                                <span>{job.date}</span>
-                                {job.completedDate && (
-                                  <span className="text-xs text-green-600">Completed: {job.completedDate}</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">
-                              N${calculateEarnings(job.amount)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex flex-col">
-                                <Badge className={`${getStatusColor(job.status)} border-0 mb-1`}>
-                                  {job.status}
-                                </Badge>
-                                {job.rating && (
-                                  <div className="flex items-center">
-                                    <Star className="h-3 w-3 text-yellow-400 fill-current mr-1" />
-                                    <span className="text-xs text-gray-600">{job.rating}/5</span>
+                        {myJobs.map((job) => {
+                          const payoutInfo = getPayoutCalculationInfo(job);
+                          const PayoutIcon = payoutInfo.icon;
+                          
+                          return (
+                            <tr key={job.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{job.service}</div>
+                                  <Badge className={`${getJobTypeColor(job.jobType)} text-xs mt-1`}>
+                                    {job.jobType}
+                                  </Badge>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                {job.clientName}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                <div className="flex flex-col">
+                                  <span>{job.date}</span>
+                                  {job.completedDate && (
+                                    <span className="text-xs text-green-600">Completed: {job.completedDate}</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex flex-col">
+                                  <div className="flex items-center text-sm text-purple-600 font-medium">
+                                    <PayoutIcon className="h-3 w-3 mr-1" />
+                                    N${job.expectedPayout}
                                   </div>
+                                  <div className="text-xs text-gray-500">
+                                    {job.jobType === 'one-off' ? `${job.commissionPercentage}% commission` : 'Fixed fee'}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex flex-col">
+                                  <Badge className={`${getStatusColor(job.status)} border-0 mb-1`}>
+                                    {job.status}
+                                  </Badge>
+                                  {job.rating && (
+                                    <div className="flex items-center">
+                                      <Star className="h-3 w-3 text-yellow-400 fill-current mr-1" />
+                                      <span className="text-xs text-gray-600">{job.rating}/5</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {job.status === 'accepted' && (
+                                  <Button 
+                                    onClick={() => completeJob(job.id)}
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    Mark Complete
+                                  </Button>
                                 )}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {job.status === 'accepted' && (
-                                <Button 
-                                  onClick={() => completeJob(job.id)}
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  Mark Complete
-                                </Button>
-                              )}
-                              {job.status === 'completed' && (
-                                <span className="text-green-600 font-medium">✓ Completed</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                                {job.status === 'completed' && (
+                                  <span className="text-green-600 font-medium">✓ Completed</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -81,7 +82,10 @@ const ClientDashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="hover:shadow-md transition-shadow cursor-pointer border-purple-100">
+                <Card 
+                  className="hover:shadow-md transition-shadow cursor-pointer border-purple-100"
+                  onClick={() => navigate('/subscription-packages')}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-4">
                       <div className="bg-purple-100 p-3 rounded-lg">

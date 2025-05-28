@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ClientDashboard from "./pages/ClientDashboard";
 import OneOffBooking from "./pages/OneOffBooking";
+import SubscriptionPackages from "./pages/SubscriptionPackages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App: React.FC = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard/client" element={<ClientDashboard />} />
             <Route path="/booking/one-off" element={<OneOffBooking />} />
+            <Route path="/subscription-packages" element={<SubscriptionPackages />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

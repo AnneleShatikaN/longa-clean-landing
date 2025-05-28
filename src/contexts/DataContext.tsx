@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 export interface Booking {
@@ -22,11 +23,28 @@ export interface Booking {
 
 export interface Payout {
   id: number;
+  providerId: number;
   providerName: string;
   bookingIds: number[];
   totalEarnings: number;
   commission: number;
-  status: 'pending' | 'completed' | 'failed';
+  netPayout: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  payoutDate?: string;
+  processedDate?: string;
+  paymentMethod: 'bank_transfer' | 'mobile_money' | 'cash';
+  paymentReference?: string;
+  type: 'weekly_auto' | 'manual' | 'instant';
+}
+
+export interface PayoutExport {
+  id: number;
+  exportDate: string;
+  period: string;
+  totalAmount: number;
+  payoutCount: number;
+  status: 'generated' | 'downloaded' | 'sent';
+  fileFormat: 'excel' | 'csv' | 'pdf';
 }
 
 export type ServiceType = 'one-off' | 'subscription';
@@ -45,6 +63,11 @@ export interface Service {
   status: 'active' | 'inactive';
   tags: string[];
   description: string;
+  requirements?: string[];
+  popularity: number;
+  averageRating: number;
+  totalBookings: number;
+  totalRevenue: number;
 }
 
 export interface User {
@@ -56,6 +79,12 @@ export interface User {
   status: 'active' | 'inactive' | 'pending';
   available?: boolean;
   bankMobileNumber?: string;
+  paymentMethod?: 'bank_transfer' | 'mobile_money';
+  totalEarnings?: number;
+  jobsCompleted?: number;
+  responseRate?: number;
+  joinDate?: string;
+  lastActive?: string;
 }
 
 interface DataContextProps {
@@ -63,6 +92,7 @@ interface DataContextProps {
   users: User[];
   bookings: Booking[];
   payouts: Payout[];
+  payoutExports: PayoutExport[];
   addService: (service: Omit<Service, 'id'>) => Promise<void>;
   updateService: (id: number, updates: Partial<Service>) => Promise<void>;
   deleteService: (id: number) => Promise<void>;
@@ -70,6 +100,8 @@ interface DataContextProps {
   updateUser: (id: number, updates: Partial<User>) => Promise<void>;
   updateBookingStatus: (id: number, status: Booking['status']) => Promise<void>;
   processPayout: (id: number) => Promise<void>;
+  addManualPayout: (payout: Omit<Payout, 'id' | 'processedDate'>) => Promise<void>;
+  exportPayouts: (period: string, format: string) => Promise<void>;
   isLoading: boolean;
   servicesLoading: boolean;
   error: string | null;
@@ -80,6 +112,7 @@ const DataContext = createContext<DataContextProps>({
   users: [],
   bookings: [],
   payouts: [],
+  payoutExports: [],
   addService: async () => {},
   updateService: async () => {},
   deleteService: async () => {},
@@ -87,302 +120,438 @@ const DataContext = createContext<DataContextProps>({
   updateUser: async () => {},
   updateBookingStatus: async () => {},
   processPayout: async () => {},
+  addManualPayout: async () => {},
+  exportPayouts: async () => {},
   isLoading: true,
   servicesLoading: true,
   error: null,
 });
 
+// Enhanced mock services with realistic NAD pricing
 const mockServices: Service[] = [
   {
     id: 1,
-    name: 'Basic Cleaning',
+    name: 'Basic House Cleaning',
     type: 'one-off',
-    clientPrice: 150,
-    commissionPercentage: 10,
-    duration: { hours: 2, minutes: 0 },
+    clientPrice: 280,
+    commissionPercentage: 15,
+    duration: { hours: 2, minutes: 30 },
     status: 'active',
-    tags: ['Residential Only'],
-    description: 'A basic cleaning service for residential properties.'
+    tags: ['Residential', 'Basic'],
+    description: 'Standard house cleaning including living areas, bedrooms, kitchen, and bathrooms.',
+    requirements: ['Bring own cleaning supplies', 'ID verification required'],
+    popularity: 95,
+    averageRating: 4.7,
+    totalBookings: 347,
+    totalRevenue: 97160
   },
   {
     id: 2,
     name: 'Deep Cleaning Package',
     type: 'subscription',
-    clientPrice: 400,
-    providerFee: 320,
+    clientPrice: 650,
+    providerFee: 520,
     duration: { hours: 4, minutes: 0 },
     status: 'active',
-    tags: ['Residential Only', 'Requires Own Supplies'],
-    description: 'A deep cleaning service package for recurring clients.'
+    tags: ['Residential', 'Premium', 'Monthly'],
+    description: 'Comprehensive deep cleaning service including windows, appliances, and detailed sanitization.',
+    requirements: ['Professional equipment provided', 'Background check completed'],
+    popularity: 78,
+    averageRating: 4.9,
+    totalBookings: 89,
+    totalRevenue: 57850
   },
   {
     id: 3,
-    name: 'Office Cleaning',
+    name: 'Office Cleaning Service',
     type: 'one-off',
-    clientPrice: 200,
-    commissionPercentage: 15,
+    clientPrice: 450,
+    commissionPercentage: 18,
     duration: { hours: 3, minutes: 0 },
     status: 'active',
-    tags: ['Business Only'],
-    description: 'Professional cleaning services for office spaces.'
+    tags: ['Commercial', 'Business'],
+    description: 'Professional office cleaning for small to medium businesses.',
+    requirements: ['Business hours flexibility', 'Security clearance'],
+    popularity: 65,
+    averageRating: 4.6,
+    totalBookings: 156,
+    totalRevenue: 70200
   },
   {
     id: 4,
-    name: 'Move-In/Move-Out Cleaning',
+    name: 'Move-In/Out Cleaning',
     type: 'one-off',
-    clientPrice: 180,
+    clientPrice: 380,
     commissionPercentage: 12,
-    duration: { hours: 2, minutes: 30 },
-    status: 'inactive',
-    tags: ['Residential Only'],
-    description: 'Cleaning service for properties during move-in or move-out.'
+    duration: { hours: 3, minutes: 30 },
+    status: 'active',
+    tags: ['Residential', 'Specialized'],
+    description: 'Thorough cleaning for properties during relocation.',
+    requirements: ['Flexible scheduling', 'Key access coordination'],
+    popularity: 82,
+    averageRating: 4.8,
+    totalBookings: 203,
+    totalRevenue: 77140
   },
   {
     id: 5,
-    name: 'Custom Cleaning Package',
+    name: 'Premium Weekly Package',
     type: 'subscription',
-    clientPrice: 500,
-    providerFee: 400,
+    clientPrice: 950,
+    providerFee: 760,
     duration: { hours: 5, minutes: 0 },
     status: 'active',
-    tags: ['Business Only', 'Residential Only'],
-    description: 'A custom cleaning service package tailored to client needs.'
+    tags: ['Residential', 'Premium', 'Weekly'],
+    description: 'Luxury cleaning service with premium products and detailed attention.',
+    requirements: ['Premium supplies included', 'Dedicated provider'],
+    popularity: 45,
+    averageRating: 4.95,
+    totalBookings: 34,
+    totalRevenue: 32300
+  },
+  {
+    id: 6,
+    name: 'Post-Construction Cleanup',
+    type: 'one-off',
+    clientPrice: 850,
+    commissionPercentage: 20,
+    duration: { hours: 6, minutes: 0 },
+    status: 'active',
+    tags: ['Specialized', 'Construction'],
+    description: 'Specialized cleaning for newly constructed or renovated properties.',
+    requirements: ['Safety equipment required', 'Construction experience preferred'],
+    popularity: 35,
+    averageRating: 4.4,
+    totalBookings: 28,
+    totalRevenue: 23800
+  },
+  {
+    id: 7,
+    name: 'Event Cleanup Service',
+    type: 'one-off',
+    clientPrice: 320,
+    commissionPercentage: 16,
+    duration: { hours: 2, minutes: 0 },
+    status: 'inactive',
+    tags: ['Events', 'Temporary'],
+    description: 'Quick cleanup service for small events and gatherings.',
+    requirements: ['Weekend availability', 'Team coordination'],
+    popularity: 58,
+    averageRating: 4.3,
+    totalBookings: 67,
+    totalRevenue: 21440
   }
 ];
 
+// Enhanced user data with payment details
 const mockUsers: User[] = [
   { 
     id: 1, 
-    name: 'John Doe', 
-    email: 'john@example.com', 
+    name: 'Maria Santos', 
+    email: 'maria@example.com', 
     role: 'client', 
     rating: null, 
-    status: 'active' 
+    status: 'active',
+    joinDate: '2024-01-15',
+    lastActive: '2024-05-27'
   },
   { 
     id: 2, 
-    name: 'Jane Smith', 
-    email: 'jane@example.com', 
+    name: 'Johannes Nakale', 
+    email: 'johannes@example.com', 
     role: 'provider', 
     rating: 4.8, 
     status: 'active', 
     available: true,
-    bankMobileNumber: '+264 81 234 5678'
+    bankMobileNumber: '+264 81 234 5678',
+    paymentMethod: 'mobile_money',
+    totalEarnings: 15680,
+    jobsCompleted: 89,
+    responseRate: 96,
+    joinDate: '2024-02-01',
+    lastActive: '2024-05-28'
   },
   { 
     id: 3, 
-    name: 'Mike Johnson', 
-    email: 'mike@example.com', 
+    name: 'Petrina Nghitoolwa', 
+    email: 'petrina@example.com', 
     role: 'provider', 
-    rating: 4.5, 
+    rating: 4.9, 
     status: 'active', 
     available: false,
-    bankMobileNumber: '+264 85 987 6543'
+    bankMobileNumber: '+264 85 987 6543',
+    paymentMethod: 'bank_transfer',
+    totalEarnings: 23450,
+    jobsCompleted: 134,
+    responseRate: 98,
+    joinDate: '2024-01-20',
+    lastActive: '2024-05-28'
   },
   { 
     id: 4, 
     name: 'Sarah Wilson', 
-    email: 'sarah@example.com', 
+    email: 'sarah@longa.com', 
     role: 'admin', 
     rating: null, 
-    status: 'active' 
+    status: 'active',
+    joinDate: '2023-12-01',
+    lastActive: '2024-05-28'
   },
   { 
     id: 5, 
-    name: 'Tom Brown', 
-    email: 'tom@example.com', 
+    name: 'Andreas Shikongo', 
+    email: 'andreas@example.com', 
     role: 'provider', 
-    rating: 4.2, 
-    status: 'pending', 
+    rating: 4.6, 
+    status: 'active', 
     available: true,
-    bankMobileNumber: 'Bank: 12345678901'
+    bankMobileNumber: '+264 61 456 7890',
+    paymentMethod: 'mobile_money',
+    totalEarnings: 8920,
+    jobsCompleted: 45,
+    responseRate: 89,
+    joinDate: '2024-03-10',
+    lastActive: '2024-05-27'
+  },
+  {
+    id: 6,
+    name: 'Helena Amupolo',
+    email: 'helena@example.com',
+    role: 'provider',
+    rating: 4.7,
+    status: 'pending',
+    available: false,
+    bankMobileNumber: '+264 81 123 9876',
+    paymentMethod: 'bank_transfer',
+    totalEarnings: 0,
+    jobsCompleted: 0,
+    responseRate: 0,
+    joinDate: '2024-05-25',
+    lastActive: '2024-05-26'
   }
 ];
 
+// Enhanced bookings with proper payout calculations
 const mockBookings: Booking[] = [
   {
     id: 1,
-    clientName: 'Alice Johnson',
-    clientId: 1,
-    providerName: 'Jane Smith',
+    clientName: 'Emma Katjivikua',
+    clientId: 7,
+    providerName: 'Johannes Nakale',
     providerId: 2,
-    serviceName: 'Basic Cleaning',
-    date: '2024-07-15',
+    serviceName: 'Basic House Cleaning',
+    date: '2024-05-25',
     time: '09:00',
-    amount: 150,
+    amount: 280,
     status: 'completed',
     jobType: 'one-off',
-    completionDate: '2024-07-15',
-    expectedPayout: 135,
-    commissionPercentage: 10,
+    completionDate: '2024-05-25',
+    expectedPayout: 238, // 280 - 15% = 238
+    commissionPercentage: 15,
     paidOut: true,
-    duration: 120
+    duration: 150
   },
   {
     id: 2,
-    clientName: 'Bob Williams',
-    clientId: 3,
-    providerName: 'Mike Johnson',
+    clientName: 'David Nghidinwa',
+    clientId: 8,
+    providerName: 'Petrina Nghitoolwa',
     providerId: 3,
-    serviceName: 'Office Cleaning',
-    date: '2024-07-16',
+    serviceName: 'Office Cleaning Service',
+    date: '2024-05-26',
     time: '14:00',
-    amount: 200,
+    amount: 450,
     status: 'completed',
     jobType: 'one-off',
-    completionDate: '2024-07-16',
-    expectedPayout: 180,
-    commissionPercentage: 15,
+    completionDate: '2024-05-26',
+    expectedPayout: 369, // 450 - 18% = 369
+    commissionPercentage: 18,
     paidOut: false,
     duration: 180
   },
   {
     id: 3,
-    clientName: 'Charlie Brown',
-    clientId: 4,
-    providerName: 'Jane Smith',
+    clientName: 'Frieda Ndapewa',
+    clientId: 9,
+    providerName: 'Johannes Nakale',
     providerId: 2,
     serviceName: 'Deep Cleaning Package',
-    date: '2024-07-17',
+    date: '2024-05-27',
     time: '11:00',
-    amount: 400,
-    status: 'in-progress',
+    amount: 650,
+    status: 'completed',
     jobType: 'subscription',
+    completionDate: '2024-05-27',
+    expectedPayout: 520,
+    paidOut: false,
     duration: 240,
-    providerFee: 320
+    providerFee: 520
   },
   {
     id: 4,
-    clientName: 'Diana Miller',
-    clientId: 5,
-    providerName: 'Mike Johnson',
-    providerId: 3,
-    serviceName: 'Basic Cleaning',
-    date: '2024-07-18',
+    clientName: 'Simon Haindongo',
+    clientId: 10,
+    providerName: 'Andreas Shikongo',
+    providerId: 5,
+    serviceName: 'Move-In/Out Cleaning',
+    date: '2024-05-28',
     time: '10:00',
-    amount: 150,
-    status: 'pending',
+    amount: 380,
+    status: 'in-progress',
     jobType: 'one-off',
-    duration: 120
+    expectedPayout: 334, // 380 - 12% = 334
+    commissionPercentage: 12,
+    duration: 210
   },
   {
     id: 5,
-    clientName: 'Eve Davis',
-    clientId: 6,
-    providerName: 'Jane Smith',
-    providerId: 2,
-    serviceName: 'Custom Cleaning Package',
-    date: '2024-07-19',
+    clientName: 'Loide Shaanika',
+    clientId: 11,
+    providerName: 'Petrina Nghitoolwa',
+    providerId: 3,
+    serviceName: 'Premium Weekly Package',
+    date: '2024-05-28',
     time: '13:00',
-    amount: 500,
-    status: 'completed',
+    amount: 950,
+    status: 'accepted',
     jobType: 'subscription',
-    completionDate: '2024-07-19',
-    expectedPayout: 400,
-    paidOut: false,
+    expectedPayout: 760,
     duration: 300,
-    providerFee: 400
+    providerFee: 760
   },
   {
     id: 6,
-    clientName: 'Frank White',
-    clientId: 7,
-    providerName: 'Mike Johnson',
-    providerId: 3,
-    serviceName: 'Office Cleaning',
-    date: '2024-07-20',
-    time: '15:00',
-    amount: 200,
-    status: 'cancelled',
-    jobType: 'one-off',
-    duration: 180
-  },
-  {
-    id: 7,
-    clientName: 'Grace Taylor',
-    clientId: 8,
-    providerName: 'Jane Smith',
+    clientName: 'Tangeni Amutenya',
+    clientId: 12,
+    providerName: 'Johannes Nakale',
     providerId: 2,
-    serviceName: 'Basic Cleaning',
-    date: '2024-07-21',
-    time: '16:00',
-    amount: 150,
-    status: 'accepted',
+    serviceName: 'Basic House Cleaning',
+    date: '2024-05-29',
+    time: '15:00',
+    amount: 280,
+    status: 'pending',
     jobType: 'one-off',
-    duration: 120
-  },
-  {
-    id: 8,
-    clientName: 'Henry Moore',
-    clientId: 9,
-    providerName: 'Mike Johnson',
-    providerId: 3,
-    serviceName: 'Move-In/Move-Out Cleaning',
-    date: '2024-07-22',
-    time: '12:00',
-    amount: 180,
-    status: 'completed',
-    jobType: 'one-off',
-    completionDate: '2024-07-22',
-    expectedPayout: 162,
-    commissionPercentage: 12,
-    paidOut: false,
+    expectedPayout: 238,
+    commissionPercentage: 15,
     duration: 150
   },
   {
-    id: 9,
-    clientName: 'Ivy Hall',
-    clientId: 10,
-    providerName: 'Jane Smith',
-    providerId: 2,
-    serviceName: 'Deep Cleaning Package',
-    date: '2024-07-23',
-    time: '14:00',
-    amount: 400,
-    status: 'completed',
-    jobType: 'subscription',
-    completionDate: '2024-07-23',
-    expectedPayout: 320,
-    paidOut: false,
-    duration: 240,
-    providerFee: 320
-  },
-  {
-    id: 10,
-    clientName: 'Jack Green',
-    clientId: 11,
-    providerName: 'Mike Johnson',
-    providerId: 3,
-    serviceName: 'Office Cleaning',
-    date: '2024-07-24',
-    time: '09:00',
-    amount: 200,
+    id: 7,
+    clientName: 'Selma Paulus',
+    clientId: 13,
+    providerName: 'Andreas Shikongo',
+    providerId: 5,
+    serviceName: 'Post-Construction Cleanup',
+    date: '2024-05-24',
+    time: '08:00',
+    amount: 850,
     status: 'completed',
     jobType: 'one-off',
-    completionDate: '2024-07-24',
-    expectedPayout: 180,
-    commissionPercentage: 15,
+    completionDate: '2024-05-24',
+    expectedPayout: 680, // 850 - 20% = 680
+    commissionPercentage: 20,
     paidOut: false,
+    duration: 360
+  },
+  {
+    id: 8,
+    clientName: 'Hilma Nangolo',
+    clientId: 14,
+    providerName: 'Petrina Nghitoolwa',
+    providerId: 3,
+    serviceName: 'Office Cleaning Service',
+    date: '2024-05-23',
+    time: '16:00',
+    amount: 450,
+    status: 'completed',
+    jobType: 'one-off',
+    completionDate: '2024-05-23',
+    expectedPayout: 369,
+    commissionPercentage: 18,
+    paidOut: true,
     duration: 180
   }
 ];
 
+// Enhanced payout records
 const mockPayouts: Payout[] = [
   {
     id: 1,
-    providerName: 'Jane Smith',
-    bookingIds: [1, 5],
-    totalEarnings: 535,
-    commission: 55,
-    status: 'completed'
+    providerId: 2,
+    providerName: 'Johannes Nakale',
+    bookingIds: [1],
+    totalEarnings: 238,
+    commission: 42,
+    netPayout: 238,
+    status: 'completed',
+    payoutDate: '2024-05-26',
+    processedDate: '2024-05-26',
+    paymentMethod: 'mobile_money',
+    paymentReference: 'MM240526001',
+    type: 'weekly_auto'
   },
   {
     id: 2,
-    providerName: 'Mike Johnson',
-    bookingIds: [2, 8, 10],
-    totalEarnings: 522,
-    commission: 78,
-    status: 'pending'
+    providerId: 3,
+    providerName: 'Petrina Nghitoolwa',
+    bookingIds: [2, 3],
+    totalEarnings: 889,
+    commission: 81,
+    netPayout: 889,
+    status: 'pending',
+    payoutDate: '2024-05-28',
+    paymentMethod: 'bank_transfer',
+    type: 'weekly_auto'
+  },
+  {
+    id: 3,
+    providerId: 5,
+    providerName: 'Andreas Shikongo',
+    bookingIds: [7],
+    totalEarnings: 680,
+    commission: 170,
+    netPayout: 680,
+    status: 'processing',
+    payoutDate: '2024-05-28',
+    paymentMethod: 'mobile_money',
+    type: 'manual'
+  },
+  {
+    id: 4,
+    providerId: 3,
+    providerName: 'Petrina Nghitoolwa',
+    bookingIds: [8],
+    totalEarnings: 369,
+    commission: 81,
+    netPayout: 369,
+    status: 'completed',
+    payoutDate: '2024-05-24',
+    processedDate: '2024-05-24',
+    paymentMethod: 'bank_transfer',
+    paymentReference: 'BT240524001',
+    type: 'weekly_auto'
+  }
+];
+
+// Payout export history
+const mockPayoutExports: PayoutExport[] = [
+  {
+    id: 1,
+    exportDate: '2024-05-27',
+    period: 'Week 21, 2024',
+    totalAmount: 1845,
+    payoutCount: 4,
+    status: 'downloaded',
+    fileFormat: 'excel'
+  },
+  {
+    id: 2,
+    exportDate: '2024-05-20',
+    period: 'Week 20, 2024',
+    totalAmount: 2340,
+    payoutCount: 6,
+    status: 'sent',
+    fileFormat: 'pdf'
   }
 ];
 
@@ -391,6 +560,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [bookings, setBookings] = useState<Booking[]>(mockBookings);
   const [payouts, setPayouts] = useState<Payout[]>(mockPayouts);
+  const [payoutExports, setPayoutExports] = useState<PayoutExport[]>(mockPayoutExports);
   const [isLoading, setIsLoading] = useState(false);
   const [servicesLoading, setServicesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -409,6 +579,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setTimeout(() => {
         const newService: Service = {
           id: services.length > 0 ? Math.max(...services.map(s => s.id)) + 1 : 1,
+          popularity: 0,
+          averageRating: 0,
+          totalBookings: 0,
+          totalRevenue: 0,
           ...service
         };
         setServices([...services, newService]);
@@ -472,9 +646,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     return new Promise<void>((resolve) => {
       setTimeout(() => {
-        setBookings(bookings.map(booking =>
-          booking.id === id ? { ...booking, status } : booking
-        ));
+        const updatedBookings = bookings.map(booking => {
+          if (booking.id === id) {
+            const updatedBooking = { ...booking, status };
+            if (status === 'completed' && !booking.completionDate) {
+              updatedBooking.completionDate = new Date().toISOString().split('T')[0];
+            }
+            return updatedBooking;
+          }
+          return booking;
+        });
+        setBookings(updatedBookings);
         setIsLoading(false);
         resolve();
       }, 500);
@@ -486,8 +668,49 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return new Promise<void>((resolve) => {
       setTimeout(() => {
         setPayouts(payouts.map(payout =>
-          payout.id === id ? { ...payout, status: 'completed' } : payout
+          payout.id === id ? { 
+            ...payout, 
+            status: 'completed',
+            processedDate: new Date().toISOString().split('T')[0],
+            paymentReference: `AUTO${Date.now()}`
+          } : payout
         ));
+        setIsLoading(false);
+        resolve();
+      }, 500);
+    });
+  };
+
+  const addManualPayout = async (payout: Omit<Payout, 'id' | 'processedDate'>) => {
+    setIsLoading(true);
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        const newPayout: Payout = {
+          ...payout,
+          id: payouts.length > 0 ? Math.max(...payouts.map(p => p.id)) + 1 : 1,
+          processedDate: new Date().toISOString().split('T')[0]
+        };
+        setPayouts([...payouts, newPayout]);
+        setIsLoading(false);
+        resolve();
+      }, 500);
+    });
+  };
+
+  const exportPayouts = async (period: string, format: string) => {
+    setIsLoading(true);
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        const newExport: PayoutExport = {
+          id: payoutExports.length > 0 ? Math.max(...payoutExports.map(e => e.id)) + 1 : 1,
+          exportDate: new Date().toISOString().split('T')[0],
+          period,
+          totalAmount: payouts.reduce((sum, p) => sum + p.netPayout, 0),
+          payoutCount: payouts.length,
+          status: 'generated',
+          fileFormat: format as 'excel' | 'csv' | 'pdf'
+        };
+        setPayoutExports([newExport, ...payoutExports]);
         setIsLoading(false);
         resolve();
       }, 500);
@@ -499,6 +722,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     users,
     bookings,
     payouts,
+    payoutExports,
     addService,
     updateService,
     deleteService,
@@ -506,6 +730,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateUser,
     updateBookingStatus,
     processPayout,
+    addManualPayout,
+    exportPayouts,
     isLoading,
     servicesLoading,
     error

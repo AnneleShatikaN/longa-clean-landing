@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
   Calendar, User, LogOut, MapPin, DollarSign, Clock, 
-  Phone, Mail, Star, Filter, Bell, Calculator, Percent, Banknote
+  Phone, Mail, Star, Filter, Bell, Calculator, Percent, Banknote,
+  TrendingUp, Wallet, CheckCircle, XCircle, AlertCircle
 } from 'lucide-react';
 import JobFilters from '@/components/JobFilters';
 import AvailabilityToggle from '@/components/AvailabilityToggle';
@@ -29,11 +30,13 @@ interface Job {
   completedDate?: string;
   rating?: number;
   reviewComment?: string;
-  // New fields for payout calculation
   jobType: 'one-off' | 'subscription';
   expectedPayout: number;
+  actualPayout?: number;
   commissionPercentage?: number;
   providerFee?: number;
+  payoutStatus?: 'pending' | 'processing' | 'paid';
+  payoutDate?: string;
 }
 
 interface Notification {
@@ -72,8 +75,11 @@ const ProviderDashboard = () => {
     completedDate: booking.completionDate,
     jobType: booking.jobType,
     expectedPayout: booking.expectedPayout || 0,
+    actualPayout: booking.status === 'completed' ? booking.expectedPayout : undefined,
     commissionPercentage: booking.commissionPercentage,
-    providerFee: booking.providerFee
+    providerFee: booking.providerFee,
+    payoutStatus: booking.status === 'completed' ? (booking.paidOut ? 'paid' : 'pending') : undefined,
+    payoutDate: booking.paidOut ? booking.completionDate : undefined
   }));
 
   const [notifications, setNotifications] = useState<Notification[]>([
@@ -124,6 +130,27 @@ const ProviderDashboard = () => {
     { month: 'May 2024', earnings: 1250, jobsCompleted: 15, averageRating: 4.9 }
   ];
 
+  // Enhanced calculations for earnings summary
+  const completedJobs = jobs.filter(job => job.status === 'completed');
+  const pendingPayouts = completedJobs.filter(job => job.payoutStatus === 'pending');
+  const totalPendingAmount = pendingPayouts.reduce((sum, job) => sum + job.expectedPayout, 0);
+  
+  // This week's calculations (mock - last 7 days)
+  const thisWeekCompleted = completedJobs.filter(job => {
+    const jobDate = new Date(job.completedDate!);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return jobDate >= weekAgo;
+  });
+  
+  const thisWeekEarnings = thisWeekCompleted.reduce((sum, job) => sum + job.expectedPayout, 0);
+  
+  // Average payouts by job type
+  const oneOffJobs = completedJobs.filter(job => job.jobType === 'one-off');
+  const subscriptionJobs = completedJobs.filter(job => job.jobType === 'subscription');
+  const avgOneOffPayout = oneOffJobs.length > 0 ? oneOffJobs.reduce((sum, job) => sum + job.expectedPayout, 0) / oneOffJobs.length : 0;
+  const avgSubscriptionPayout = subscriptionJobs.length > 0 ? subscriptionJobs.reduce((sum, job) => sum + job.expectedPayout, 0) / subscriptionJobs.length : 0;
+
   // Job management functions
   const acceptJob = async (jobId: number) => {
     await updateBookingStatus(jobId, 'accepted');
@@ -137,7 +164,6 @@ const ProviderDashboard = () => {
   };
 
   const declineJob = (jobId: number) => {
-    // For now, just remove from local state (in real app, would update backend)
     console.log(`Declined job ${jobId}`);
   };
 
@@ -203,6 +229,24 @@ const ProviderDashboard = () => {
       : 'bg-green-100 text-green-800';
   };
 
+  const getPayoutStatusColor = (status?: string) => {
+    switch (status) {
+      case 'paid': return 'bg-green-100 text-green-800';
+      case 'processing': return 'bg-yellow-100 text-yellow-800';
+      case 'pending': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPayoutStatusIcon = (status?: string) => {
+    switch (status) {
+      case 'paid': return CheckCircle;
+      case 'processing': return AlertCircle;
+      case 'pending': return Clock;
+      default: return XCircle;
+    }
+  };
+
   const getPayoutCalculationInfo = (job: Job) => {
     if (job.jobType === 'one-off') {
       return {
@@ -224,7 +268,6 @@ const ProviderDashboard = () => {
   const totalEarnings = jobs
     .filter(job => job.status === 'completed')
     .reduce((sum, job) => sum + job.expectedPayout, 0);
-  const completedJobs = jobs.filter(job => job.status === 'completed').length;
   const currentMonthEarnings = monthlyEarnings[monthlyEarnings.length - 1]?.earnings || 0;
 
   return (
@@ -264,6 +307,53 @@ const ProviderDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-8">
+            {/* Earnings Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <Wallet className="h-4 w-4 text-orange-600" />
+                    <span className="text-sm text-gray-600">Pending Payouts</span>
+                  </div>
+                  <p className="text-2xl font-bold text-orange-600">N${totalPendingAmount}</p>
+                  <p className="text-xs text-gray-500">{pendingPayouts.length} jobs pending</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-gray-600">This Week</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-600">N${thisWeekEarnings}</p>
+                  <p className="text-xs text-gray-500">{thisWeekCompleted.length} jobs completed</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <DollarSign className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm text-gray-600">Avg One-Off</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600">N${avgOneOffPayout.toFixed(0)}</p>
+                  <p className="text-xs text-gray-500">Per job average</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <Banknote className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm text-gray-600">Avg Package</span>
+                  </div>
+                  <p className="text-2xl font-bold text-purple-600">N${avgSubscriptionPayout.toFixed(0)}</p>
+                  <p className="text-xs text-gray-500">Per package average</p>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Availability Toggle */}
             <AvailabilityToggle 
               isAvailable={isAvailable}
@@ -309,7 +399,7 @@ const ProviderDashboard = () => {
                                 {job.status}
                               </Badge>
                               <Badge className={getJobTypeColor(job.jobType)}>
-                                {job.jobType}
+                                {job.jobType === 'one-off' ? 'One-Off' : 'Package'}
                               </Badge>
                             </div>
                           </div>
@@ -337,7 +427,7 @@ const ProviderDashboard = () => {
                               {job.clientEmail}
                             </div>
                             
-                            {/* Payout Information */}
+                            {/* Enhanced Payout Information */}
                             <div className="bg-purple-50 p-3 rounded-lg">
                               <div className="flex items-center text-sm text-purple-700 mb-1">
                                 <PayoutIcon className="h-4 w-4 mr-2" />
@@ -348,6 +438,9 @@ const ProviderDashboard = () => {
                               </div>
                               <div className="text-xs text-purple-600 mt-1">
                                 {payoutInfo.calculation}
+                              </div>
+                              <div className="text-xs text-purple-500 mt-1">
+                                Client pays: N${job.amount}
                               </div>
                             </div>
                             
@@ -385,7 +478,7 @@ const ProviderDashboard = () => {
               </div>
             )}
 
-            {/* My Jobs */}
+            {/* My Jobs - Enhanced with Payout Information */}
             <div>
               <h3 className="text-xl font-semibold text-gray-900 mb-4">
                 My Jobs ({myJobs.length})
@@ -408,6 +501,7 @@ const ProviderDashboard = () => {
                         {myJobs.map((job) => {
                           const payoutInfo = getPayoutCalculationInfo(job);
                           const PayoutIcon = payoutInfo.icon;
+                          const PayoutStatusIcon = getPayoutStatusIcon(job.payoutStatus);
                           
                           return (
                             <tr key={job.id} className="hover:bg-gray-50">
@@ -415,7 +509,7 @@ const ProviderDashboard = () => {
                                 <div>
                                   <div className="text-sm font-medium text-gray-900">{job.service}</div>
                                   <Badge className={`${getJobTypeColor(job.jobType)} text-xs mt-1`}>
-                                    {job.jobType}
+                                    {job.jobType === 'one-off' ? 'One-Off' : 'Package'}
                                   </Badge>
                                 </div>
                               </td>
@@ -431,14 +525,32 @@ const ProviderDashboard = () => {
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex flex-col">
+                                <div className="flex flex-col space-y-1">
                                   <div className="flex items-center text-sm text-purple-600 font-medium">
                                     <PayoutIcon className="h-3 w-3 mr-1" />
                                     N${job.expectedPayout}
+                                    {job.actualPayout && job.actualPayout !== job.expectedPayout && (
+                                      <span className="text-xs text-gray-500 ml-1">
+                                        (Actual: N${job.actualPayout})
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-xs text-gray-500">
                                     {job.jobType === 'one-off' ? `${job.commissionPercentage}% commission` : 'Fixed fee'}
                                   </div>
+                                  {job.payoutStatus && (
+                                    <div className="flex items-center">
+                                      <PayoutStatusIcon className="h-3 w-3 mr-1" />
+                                      <Badge className={`${getPayoutStatusColor(job.payoutStatus)} text-xs`}>
+                                        {job.payoutStatus}
+                                      </Badge>
+                                    </div>
+                                  )}
+                                  {job.payoutDate && (
+                                    <div className="text-xs text-green-600">
+                                      Paid: {job.payoutDate}
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
@@ -495,23 +607,31 @@ const ProviderDashboard = () => {
               onDismiss={dismissNotification}
             />
 
-            {/* Earnings Tracker */}
+            {/* Enhanced Earnings Tracker */}
             <EarningsTracker
               currentMonthEarnings={currentMonthEarnings}
               totalEarnings={totalEarnings}
               monthlyData={monthlyEarnings}
-              completedJobs={completedJobs}
+              completedJobs={completedJobs.length}
             />
 
             {/* Ratings & Reviews */}
             <RatingSystem ratings={ratings} />
 
-            {/* Quick Stats */}
+            {/* Enhanced Quick Stats */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Quick Stats</CardTitle>
+                <CardTitle className="text-lg">Payout Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Pending Payouts</span>
+                  <span className="font-semibold text-orange-600">N${totalPendingAmount}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">This Week Earnings</span>
+                  <span className="font-semibold text-green-600">N${thisWeekEarnings}</span>
+                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Jobs Available</span>
                   <span className="font-semibold text-yellow-600">{availableJobs.length}</span>

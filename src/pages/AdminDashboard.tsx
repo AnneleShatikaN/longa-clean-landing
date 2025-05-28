@@ -87,7 +87,12 @@ const AdminDashboard = () => {
       minutes: '0',
       status: 'active' as 'active' | 'inactive',
       tags: [] as string[],
-      description: ''
+      description: '',
+      popularity: 0,
+      averageRating: 0,
+      totalBookings: 0,
+      totalRevenue: 0,
+      requirements: []
     }
   });
 
@@ -179,6 +184,11 @@ const AdminDashboard = () => {
         status: data.status as 'active' | 'inactive',
         tags: data.tags,
         description: data.description,
+        popularity: 0,
+        averageRating: 0,
+        totalBookings: 0,
+        totalRevenue: 0,
+        requirements: [],
         ...(data.type === 'subscription' && { providerFee: parseInt(data.providerFee) }),
         ...(data.type === 'one-off' && { commissionPercentage: parseInt(data.commissionPercentage) })
       };

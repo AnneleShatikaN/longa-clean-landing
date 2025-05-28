@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { UserRole } from './AuthContext';
 
@@ -58,6 +57,7 @@ export interface Booking {
   providerFee?: number; // For subscription jobs
   completionDate?: string;
   expectedPayout?: number;
+  paidOut?: boolean; // Track if payout has been processed
 }
 
 export interface Payout {
@@ -201,7 +201,8 @@ const initialBookings: Booking[] = [
     jobType: 'one-off',
     commissionPercentage: 15,
     completionDate: '2024-05-25',
-    expectedPayout: 127.5
+    expectedPayout: 127.5,
+    paidOut: false
   },
   { 
     id: 1002, 
@@ -259,7 +260,8 @@ const initialBookings: Booking[] = [
     jobType: 'one-off',
     commissionPercentage: 15,
     completionDate: '2024-05-20',
-    expectedPayout: 127.5
+    expectedPayout: 127.5,
+    paidOut: false
   }
 ];
 
@@ -432,7 +434,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         jobType: service.type,
         commissionPercentage: service.type === 'one-off' ? service.commissionPercentage : undefined,
         providerFee: service.type === 'subscription' ? service.providerFee : undefined,
-        expectedPayout
+        expectedPayout,
+        paidOut: false
       };
       
       setBookings(prev => [...prev, newBooking]);

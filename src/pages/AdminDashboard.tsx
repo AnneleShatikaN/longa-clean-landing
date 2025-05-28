@@ -15,6 +15,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loading } from '@/components/ui/loading';
+import { PayoutSystemTabs } from '@/components/admin/PayoutSystemTabs';
 import { 
   Users, 
   UserCheck, 
@@ -267,12 +268,13 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
             <TabsTrigger value="bookings">Bookings</TabsTrigger>
-            <TabsTrigger value="payouts">Payouts</TabsTrigger>
+            <TabsTrigger value="payouts">Legacy Payouts</TabsTrigger>
+            <TabsTrigger value="payout-system">Payout System</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -968,10 +970,10 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
 
-          {/* Payouts Tab */}
+          {/* Legacy Payouts Tab */}
           <TabsContent value="payouts" className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Payout Management</h2>
+              <h2 className="text-2xl font-bold">Legacy Payout Management</h2>
               <Button>
                 <CreditCard className="h-4 w-4 mr-2" />
                 Bulk Process Payouts
@@ -1117,6 +1119,14 @@ const AdminDashboard = () => {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* New Comprehensive Payout System Tab */}
+          <TabsContent value="payout-system" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Comprehensive Payout System</h2>
+            </div>
+            <PayoutSystemTabs />
           </TabsContent>
         </Tabs>
       </main>

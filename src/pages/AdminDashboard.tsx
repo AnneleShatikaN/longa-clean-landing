@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
 import { Toggle } from '@/components/ui/toggle';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Users, 
   UserCheck, 
@@ -26,7 +27,10 @@ import {
   Clock,
   XCircle,
   Plus,
-  Save
+  Save,
+  Filter,
+  CreditCard,
+  AlertCircle
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
@@ -37,6 +41,7 @@ const AdminDashboard = () => {
   const [editingUser, setEditingUser] = useState<number | null>(null);
   const [editingService, setEditingService] = useState<number | null>(null);
   const [showAddService, setShowAddService] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const addServiceForm = useForm({
     defaultValues: {
@@ -102,11 +107,20 @@ const AdminDashboard = () => {
     { id: 4, name: 'Car Washing', description: 'Complete car cleaning service', price: 120, duration: 90, active: false, providers: 12, bookings: 180 }
   ]);
 
-  const bookings = [
-    { id: 1, client: 'Sarah Wilson', provider: 'Mary Smith', service: 'House Cleaning', amount: 150, status: 'completed', date: '2024-01-25' },
-    { id: 2, client: 'Emma Davis', provider: 'John Doe', service: 'Garden Maintenance', amount: 200, status: 'in-progress', date: '2024-01-25' },
-    { id: 3, client: 'Mike Brown', provider: 'Jane Smith', service: 'Laundry Service', amount: 80, status: 'pending', date: '2024-01-24' }
-  ];
+  const [bookings, setBookings] = useState([
+    { id: 1001, client: 'Sarah Wilson', clientId: 1, provider: 'Mary Smith', providerId: 4, service: 'House Cleaning', amount: 150, status: 'completed', date: '2024-01-25', time: '10:00 AM', duration: 120, notes: 'Regular weekly cleaning' },
+    { id: 1002, client: 'Emma Davis', clientId: 3, provider: 'John Doe', providerId: 6, service: 'Garden Maintenance', amount: 200, status: 'in-progress', date: '2024-01-25', time: '2:00 PM', duration: 180, notes: 'Hedge trimming and lawn care' },
+    { id: 1003, client: 'Mike Brown', clientId: 7, provider: 'Jane Smith', providerId: 8, service: 'Laundry Service', amount: 80, status: 'pending', date: '2024-01-24', time: '9:00 AM', duration: 60, notes: 'Large load of clothes' },
+    { id: 1004, client: 'Lisa Johnson', clientId: 9, provider: 'Mary Smith', providerId: 4, service: 'House Cleaning', amount: 150, status: 'completed', date: '2024-01-23', time: '11:00 AM', duration: 120, notes: 'Deep cleaning service' },
+    { id: 1005, client: 'Tom Wilson', clientId: 10, provider: 'Bob Davis', providerId: 11, service: 'Car Washing', amount: 120, status: 'cancelled', date: '2024-01-22', time: '3:00 PM', duration: 90, notes: 'Customer cancelled last minute' },
+    { id: 1006, client: 'Sarah Wilson', clientId: 1, provider: 'Mary Smith', providerId: 4, service: 'Laundry Service', amount: 80, status: 'completed', date: '2024-01-21', time: '1:00 PM', duration: 60, notes: 'Quick wash and fold' }
+  ]);
+
+  const [payouts, setPayouts] = useState([
+    { id: 1, providerId: 4, providerName: 'Mary Smith', bookingIds: [1001, 1004, 1006], totalEarnings: 323, commission: 57, netPayout: 323, status: 'pending', date: '2024-01-25' },
+    { id: 2, providerId: 8, providerName: 'Jane Smith', bookingIds: [1003], totalEarnings: 68, commission: 12, netPayout: 68, status: 'processing', date: '2024-01-24' },
+    { id: 3, providerId: 6, providerName: 'John Doe', bookingIds: [1002], totalEarnings: 170, commission: 30, netPayout: 170, status: 'completed', date: '2024-01-23' }
+  ]);
 
   const handleLogout = () => {
     logout();
@@ -173,6 +187,25 @@ const AdminDashboard = () => {
     addServiceForm.reset();
     setShowAddService(false);
   };
+
+  const handleBookingStatusChange = (bookingId: number, newStatus: string) => {
+    setBookings(bookings.map(booking => 
+      booking.id === bookingId ? { ...booking, status: newStatus } : booking
+    ));
+  };
+
+  const handleProcessPayout = (payoutId: number) => {
+    setPayouts(payouts.map(payout => 
+      payout.id === payoutId ? { ...payout, status: 'completed' } : payout
+    ));
+  };
+
+  const filteredBookings = statusFilter === 'all' 
+    ? bookings 
+    : bookings.filter(booking => booking.status === statusFilter);
+
+  const calculateProviderEarnings = (amount: number) => Math.round(amount * 0.85);
+  const calculateCommission = (amount: number) => Math.round(amount * 0.15);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -620,53 +653,284 @@ const AdminDashboard = () => {
 
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Booking Management</h2>
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4" />
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Bookings</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Booking Management</CardTitle>
+                <CardTitle>Bookings Overview</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {bookings.map((booking) => (
-                    <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <h3 className="font-medium">{booking.service}</h3>
-                        <p className="text-sm text-gray-600">
-                          {booking.client} → {booking.provider}
-                        </p>
-                        <p className="text-xs text-gray-500">{booking.date}</p>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <span className="font-medium">N${booking.amount}</span>
-                        <Badge className={getStatusColor(booking.status)}>
-                          {booking.status}
-                        </Badge>
-                        <div className="flex space-x-1">
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Booking ID</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Service</TableHead>
+                      <TableHead>Date & Time</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredBookings.map((booking) => (
+                      <TableRow key={booking.id}>
+                        <TableCell className="font-medium">#{booking.id}</TableCell>
+                        <TableCell>{booking.client}</TableCell>
+                        <TableCell>{booking.provider}</TableCell>
+                        <TableCell>{booking.service}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div>{booking.date}</div>
+                            <div className="text-gray-500">{booking.time}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">N${booking.amount}</TableCell>
+                        <TableCell>
+                          <Select 
+                            value={booking.status} 
+                            onValueChange={(value) => handleBookingStatusChange(booking.id, value)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue>
+                                <Badge className={getStatusColor(booking.status)}>
+                                  {booking.status}
+                                </Badge>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="in-progress">In Progress</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-1">
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
+
+            {/* Booking Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{bookings.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{bookings.filter(b => b.status === 'completed').length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+                  <Clock className="h-4 w-4 text-yellow-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{bookings.filter(b => b.status === 'in-progress').length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                  <DollarSign className="h-4 w-4 text-purple-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    N${bookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + b.amount, 0)}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Payouts Tab */}
           <TabsContent value="payouts" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Payout Management</h2>
+              <Button>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Bulk Process Payouts
+              </Button>
+            </div>
+
+            {/* Financial Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Provider Earnings</CardTitle>
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    N${payouts.reduce((sum, p) => sum + p.totalEarnings, 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    85% of booking amounts
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Platform Commission</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-purple-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    N${payouts.reduce((sum, p) => sum + p.commission, 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    15% commission rate
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pending Payouts</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {payouts.filter(p => p.status === 'pending').length}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Awaiting processing
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Payout Management</CardTitle>
+                <CardTitle>Provider Payouts</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <DollarSign className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-500">Payout management system coming soon</p>
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Booking IDs</TableHead>
+                      <TableHead>Gross Earnings</TableHead>
+                      <TableHead>Commission (15%)</TableHead>
+                      <TableHead>Net Payout (85%)</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payouts.map((payout) => (
+                      <TableRow key={payout.id}>
+                        <TableCell className="font-medium">{payout.providerName}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {payout.bookingIds.map(id => (
+                              <Badge key={id} variant="outline" className="text-xs">
+                                #{id}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell>N${payout.totalEarnings + payout.commission}</TableCell>
+                        <TableCell className="text-red-600">-N${payout.commission}</TableCell>
+                        <TableCell className="font-medium text-green-600">N${payout.totalEarnings}</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(payout.status)}>
+                            {payout.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {payout.status === 'pending' ? (
+                            <Button 
+                              size="sm"
+                              onClick={() => handleProcessPayout(payout.id)}
+                            >
+                              Process Payout
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Individual Booking Breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Completed Bookings - Financial Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Booking ID</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Service</TableHead>
+                      <TableHead>Total Amount</TableHead>
+                      <TableHead>Provider Earnings (85%)</TableHead>
+                      <TableHead>Platform Commission (15%)</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bookings.filter(booking => booking.status === 'completed').map((booking) => (
+                      <TableRow key={booking.id}>
+                        <TableCell className="font-medium">#{booking.id}</TableCell>
+                        <TableCell>{booking.provider}</TableCell>
+                        <TableCell>{booking.service}</TableCell>
+                        <TableCell className="font-medium">N${booking.amount}</TableCell>
+                        <TableCell className="text-green-600">N${calculateProviderEarnings(booking.amount)}</TableCell>
+                        <TableCell className="text-purple-600">N${calculateCommission(booking.amount)}</TableCell>
+                        <TableCell>{booking.date}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>

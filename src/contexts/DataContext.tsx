@@ -57,25 +57,29 @@ export interface Payout {
 interface DataContextType {
   // Services
   services: Service[];
-  addService: (service: Omit<Service, 'id' | 'providers' | 'bookings'>) => void;
-  updateService: (id: number, updates: Partial<Service>) => void;
-  toggleServiceStatus: (id: number) => void;
+  addService: (service: Omit<Service, 'id' | 'providers' | 'bookings'>) => Promise<void>;
+  updateService: (id: number, updates: Partial<Service>) => Promise<void>;
+  toggleServiceStatus: (id: number) => Promise<void>;
   
   // Users
   users: AppUser[];
-  updateUser: (id: number, updates: Partial<AppUser>) => void;
+  updateUser: (id: number, updates: Partial<AppUser>) => Promise<void>;
   
   // Bookings
   bookings: Booking[];
-  createBooking: (booking: Omit<Booking, 'id' | 'createdAt'>) => void;
-  updateBookingStatus: (id: number, status: Booking['status']) => void;
+  createBooking: (booking: Omit<Booking, 'id' | 'createdAt'>) => Promise<void>;
+  updateBookingStatus: (id: number, status: Booking['status']) => Promise<void>;
   
   // Payouts
   payouts: Payout[];
-  processPayout: (id: number) => void;
+  processPayout: (id: number) => Promise<void>;
   
   // Loading states
   isLoading: boolean;
+  servicesLoading: boolean;
+  usersLoading: boolean;
+  bookingsLoading: boolean;
+  payoutsLoading: boolean;
   error: string | null;
   setError: (error: string | null) => void;
 }
@@ -110,104 +114,176 @@ const initialPayouts: Payout[] = [
   { id: 2, providerId: 4, providerName: 'Mike Johnson', bookingIds: [1003], totalEarnings: 68, commission: 12, netPayout: 68, status: 'processing', date: '2024-05-24' }
 ];
 
+// Simulate API delay
+const simulateDelay = (ms: number = 1000) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [services, setServices] = useState<Service[]>(initialServices);
   const [users, setUsers] = useState<AppUser[]>(initialUsers);
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [payouts, setPayouts] = useState<Payout[]>(initialPayouts);
   const [isLoading, setIsLoading] = useState(false);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const addService = (serviceData: Omit<Service, 'id' | 'providers' | 'bookings'>) => {
-    const newService: Service = {
-      ...serviceData,
-      id: Math.max(...services.map(s => s.id)) + 1,
-      providers: 0,
-      bookings: 0
-    };
-    setServices(prev => [...prev, newService]);
-  };
-
-  const updateService = (id: number, updates: Partial<Service>) => {
-    setServices(prev => prev.map(service => 
-      service.id === id ? { ...service, ...updates } : service
-    ));
-  };
-
-  const toggleServiceStatus = (id: number) => {
-    setServices(prev => prev.map(service => 
-      service.id === id ? { ...service, active: !service.active } : service
-    ));
-  };
-
-  const updateUser = (id: number, updates: Partial<AppUser>) => {
-    setUsers(prev => prev.map(user => 
-      user.id === id ? { ...user, ...updates } : user
-    ));
-  };
-
-  const createBooking = (bookingData: Omit<Booking, 'id' | 'createdAt'>) => {
-    const newBooking: Booking = {
-      ...bookingData,
-      id: Math.max(...bookings.map(b => b.id)) + 1,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    setBookings(prev => [...prev, newBooking]);
-
-    // Update service booking count
-    updateService(bookingData.serviceId, {
-      bookings: services.find(s => s.id === bookingData.serviceId)?.bookings! + 1
-    });
-  };
-
-  const updateBookingStatus = (id: number, status: Booking['status']) => {
-    setBookings(prev => prev.map(booking => 
-      booking.id === id ? { ...booking, status } : booking
-    ));
-
-    // If booking is completed, create payout if it doesn't exist
-    if (status === 'completed') {
-      const booking = bookings.find(b => b.id === id);
-      if (booking) {
-        const existingPayout = payouts.find(p => 
-          p.providerId === booking.providerId && p.status === 'pending'
-        );
-
-        if (existingPayout) {
-          // Add to existing payout
-          setPayouts(prev => prev.map(payout => 
-            payout.id === existingPayout.id 
-              ? {
-                  ...payout,
-                  bookingIds: [...payout.bookingIds, id],
-                  totalEarnings: payout.totalEarnings + Math.round(booking.amount * 0.85),
-                  commission: payout.commission + Math.round(booking.amount * 0.15)
-                }
-              : payout
-          ));
-        } else {
-          // Create new payout
-          const newPayout: Payout = {
-            id: Math.max(...payouts.map(p => p.id)) + 1,
-            providerId: booking.providerId,
-            providerName: booking.providerName,
-            bookingIds: [id],
-            totalEarnings: Math.round(booking.amount * 0.85),
-            commission: Math.round(booking.amount * 0.15),
-            netPayout: Math.round(booking.amount * 0.85),
-            status: 'pending',
-            date: new Date().toISOString().split('T')[0]
-          };
-          setPayouts(prev => [...prev, newPayout]);
-        }
-      }
+  const addService = async (serviceData: Omit<Service, 'id' | 'providers' | 'bookings'>) => {
+    setServicesLoading(true);
+    setError(null);
+    try {
+      await simulateDelay(800);
+      const newService: Service = {
+        ...serviceData,
+        id: Math.max(...services.map(s => s.id)) + 1,
+        providers: 0,
+        bookings: 0
+      };
+      setServices(prev => [...prev, newService]);
+    } catch (err) {
+      setError('Failed to add service. Please try again.');
+    } finally {
+      setServicesLoading(false);
     }
   };
 
-  const processPayout = (id: number) => {
-    setPayouts(prev => prev.map(payout => 
-      payout.id === id ? { ...payout, status: 'completed' } : payout
-    ));
+  const updateService = async (id: number, updates: Partial<Service>) => {
+    setServicesLoading(true);
+    setError(null);
+    try {
+      await simulateDelay(500);
+      setServices(prev => prev.map(service => 
+        service.id === id ? { ...service, ...updates } : service
+      ));
+    } catch (err) {
+      setError('Failed to update service. Please try again.');
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
+  const toggleServiceStatus = async (id: number) => {
+    setServicesLoading(true);
+    setError(null);
+    try {
+      await simulateDelay(500);
+      setServices(prev => prev.map(service => 
+        service.id === id ? { ...service, active: !service.active } : service
+      ));
+    } catch (err) {
+      setError('Failed to update service status. Please try again.');
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
+  const updateUser = async (id: number, updates: Partial<AppUser>) => {
+    setUsersLoading(true);
+    setError(null);
+    try {
+      await simulateDelay(500);
+      setUsers(prev => prev.map(user => 
+        user.id === id ? { ...user, ...updates } : user
+      ));
+    } catch (err) {
+      setError('Failed to update user. Please try again.');
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const createBooking = async (bookingData: Omit<Booking, 'id' | 'createdAt'>) => {
+    setBookingsLoading(true);
+    setError(null);
+    try {
+      await simulateDelay(1000);
+      const newBooking: Booking = {
+        ...bookingData,
+        id: Math.max(...bookings.map(b => b.id)) + 1,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      setBookings(prev => [...prev, newBooking]);
+
+      // Update service booking count
+      setServices(prev => prev.map(service =>
+        service.id === bookingData.serviceId
+          ? { ...service, bookings: service.bookings + 1 }
+          : service
+      ));
+    } catch (err) {
+      setError('Failed to create booking. Please try again.');
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  const updateBookingStatus = async (id: number, status: Booking['status']) => {
+    setBookingsLoading(true);
+    setError(null);
+    try {
+      await simulateDelay(500);
+      setBookings(prev => prev.map(booking => 
+        booking.id === id ? { ...booking, status } : booking
+      ));
+
+      // If booking is completed, create payout if it doesn't exist
+      if (status === 'completed') {
+        const booking = bookings.find(b => b.id === id);
+        if (booking) {
+          const existingPayout = payouts.find(p => 
+            p.providerId === booking.providerId && p.status === 'pending'
+          );
+
+          if (existingPayout) {
+            // Add to existing payout
+            setPayouts(prev => prev.map(payout => 
+              payout.id === existingPayout.id 
+                ? {
+                    ...payout,
+                    bookingIds: [...payout.bookingIds, id],
+                    totalEarnings: payout.totalEarnings + Math.round(booking.amount * 0.85),
+                    commission: payout.commission + Math.round(booking.amount * 0.15)
+                  }
+                : payout
+            ));
+          } else {
+            // Create new payout
+            const newPayout: Payout = {
+              id: Math.max(...payouts.map(p => p.id)) + 1,
+              providerId: booking.providerId,
+              providerName: booking.providerName,
+              bookingIds: [id],
+              totalEarnings: Math.round(booking.amount * 0.85),
+              commission: Math.round(booking.amount * 0.15),
+              netPayout: Math.round(booking.amount * 0.85),
+              status: 'pending',
+              date: new Date().toISOString().split('T')[0]
+            };
+            setPayouts(prev => [...prev, newPayout]);
+          }
+        }
+      }
+    } catch (err) {
+      setError('Failed to update booking status. Please try again.');
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  const processPayout = async (id: number) => {
+    setPayoutsLoading(true);
+    setError(null);
+    try {
+      await simulateDelay(1500);
+      setPayouts(prev => prev.map(payout => 
+        payout.id === id ? { ...payout, status: 'completed' } : payout
+      ));
+    } catch (err) {
+      setError('Failed to process payout. Please try again.');
+    } finally {
+      setPayoutsLoading(false);
+    }
   };
 
   return (
@@ -224,6 +300,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       payouts,
       processPayout,
       isLoading,
+      servicesLoading,
+      usersLoading,
+      bookingsLoading,
+      payoutsLoading,
       error,
       setError
     }}>

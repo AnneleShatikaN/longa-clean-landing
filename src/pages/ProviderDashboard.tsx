@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,7 +68,7 @@ const ProviderDashboard = () => {
     amount: booking.amount,
     date: booking.date,
     status: booking.status as 'requested' | 'accepted' | 'completed',
-    duration: `${Math.floor(booking.duration / 60)}h ${booking.duration % 60}m`,
+    duration: booking.duration ? `${Math.floor(booking.duration / 60)}h ${booking.duration % 60}m` : '2h 0m',
     completedDate: booking.completionDate,
     jobType: booking.jobType,
     expectedPayout: booking.expectedPayout || 0,

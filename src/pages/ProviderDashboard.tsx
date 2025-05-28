@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +28,16 @@ interface Job {
   completedDate?: string;
   rating?: number;
   reviewComment?: string;
+}
+
+interface Notification {
+  id: number;
+  type: 'new_job' | 'job_completed' | 'rating_received' | 'payment_received';
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+  actionable?: boolean;
 }
 
 const ProviderDashboard = () => {
@@ -107,10 +116,10 @@ const ProviderDashboard = () => {
     },
   ]);
 
-  const [notifications, setNotifications] = useState([
+  const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: 1,
-      type: 'new_job' as const,
+      type: 'new_job',
       title: 'New Job Request',
       message: 'House Cleaning job in Klein Windhoek for N$150',
       time: '5 minutes ago',
@@ -119,7 +128,7 @@ const ProviderDashboard = () => {
     },
     {
       id: 2,
-      type: 'rating_received' as const,
+      type: 'rating_received',
       title: 'New Rating Received',
       message: 'Emma Davis rated your service 5 stars',
       time: '2 hours ago',
@@ -127,7 +136,7 @@ const ProviderDashboard = () => {
     },
     {
       id: 3,
-      type: 'payment_received' as const,
+      type: 'payment_received',
       title: 'Payment Received',
       message: 'N$68 payment received for completed laundry service',
       time: '1 day ago',
@@ -191,8 +200,8 @@ const ProviderDashboard = () => {
   };
 
   // Notification functions
-  const addNotification = (notification: Omit<typeof notifications[0], 'id' | 'read'>) => {
-    const newNotification = {
+  const addNotification = (notification: Omit<Notification, 'id' | 'read'>) => {
+    const newNotification: Notification = {
       ...notification,
       id: notifications.length + 1,
       read: false

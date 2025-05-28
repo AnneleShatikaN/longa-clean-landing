@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bell, X, Check, Clock, Star, DollarSign } from 'lucide-react';
+import { Bell, X, Check, Clock, Star, DollarSign, CheckCircle } from 'lucide-react';
 
 interface Notification {
   id: number;
@@ -33,7 +33,7 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({
   const getIcon = (type: string) => {
     switch (type) {
       case 'new_job': return <Clock className="h-4 w-4 text-blue-600" />;
-      case 'job_completed': return <Check className="h-4 w-4 text-green-600" />;
+      case 'job_completed': return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'rating_received': return <Star className="h-4 w-4 text-yellow-600" />;
       case 'payment_received': return <DollarSign className="h-4 w-4 text-green-600" />;
       default: return <Bell className="h-4 w-4 text-gray-600" />;

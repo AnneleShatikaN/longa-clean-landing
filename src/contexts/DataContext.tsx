@@ -3,6 +3,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 export interface Booking {
   id: number;
   clientName: string;
+  clientId?: number;
   providerName: string;
   providerId: number;
   serviceName: string;
@@ -15,6 +16,8 @@ export interface Booking {
   expectedPayout?: number;
   commissionPercentage?: number;
   paidOut?: boolean;
+  duration?: number;
+  providerFee?: number;
 }
 
 export interface Payout {
@@ -200,6 +203,7 @@ const mockBookings: Booking[] = [
   {
     id: 1,
     clientName: 'Alice Johnson',
+    clientId: 1,
     providerName: 'Jane Smith',
     providerId: 2,
     serviceName: 'Basic Cleaning',
@@ -211,11 +215,13 @@ const mockBookings: Booking[] = [
     completionDate: '2024-07-15',
     expectedPayout: 135,
     commissionPercentage: 10,
-    paidOut: true
+    paidOut: true,
+    duration: 120
   },
   {
     id: 2,
     clientName: 'Bob Williams',
+    clientId: 3,
     providerName: 'Mike Johnson',
     providerId: 3,
     serviceName: 'Office Cleaning',
@@ -227,11 +233,13 @@ const mockBookings: Booking[] = [
     completionDate: '2024-07-16',
     expectedPayout: 180,
     commissionPercentage: 15,
-    paidOut: false
+    paidOut: false,
+    duration: 180
   },
   {
     id: 3,
     clientName: 'Charlie Brown',
+    clientId: 4,
     providerName: 'Jane Smith',
     providerId: 2,
     serviceName: 'Deep Cleaning Package',
@@ -239,11 +247,14 @@ const mockBookings: Booking[] = [
     time: '11:00',
     amount: 400,
     status: 'in-progress',
-    jobType: 'subscription'
+    jobType: 'subscription',
+    duration: 240,
+    providerFee: 320
   },
   {
     id: 4,
     clientName: 'Diana Miller',
+    clientId: 5,
     providerName: 'Mike Johnson',
     providerId: 3,
     serviceName: 'Basic Cleaning',
@@ -251,11 +262,13 @@ const mockBookings: Booking[] = [
     time: '10:00',
     amount: 150,
     status: 'pending',
-    jobType: 'one-off'
+    jobType: 'one-off',
+    duration: 120
   },
   {
     id: 5,
     clientName: 'Eve Davis',
+    clientId: 6,
     providerName: 'Jane Smith',
     providerId: 2,
     serviceName: 'Custom Cleaning Package',
@@ -266,11 +279,14 @@ const mockBookings: Booking[] = [
     jobType: 'subscription',
     completionDate: '2024-07-19',
     expectedPayout: 400,
-    paidOut: false
+    paidOut: false,
+    duration: 300,
+    providerFee: 400
   },
   {
     id: 6,
     clientName: 'Frank White',
+    clientId: 7,
     providerName: 'Mike Johnson',
     providerId: 3,
     serviceName: 'Office Cleaning',
@@ -278,11 +294,13 @@ const mockBookings: Booking[] = [
     time: '15:00',
     amount: 200,
     status: 'cancelled',
-    jobType: 'one-off'
+    jobType: 'one-off',
+    duration: 180
   },
   {
     id: 7,
     clientName: 'Grace Taylor',
+    clientId: 8,
     providerName: 'Jane Smith',
     providerId: 2,
     serviceName: 'Basic Cleaning',
@@ -290,11 +308,13 @@ const mockBookings: Booking[] = [
     time: '16:00',
     amount: 150,
     status: 'accepted',
-    jobType: 'one-off'
+    jobType: 'one-off',
+    duration: 120
   },
   {
     id: 8,
     clientName: 'Henry Moore',
+    clientId: 9,
     providerName: 'Mike Johnson',
     providerId: 3,
     serviceName: 'Move-In/Move-Out Cleaning',
@@ -306,11 +326,13 @@ const mockBookings: Booking[] = [
     completionDate: '2024-07-22',
     expectedPayout: 162,
     commissionPercentage: 12,
-    paidOut: false
+    paidOut: false,
+    duration: 150
   },
   {
     id: 9,
     clientName: 'Ivy Hall',
+    clientId: 10,
     providerName: 'Jane Smith',
     providerId: 2,
     serviceName: 'Deep Cleaning Package',
@@ -321,11 +343,14 @@ const mockBookings: Booking[] = [
     jobType: 'subscription',
     completionDate: '2024-07-23',
     expectedPayout: 320,
-    paidOut: false
+    paidOut: false,
+    duration: 240,
+    providerFee: 320
   },
   {
     id: 10,
     clientName: 'Jack Green',
+    clientId: 11,
     providerName: 'Mike Johnson',
     providerId: 3,
     serviceName: 'Office Cleaning',
@@ -337,7 +362,8 @@ const mockBookings: Booking[] = [
     completionDate: '2024-07-24',
     expectedPayout: 180,
     commissionPercentage: 15,
-    paidOut: false
+    paidOut: false,
+    duration: 180
   }
 ];
 

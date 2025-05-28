@@ -270,7 +270,7 @@ export const PayoutExport = () => {
             <Checkbox
               id="markProcessed"
               checked={markAsProcessed}
-              onCheckedChange={setMarkAsProcessed}
+              onCheckedChange={(checked) => setMarkAsProcessed(checked === true)}
             />
             <label htmlFor="markProcessed" className="text-sm">
               Mark exported payouts as "Processed"

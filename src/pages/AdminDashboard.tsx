@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,6 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Switch } from '@/components/ui/switch';
+import { Toggle } from '@/components/ui/toggle';
 import { 
   Users, 
   UserCheck, 
@@ -19,13 +24,28 @@ import {
   Ban,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  Plus,
+  Save
 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [editingUser, setEditingUser] = useState<number | null>(null);
+  const [editingService, setEditingService] = useState<number | null>(null);
+  const [showAddService, setShowAddService] = useState(false);
+
+  const addServiceForm = useForm({
+    defaultValues: {
+      name: '',
+      description: '',
+      price: '',
+      duration: ''
+    }
+  });
 
   // Mock data for dashboard
   const metrics = {
@@ -68,17 +88,18 @@ const AdminDashboard = () => {
   ];
 
   const users = [
-    { id: 1, name: 'Sarah Wilson', email: 'sarah@email.com', role: 'client', status: 'active', joined: '2024-01-15' },
-    { id: 2, name: 'Mike Johnson', email: 'mike@email.com', role: 'provider', status: 'pending', joined: '2024-01-20' },
-    { id: 3, name: 'Emma Davis', email: 'emma@email.com', role: 'client', status: 'active', joined: '2024-01-18' },
-    { id: 4, name: 'Mary Smith', email: 'mary@email.com', role: 'provider', status: 'active', joined: '2024-01-10' }
+    { id: 1, name: 'Sarah Wilson', email: 'sarah@email.com', role: 'client', status: 'active', rating: 4.8, available: null, joined: '2024-01-15' },
+    { id: 2, name: 'Mike Johnson', email: 'mike@email.com', role: 'provider', status: 'pending', rating: 0, available: true, joined: '2024-01-20' },
+    { id: 3, name: 'Emma Davis', email: 'emma@email.com', role: 'client', status: 'active', rating: 4.5, available: null, joined: '2024-01-18' },
+    { id: 4, name: 'Mary Smith', email: 'mary@email.com', role: 'provider', status: 'active', rating: 4.9, available: false, joined: '2024-01-10' },
+    { id: 5, name: 'Admin User', email: 'admin@longa.com', role: 'admin', status: 'active', rating: null, available: null, joined: '2024-01-01' }
   ];
 
   const services = [
-    { id: 1, name: 'House Cleaning', category: 'Home', providers: 25, bookings: 450, revenue: 6750 },
-    { id: 2, name: 'Garden Maintenance', category: 'Outdoor', providers: 18, bookings: 320, revenue: 4800 },
-    { id: 3, name: 'Laundry Service', category: 'Home', providers: 15, bookings: 280, revenue: 2800 },
-    { id: 4, name: 'Car Washing', category: 'Automotive', providers: 12, bookings: 180, revenue: 2700 }
+    { id: 1, name: 'House Cleaning', description: 'Professional home cleaning service', price: 150, duration: 120, active: true, providers: 25, bookings: 450 },
+    { id: 2, name: 'Garden Maintenance', description: 'Complete garden care and maintenance', price: 200, duration: 180, active: true, providers: 18, bookings: 320 },
+    { id: 3, name: 'Laundry Service', description: 'Wash, dry and fold laundry service', price: 80, duration: 60, active: true, providers: 15, bookings: 280 },
+    { id: 4, name: 'Car Washing', description: 'Complete car cleaning service', price: 120, duration: 90, active: false, providers: 12, bookings: 180 }
   ];
 
   const bookings = [
@@ -90,6 +111,15 @@ const AdminDashboard = () => {
   const handleLogout = () => {
     logout();
     navigate('/auth');
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'admin': return 'bg-red-100 text-red-800';
+      case 'provider': return 'bg-green-100 text-green-800';
+      case 'client': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -108,6 +138,40 @@ const AdminDashboard = () => {
       case 'payout': return <DollarSign className="h-4 w-4 text-purple-600" />;
       default: return <Activity className="h-4 w-4 text-gray-600" />;
     }
+  };
+
+  const handleUserEdit = (userId: number, field: string, value: any) => {
+    setUsers(users.map(user => 
+      user.id === userId ? { ...user, [field]: value } : user
+    ));
+  };
+
+  const handleServiceToggle = (serviceId: number) => {
+    setServices(services.map(service => 
+      service.id === serviceId ? { ...service, active: !service.active } : service
+    ));
+  };
+
+  const handleServiceEdit = (serviceId: number, field: string, value: any) => {
+    setServices(services.map(service => 
+      service.id === serviceId ? { ...service, [field]: value } : service
+    ));
+  };
+
+  const handleAddService = (data: any) => {
+    const newService = {
+      id: services.length + 1,
+      name: data.name,
+      description: data.description,
+      price: parseInt(data.price),
+      duration: parseInt(data.duration),
+      active: true,
+      providers: 0,
+      bookings: 0
+    };
+    setServices([...services, newService]);
+    addServiceForm.reset();
+    setShowAddService(false);
   };
 
   return (
@@ -256,73 +320,300 @@ const AdminDashboard = () => {
                 <CardTitle>User Management</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {users.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <h3 className="font-medium">{user.name}</h3>
-                        <p className="text-sm text-gray-600">{user.email}</p>
-                        <p className="text-xs text-gray-500">Joined: {user.joined}</p>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Badge className={`${user.role === 'provider' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
-                          {user.role}
-                        </Badge>
-                        <Badge className={getStatusColor(user.status)}>
-                          {user.status}
-                        </Badge>
-                        <div className="flex space-x-1">
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Ban className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Rating</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Available</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          {editingUser === user.id ? (
+                            <Input 
+                              value={user.name}
+                              onChange={(e) => handleUserEdit(user.id, 'name', e.target.value)}
+                              className="w-32"
+                            />
+                          ) : (
+                            user.name
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingUser === user.id ? (
+                            <Input 
+                              value={user.email}
+                              onChange={(e) => handleUserEdit(user.id, 'email', e.target.value)}
+                              className="w-40"
+                            />
+                          ) : (
+                            user.email
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getRoleBadgeColor(user.role)}>
+                            {user.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {user.rating !== null ? `${user.rating}/5` : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(user.status)}>
+                            {user.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {user.role === 'provider' ? (
+                            <div className="flex items-center space-x-2">
+                              {user.available ? (
+                                <Badge className="bg-green-100 text-green-800">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Available
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-red-100 text-red-800">
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                  Unavailable
+                                </Badge>
+                              )}
+                            </div>
+                          ) : (
+                            'N/A'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-1">
+                            {editingUser === user.id ? (
+                              <Button 
+                                size="sm" 
+                                onClick={() => setEditingUser(null)}
+                              >
+                                <Save className="h-3 w-3" />
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => setEditingUser(user.id)}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            )}
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Ban className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* Services Tab */}
           <TabsContent value="services" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Service Management</h2>
+              <Button onClick={() => setShowAddService(!showAddService)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Service
+              </Button>
+            </div>
+
+            {showAddService && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Add New Service</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Form {...addServiceForm}>
+                    <form onSubmit={addServiceForm.handleSubmit(handleAddService)} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={addServiceForm.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Service Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter service name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={addServiceForm.control}
+                          name="price"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Price (N$)</FormLabel>
+                              <FormControl>
+                                <Input type="number" placeholder="Enter price" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={addServiceForm.control}
+                          name="duration"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Duration (minutes)</FormLabel>
+                              <FormControl>
+                                <Input type="number" placeholder="Enter duration" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <FormField
+                        control={addServiceForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Enter service description" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex space-x-2">
+                        <Button type="submit">Add Service</Button>
+                        <Button type="button" variant="outline" onClick={() => setShowAddService(false)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
-                <CardTitle>Service Management</CardTitle>
+                <CardTitle>Services List</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {services.map((service) => (
-                    <Card key={service.id}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{service.name}</CardTitle>
-                        <Badge variant="outline">{service.category}</Badge>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">Providers:</span>
-                            <span className="font-medium">{service.providers}</span>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Price (N$)</TableHead>
+                      <TableHead>Duration (min)</TableHead>
+                      <TableHead>Providers</TableHead>
+                      <TableHead>Bookings</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {services.map((service) => (
+                      <TableRow key={service.id}>
+                        <TableCell>
+                          {editingService === service.id ? (
+                            <Input 
+                              value={service.name}
+                              onChange={(e) => handleServiceEdit(service.id, 'name', e.target.value)}
+                              className="w-32"
+                            />
+                          ) : (
+                            service.name
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingService === service.id ? (
+                            <Textarea 
+                              value={service.description}
+                              onChange={(e) => handleServiceEdit(service.id, 'description', e.target.value)}
+                              className="w-48 min-h-[60px]"
+                            />
+                          ) : (
+                            <div className="max-w-48 truncate">{service.description}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingService === service.id ? (
+                            <Input 
+                              type="number"
+                              value={service.price}
+                              onChange={(e) => handleServiceEdit(service.id, 'price', parseInt(e.target.value))}
+                              className="w-20"
+                            />
+                          ) : (
+                            service.price
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingService === service.id ? (
+                            <Input 
+                              type="number"
+                              value={service.duration}
+                              onChange={(e) => handleServiceEdit(service.id, 'duration', parseInt(e.target.value))}
+                              className="w-20"
+                            />
+                          ) : (
+                            service.duration
+                          )}
+                        </TableCell>
+                        <TableCell>{service.providers}</TableCell>
+                        <TableCell>{service.bookings}</TableCell>
+                        <TableCell>
+                          <Toggle 
+                            pressed={service.active}
+                            onPressedChange={() => handleServiceToggle(service.id)}
+                            className="data-[state=on]:bg-green-500 data-[state=on]:text-white"
+                          >
+                            {service.active ? 'Active' : 'Inactive'}
+                          </Toggle>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-1">
+                            {editingService === service.id ? (
+                              <Button 
+                                size="sm" 
+                                onClick={() => setEditingService(null)}
+                              >
+                                <Save className="h-3 w-3" />
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => setEditingService(service.id)}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            )}
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-3 w-3" />
+                            </Button>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">Bookings:</span>
-                            <span className="font-medium">{service.bookings}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">Revenue:</span>
-                            <span className="font-medium">N${service.revenue}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>

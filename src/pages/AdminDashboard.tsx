@@ -87,20 +87,20 @@ const AdminDashboard = () => {
     }
   ];
 
-  const users = [
+  const [users, setUsers] = useState([
     { id: 1, name: 'Sarah Wilson', email: 'sarah@email.com', role: 'client', status: 'active', rating: 4.8, available: null, joined: '2024-01-15' },
     { id: 2, name: 'Mike Johnson', email: 'mike@email.com', role: 'provider', status: 'pending', rating: 0, available: true, joined: '2024-01-20' },
     { id: 3, name: 'Emma Davis', email: 'emma@email.com', role: 'client', status: 'active', rating: 4.5, available: null, joined: '2024-01-18' },
     { id: 4, name: 'Mary Smith', email: 'mary@email.com', role: 'provider', status: 'active', rating: 4.9, available: false, joined: '2024-01-10' },
     { id: 5, name: 'Admin User', email: 'admin@longa.com', role: 'admin', status: 'active', rating: null, available: null, joined: '2024-01-01' }
-  ];
+  ]);
 
-  const services = [
+  const [services, setServices] = useState([
     { id: 1, name: 'House Cleaning', description: 'Professional home cleaning service', price: 150, duration: 120, active: true, providers: 25, bookings: 450 },
     { id: 2, name: 'Garden Maintenance', description: 'Complete garden care and maintenance', price: 200, duration: 180, active: true, providers: 18, bookings: 320 },
     { id: 3, name: 'Laundry Service', description: 'Wash, dry and fold laundry service', price: 80, duration: 60, active: true, providers: 15, bookings: 280 },
     { id: 4, name: 'Car Washing', description: 'Complete car cleaning service', price: 120, duration: 90, active: false, providers: 12, bookings: 180 }
-  ];
+  ]);
 
   const bookings = [
     { id: 1, client: 'Sarah Wilson', provider: 'Mary Smith', service: 'House Cleaning', amount: 150, status: 'completed', date: '2024-01-25' },

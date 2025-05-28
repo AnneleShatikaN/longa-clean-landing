@@ -1,6 +1,8 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,6 +38,21 @@ import { useForm } from 'react-hook-form';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
+  const { 
+    services, 
+    users, 
+    bookings, 
+    payouts, 
+    addService, 
+    updateService, 
+    toggleServiceStatus, 
+    updateUser, 
+    updateBookingStatus, 
+    processPayout,
+    isLoading,
+    error 
+  } = useData();
+  
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [editingUser, setEditingUser] = useState<number | null>(null);
@@ -52,12 +69,12 @@ const AdminDashboard = () => {
     }
   });
 
-  // Mock data for dashboard
+  // Calculate metrics from real data
   const metrics = {
-    totalUsers: 1247,
-    activeProviders: 89,
-    totalBookings: 3456,
-    revenue: 51840, // 15% commission
+    totalUsers: users.length,
+    activeProviders: users.filter(u => u.role === 'provider' && u.status === 'active').length,
+    totalBookings: bookings.length,
+    revenue: Math.round(bookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + (b.amount * 0.15), 0)),
     monthlyGrowth: 12.5
   };
 
@@ -65,62 +82,25 @@ const AdminDashboard = () => {
     {
       id: 1,
       type: 'booking',
-      message: 'New house cleaning booking by Sarah Wilson',
+      message: `New ${bookings[bookings.length - 1]?.serviceName || 'service'} booking by ${bookings[bookings.length - 1]?.clientName || 'client'}`,
       time: '2 minutes ago',
       status: 'new'
     },
     {
       id: 2,
       type: 'provider',
-      message: 'New provider registration: Mike Johnson',
+      message: `New provider registration: ${users.filter(u => u.role === 'provider' && u.status === 'pending')[0]?.name || 'Provider'}`,
       time: '15 minutes ago',
       status: 'pending'
     },
     {
       id: 3,
       type: 'payout',
-      message: 'Payout processed for Mary Smith - N$340',
+      message: `Payout processed for ${payouts.filter(p => p.status === 'completed')[0]?.providerName || 'Provider'} - N$${payouts.filter(p => p.status === 'completed')[0]?.totalEarnings || 0}`,
       time: '1 hour ago',
-      status: 'completed'
-    },
-    {
-      id: 4,
-      type: 'booking',
-      message: 'Booking completed: Garden maintenance',
-      time: '2 hours ago',
       status: 'completed'
     }
   ];
-
-  const [users, setUsers] = useState([
-    { id: 1, name: 'Sarah Wilson', email: 'sarah@email.com', role: 'client', status: 'active', rating: 4.8, available: null, joined: '2024-01-15' },
-    { id: 2, name: 'Mike Johnson', email: 'mike@email.com', role: 'provider', status: 'pending', rating: 0, available: true, joined: '2024-01-20' },
-    { id: 3, name: 'Emma Davis', email: 'emma@email.com', role: 'client', status: 'active', rating: 4.5, available: null, joined: '2024-01-18' },
-    { id: 4, name: 'Mary Smith', email: 'mary@email.com', role: 'provider', status: 'active', rating: 4.9, available: false, joined: '2024-01-10' },
-    { id: 5, name: 'Admin User', email: 'admin@longa.com', role: 'admin', status: 'active', rating: null, available: null, joined: '2024-01-01' }
-  ]);
-
-  const [services, setServices] = useState([
-    { id: 1, name: 'House Cleaning', description: 'Professional home cleaning service', price: 150, duration: 120, active: true, providers: 25, bookings: 450 },
-    { id: 2, name: 'Garden Maintenance', description: 'Complete garden care and maintenance', price: 200, duration: 180, active: true, providers: 18, bookings: 320 },
-    { id: 3, name: 'Laundry Service', description: 'Wash, dry and fold laundry service', price: 80, duration: 60, active: true, providers: 15, bookings: 280 },
-    { id: 4, name: 'Car Washing', description: 'Complete car cleaning service', price: 120, duration: 90, active: false, providers: 12, bookings: 180 }
-  ]);
-
-  const [bookings, setBookings] = useState([
-    { id: 1001, client: 'Sarah Wilson', clientId: 1, provider: 'Mary Smith', providerId: 4, service: 'House Cleaning', amount: 150, status: 'completed', date: '2024-01-25', time: '10:00 AM', duration: 120, notes: 'Regular weekly cleaning' },
-    { id: 1002, client: 'Emma Davis', clientId: 3, provider: 'John Doe', providerId: 6, service: 'Garden Maintenance', amount: 200, status: 'in-progress', date: '2024-01-25', time: '2:00 PM', duration: 180, notes: 'Hedge trimming and lawn care' },
-    { id: 1003, client: 'Mike Brown', clientId: 7, provider: 'Jane Smith', providerId: 8, service: 'Laundry Service', amount: 80, status: 'pending', date: '2024-01-24', time: '9:00 AM', duration: 60, notes: 'Large load of clothes' },
-    { id: 1004, client: 'Lisa Johnson', clientId: 9, provider: 'Mary Smith', providerId: 4, service: 'House Cleaning', amount: 150, status: 'completed', date: '2024-01-23', time: '11:00 AM', duration: 120, notes: 'Deep cleaning service' },
-    { id: 1005, client: 'Tom Wilson', clientId: 10, provider: 'Bob Davis', providerId: 11, service: 'Car Washing', amount: 120, status: 'cancelled', date: '2024-01-22', time: '3:00 PM', duration: 90, notes: 'Customer cancelled last minute' },
-    { id: 1006, client: 'Sarah Wilson', clientId: 1, provider: 'Mary Smith', providerId: 4, service: 'Laundry Service', amount: 80, status: 'completed', date: '2024-01-21', time: '1:00 PM', duration: 60, notes: 'Quick wash and fold' }
-  ]);
-
-  const [payouts, setPayouts] = useState([
-    { id: 1, providerId: 4, providerName: 'Mary Smith', bookingIds: [1001, 1004, 1006], totalEarnings: 323, commission: 57, netPayout: 323, status: 'pending', date: '2024-01-25' },
-    { id: 2, providerId: 8, providerName: 'Jane Smith', bookingIds: [1003], totalEarnings: 68, commission: 12, netPayout: 68, status: 'processing', date: '2024-01-24' },
-    { id: 3, providerId: 6, providerName: 'John Doe', bookingIds: [1002], totalEarnings: 170, commission: 30, netPayout: 170, status: 'completed', date: '2024-01-23' }
-  ]);
 
   const handleLogout = () => {
     logout();
@@ -155,49 +135,23 @@ const AdminDashboard = () => {
   };
 
   const handleUserEdit = (userId: number, field: string, value: any) => {
-    setUsers(users.map(user => 
-      user.id === userId ? { ...user, [field]: value } : user
-    ));
-  };
-
-  const handleServiceToggle = (serviceId: number) => {
-    setServices(services.map(service => 
-      service.id === serviceId ? { ...service, active: !service.active } : service
-    ));
+    updateUser(userId, { [field]: value });
   };
 
   const handleServiceEdit = (serviceId: number, field: string, value: any) => {
-    setServices(services.map(service => 
-      service.id === serviceId ? { ...service, [field]: value } : service
-    ));
+    updateService(serviceId, { [field]: value });
   };
 
   const handleAddService = (data: any) => {
-    const newService = {
-      id: services.length + 1,
+    addService({
       name: data.name,
       description: data.description,
       price: parseInt(data.price),
       duration: parseInt(data.duration),
-      active: true,
-      providers: 0,
-      bookings: 0
-    };
-    setServices([...services, newService]);
+      active: true
+    });
     addServiceForm.reset();
     setShowAddService(false);
-  };
-
-  const handleBookingStatusChange = (bookingId: number, newStatus: string) => {
-    setBookings(bookings.map(booking => 
-      booking.id === bookingId ? { ...booking, status: newStatus } : booking
-    ));
-  };
-
-  const handleProcessPayout = (payoutId: number) => {
-    setPayouts(payouts.map(payout => 
-      payout.id === payoutId ? { ...payout, status: 'completed' } : payout
-    ));
   };
 
   const filteredBookings = statusFilter === 'all' 
@@ -207,6 +161,20 @@ const AdminDashboard = () => {
   const calculateProviderEarnings = (amount: number) => Math.round(amount * 0.85);
   const calculateCommission = (amount: number) => Math.round(amount * 0.15);
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-6">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error</h2>
+            <p className="text-gray-600">{error}</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -215,6 +183,7 @@ const AdminDashboard = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <h1 className="text-2xl font-bold text-purple-600">Longa Admin</h1>
+              {isLoading && <div className="ml-4 text-sm text-gray-500">Loading...</div>}
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-700">Welcome, {user?.name}</span>
@@ -247,7 +216,7 @@ const AdminDashboard = () => {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{metrics.totalUsers.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">{metrics.totalUsers}</div>
                   <p className="text-xs text-muted-foreground">
                     +12% from last month
                   </p>
@@ -273,7 +242,7 @@ const AdminDashboard = () => {
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{metrics.totalBookings.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">{metrics.totalBookings}</div>
                   <p className="text-xs text-muted-foreground">
                     +15% from last month
                   </p>
@@ -286,7 +255,7 @@ const AdminDashboard = () => {
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">N${metrics.revenue.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">N${metrics.revenue}</div>
                   <p className="text-xs text-muted-foreground">
                     +{metrics.monthlyGrowth}% from last month
                   </p>
@@ -614,7 +583,7 @@ const AdminDashboard = () => {
                         <TableCell>
                           <Toggle 
                             pressed={service.active}
-                            onPressedChange={() => handleServiceToggle(service.id)}
+                            onPressedChange={() => toggleServiceStatus(service.id)}
                             className="data-[state=on]:bg-green-500 data-[state=on]:text-white"
                           >
                             {service.active ? 'Active' : 'Inactive'}
@@ -694,9 +663,9 @@ const AdminDashboard = () => {
                     {filteredBookings.map((booking) => (
                       <TableRow key={booking.id}>
                         <TableCell className="font-medium">#{booking.id}</TableCell>
-                        <TableCell>{booking.client}</TableCell>
-                        <TableCell>{booking.provider}</TableCell>
-                        <TableCell>{booking.service}</TableCell>
+                        <TableCell>{booking.clientName}</TableCell>
+                        <TableCell>{booking.providerName}</TableCell>
+                        <TableCell>{booking.serviceName}</TableCell>
                         <TableCell>
                           <div className="text-sm">
                             <div>{booking.date}</div>
@@ -707,7 +676,7 @@ const AdminDashboard = () => {
                         <TableCell>
                           <Select 
                             value={booking.status} 
-                            onValueChange={(value) => handleBookingStatusChange(booking.id, value)}
+                            onValueChange={(value) => updateBookingStatus(booking.id, value as any)}
                           >
                             <SelectTrigger className="w-32">
                               <SelectValue>
@@ -718,6 +687,7 @@ const AdminDashboard = () => {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="accepted">Accepted</SelectItem>
                               <SelectItem value="in-progress">In Progress</SelectItem>
                               <SelectItem value="completed">Completed</SelectItem>
                               <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -882,7 +852,7 @@ const AdminDashboard = () => {
                           {payout.status === 'pending' ? (
                             <Button 
                               size="sm"
-                              onClick={() => handleProcessPayout(payout.id)}
+                              onClick={() => processPayout(payout.id)}
                             >
                               Process Payout
                             </Button>
@@ -921,8 +891,8 @@ const AdminDashboard = () => {
                     {bookings.filter(booking => booking.status === 'completed').map((booking) => (
                       <TableRow key={booking.id}>
                         <TableCell className="font-medium">#{booking.id}</TableCell>
-                        <TableCell>{booking.provider}</TableCell>
-                        <TableCell>{booking.service}</TableCell>
+                        <TableCell>{booking.providerName}</TableCell>
+                        <TableCell>{booking.serviceName}</TableCell>
                         <TableCell className="font-medium">N${booking.amount}</TableCell>
                         <TableCell className="text-green-600">N${calculateProviderEarnings(booking.amount)}</TableCell>
                         <TableCell className="text-purple-600">N${calculateCommission(booking.amount)}</TableCell>

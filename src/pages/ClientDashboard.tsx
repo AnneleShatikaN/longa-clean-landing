@@ -2,6 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,30 +10,35 @@ import { Calendar, Star, User, LogOut, Plus, RotateCcw } from 'lucide-react';
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
+  const { bookings, users } = useData();
   const navigate = useNavigate();
 
-  // Mock data for bookings
-  const bookings = [
-    { id: 1, service: 'House Cleaning', date: '2024-05-25', status: 'completed', provider: 'Mary Smith', amount: 150 },
-    { id: 2, service: 'Garden Maintenance', date: '2024-05-28', status: 'accepted', provider: 'John Doe', amount: 200 },
-    { id: 3, service: 'Plumbing Repair', date: '2024-05-30', status: 'pending', provider: 'Mike Johnson', amount: 120 },
-    { id: 4, service: 'House Cleaning', date: '2024-05-20', status: 'completed', provider: 'Mary Smith', amount: 150 },
-  ];
+  // Filter bookings for current user
+  const userBookings = bookings.filter(booking => 
+    booking.clientName === user?.name || booking.clientId === parseInt(user?.id || '0')
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
-      case 'accepted': return 'bg-blue-100 text-blue-800';
+      case 'accepted': case 'in-progress': return 'bg-blue-100 text-blue-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const stats = {
-    totalBookings: bookings.length,
-    completedJobs: bookings.filter(b => b.status === 'completed').length,
-    totalSpent: bookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + b.amount, 0)
+    totalBookings: userBookings.length,
+    completedJobs: userBookings.filter(b => b.status === 'completed').length,
+    totalSpent: userBookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + b.amount, 0)
   };
+
+  const nextAppointment = userBookings
+    .filter(b => b.status === 'accepted' || b.status === 'pending')
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+
+  const currentUser = users.find(u => u.email === user?.email);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -118,13 +124,13 @@ const ClientDashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {bookings.map((booking) => (
+                        {userBookings.map((booking) => (
                           <tr key={booking.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {booking.service}
+                              {booking.serviceName}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {booking.provider}
+                              {booking.providerName}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               {booking.date}
@@ -163,7 +169,7 @@ const ClientDashboard = () => {
                   <p className="text-sm text-gray-600 mb-3">{user?.email}</p>
                   <div className="flex items-center justify-center space-x-1">
                     <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                    <span className="text-sm font-medium">4.8</span>
+                    <span className="text-sm font-medium">{currentUser?.rating || 4.8}</span>
                     <span className="text-sm text-gray-600">(24 reviews)</span>
                   </div>
                 </div>
@@ -200,11 +206,15 @@ const ClientDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div>
-                  <p className="font-medium text-gray-900">Garden Maintenance</p>
-                  <p className="text-sm text-gray-600">May 28, 2024 at 10:00 AM</p>
-                  <p className="text-sm text-gray-600">with John Doe</p>
-                </div>
+                {nextAppointment ? (
+                  <div>
+                    <p className="font-medium text-gray-900">{nextAppointment.serviceName}</p>
+                    <p className="text-sm text-gray-600">{nextAppointment.date} at {nextAppointment.time}</p>
+                    <p className="text-sm text-gray-600">with {nextAppointment.providerName}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600">No upcoming appointments</p>
+                )}
               </CardContent>
             </Card>
           </div>

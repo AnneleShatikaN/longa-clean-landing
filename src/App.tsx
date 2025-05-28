@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ClientDashboard from "./pages/ClientDashboard";
 import ProviderDashboard from "./pages/ProviderDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import OneOffBooking from "./pages/OneOffBooking";
 import SubscriptionPackages from "./pages/SubscriptionPackages";
 import NotFound from "./pages/NotFound";
@@ -28,6 +29,7 @@ const App: React.FC = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard/client" element={<ClientDashboard />} />
             <Route path="/dashboard/provider" element={<ProviderDashboard />} />
+            <Route path="/dashboard/admin" element={<AdminDashboard />} />
             <Route path="/booking/one-off" element={<OneOffBooking />} />
             <Route path="/subscription-packages" element={<SubscriptionPackages />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

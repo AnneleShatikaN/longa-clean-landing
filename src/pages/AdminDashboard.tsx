@@ -158,18 +158,6 @@ const AdminDashboard = () => {
     updateService(serviceId, { [field]: value });
   };
 
-  const handleAddService = (data: any) => {
-    addService({
-      name: data.name,
-      description: data.description,
-      price: parseInt(data.price),
-      duration: parseInt(data.duration),
-      active: true
-    });
-    addServiceForm.reset();
-    setShowAddService(false);
-  };
-
   const handleServiceSubmit = async (data: any) => {
     try {
       const serviceData = {

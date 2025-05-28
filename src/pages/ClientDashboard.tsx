@@ -1,5 +1,5 @@
-
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Calendar, Star, User, LogOut, Plus, RotateCcw } from 'lucide-react';
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   // Mock data for bookings
   const bookings = [
@@ -63,7 +64,10 @@ const ClientDashboard = () => {
             <div>
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="hover:shadow-md transition-shadow cursor-pointer border-purple-100">
+                <Card 
+                  className="hover:shadow-md transition-shadow cursor-pointer border-purple-100"
+                  onClick={() => navigate('/booking/one-off')}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-4">
                       <div className="bg-purple-100 p-3 rounded-lg">

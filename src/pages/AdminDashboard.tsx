@@ -35,10 +35,17 @@ import {
   Filter,
   CreditCard,
   AlertCircle,
-  Trash2
+  Trash2,
+  PieChart,
+  BarChart3,
+  Download,
+  Wallet,
+  Target,
+  Briefcase
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart, Line, Pie } from 'recharts';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();

@@ -1,5 +1,30 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { UserRole } from './AuthContext';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+
+export interface Booking {
+  id: number;
+  clientName: string;
+  providerName: string;
+  providerId: number;
+  serviceName: string;
+  date: string;
+  time: string;
+  amount: number;
+  status: 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled';
+  jobType: 'one-off' | 'subscription';
+  completionDate?: string;
+  expectedPayout?: number;
+  commissionPercentage?: number;
+  paidOut?: boolean;
+}
+
+export interface Payout {
+  id: number;
+  providerName: string;
+  bookingIds: number[];
+  totalEarnings: number;
+  commission: number;
+  status: 'pending' | 'completed' | 'failed';
+}
 
 export type ServiceType = 'one-off' | 'subscription';
 
@@ -8,8 +33,8 @@ export interface Service {
   name: string;
   type: ServiceType;
   clientPrice: number;
-  providerFee?: number; // For subscription services
-  commissionPercentage?: number; // For one-off services (1-50%)
+  providerFee?: number;
+  commissionPercentage?: number;
   duration: {
     hours: number;
     minutes: number;
@@ -17,569 +42,454 @@ export interface Service {
   status: 'active' | 'inactive';
   tags: string[];
   description: string;
-  // Legacy fields for backwards compatibility
-  price: number;
-  active: boolean;
-  providers: number;
-  bookings: number;
 }
 
-export interface AppUser {
+export interface User {
   id: number;
   name: string;
   email: string;
-  phone?: string;
-  role: UserRole;
-  status: 'active' | 'pending' | 'inactive';
+  role: 'client' | 'provider' | 'admin';
   rating: number | null;
+  status: 'active' | 'inactive' | 'pending';
   available?: boolean;
-  joined: string;
+  bankMobileNumber?: string;
 }
 
-export interface Booking {
-  id: number;
-  clientId: number;
-  clientName: string;
-  providerId: number;
-  providerName: string;
-  serviceId: number;
-  serviceName: string;
-  amount: number;
-  status: 'pending' | 'accepted' | 'in-progress' | 'completed' | 'cancelled';
-  date: string;
-  time: string;
-  duration: number;
-  notes?: string;
-  createdAt: string;
-  // New fields for hybrid payout calculation
-  jobType: ServiceType;
-  commissionPercentage?: number; // For one-off jobs
-  providerFee?: number; // For subscription jobs
-  completionDate?: string;
-  expectedPayout?: number;
-  paidOut?: boolean; // Track if payout has been processed
-}
-
-export interface Payout {
-  id: number;
-  providerId: number;
-  providerName: string;
-  bookingIds: number[];
-  totalEarnings: number;
-  commission: number;
-  netPayout: number;
-  status: 'pending' | 'processing' | 'completed';
-  date: string;
-  calculationMethod: 'commission' | 'fixed-fee' | 'mixed';
-}
-
-interface DataContextType {
-  // Services
+interface DataContextProps {
   services: Service[];
-  addService: (service: Omit<Service, 'id' | 'providers' | 'bookings' | 'price' | 'active'>) => Promise<void>;
+  users: User[];
+  bookings: Booking[];
+  payouts: Payout[];
+  addService: (service: Omit<Service, 'id'>) => Promise<void>;
   updateService: (id: number, updates: Partial<Service>) => Promise<void>;
   deleteService: (id: number) => Promise<void>;
   toggleServiceStatus: (id: number) => Promise<void>;
-  
-  // Users
-  users: AppUser[];
-  updateUser: (id: number, updates: Partial<AppUser>) => Promise<void>;
-  
-  // Bookings
-  bookings: Booking[];
-  createBooking: (booking: Omit<Booking, 'id' | 'createdAt' | 'expectedPayout'>) => Promise<void>;
+  updateUser: (id: number, updates: Partial<User>) => Promise<void>;
   updateBookingStatus: (id: number, status: Booking['status']) => Promise<void>;
-  
-  // Payouts
-  payouts: Payout[];
   processPayout: (id: number) => Promise<void>;
-  
-  // Loading states
   isLoading: boolean;
   servicesLoading: boolean;
-  usersLoading: boolean;
-  bookingsLoading: boolean;
-  payoutsLoading: boolean;
   error: string | null;
-  setError: (error: string | null) => void;
 }
 
-const DataContext = createContext<DataContextType | undefined>(undefined);
+const DataContext = createContext<DataContextProps>({
+  services: [],
+  users: [],
+  bookings: [],
+  payouts: [],
+  addService: async () => {},
+  updateService: async () => {},
+  deleteService: async () => {},
+  toggleServiceStatus: async () => {},
+  updateUser: async () => {},
+  updateBookingStatus: async () => {},
+  processPayout: async () => {},
+  isLoading: true,
+  servicesLoading: true,
+  error: null,
+});
 
-// Updated mock data with new service structure
-const initialServices: Service[] = [
+const mockServices: Service[] = [
   {
     id: 1,
-    name: 'Basic House Cleaning',
+    name: 'Basic Cleaning',
     type: 'one-off',
     clientPrice: 150,
-    commissionPercentage: 15,
+    commissionPercentage: 10,
     duration: { hours: 2, minutes: 0 },
     status: 'active',
-    tags: ['Requires Own Supplies', 'Residential Only'],
-    description: 'Professional home cleaning service including kitchen, bathrooms, and living areas',
-    // Legacy fields
-    price: 150,
-    active: true,
-    providers: 25,
-    bookings: 450
+    tags: ['Residential Only'],
+    description: 'A basic cleaning service for residential properties.'
   },
   {
     id: 2,
-    name: 'Premium Garden Care Package',
+    name: 'Deep Cleaning Package',
     type: 'subscription',
-    clientPrice: 800,
-    providerFee: 680,
-    duration: { hours: 3, minutes: 0 },
+    clientPrice: 400,
+    providerFee: 320,
+    duration: { hours: 4, minutes: 0 },
     status: 'active',
-    tags: ['Business Only', 'Requires Own Supplies'],
-    description: 'Monthly garden maintenance including lawn care, hedge trimming, and seasonal planting',
-    // Legacy fields
-    price: 800,
-    active: true,
-    providers: 18,
-    bookings: 320
+    tags: ['Residential Only', 'Requires Own Supplies'],
+    description: 'A deep cleaning service package for recurring clients.'
   },
   {
     id: 3,
-    name: 'Express Laundry Service',
+    name: 'Office Cleaning',
     type: 'one-off',
-    clientPrice: 80,
-    commissionPercentage: 20,
-    duration: { hours: 1, minutes: 0 },
+    clientPrice: 200,
+    commissionPercentage: 15,
+    duration: { hours: 3, minutes: 0 },
     status: 'active',
-    tags: ['Residential Only'],
-    description: 'Quick wash, dry and fold service for everyday clothing',
-    // Legacy fields
-    price: 80,
-    active: true,
-    providers: 15,
-    bookings: 280
+    tags: ['Business Only'],
+    description: 'Professional cleaning services for office spaces.'
   },
   {
     id: 4,
-    name: 'Premium Car Detailing Package',
+    name: 'Move-In/Move-Out Cleaning',
+    type: 'one-off',
+    clientPrice: 180,
+    commissionPercentage: 12,
+    duration: { hours: 2, minutes: 30 },
+    status: 'inactive',
+    tags: ['Residential Only'],
+    description: 'Cleaning service for properties during move-in or move-out.'
+  },
+  {
+    id: 5,
+    name: 'Custom Cleaning Package',
     type: 'subscription',
     clientPrice: 500,
-    providerFee: 425,
-    duration: { hours: 1, minutes: 30 },
-    status: 'inactive',
-    tags: ['Requires Own Supplies'],
-    description: 'Bi-weekly complete car cleaning and detailing service',
-    // Legacy fields
-    price: 500,
-    active: false,
-    providers: 12,
-    bookings: 180
+    providerFee: 400,
+    duration: { hours: 5, minutes: 0 },
+    status: 'active',
+    tags: ['Business Only', 'Residential Only'],
+    description: 'A custom cleaning service package tailored to client needs.'
   }
 ];
 
-const initialUsers: AppUser[] = [
-  { id: 1, name: 'John Doe', email: 'john@email.com', phone: '+264 81 234 5678', role: 'client', status: 'active', rating: 4.8, joined: '2024-01-15' },
-  { id: 2, name: 'Mary Smith', email: 'mary@email.com', phone: '+264 81 345 6789', role: 'provider', status: 'active', rating: 4.9, available: true, joined: '2024-01-10' },
-  { id: 3, name: 'Sarah Wilson', email: 'sarah@email.com', phone: '+264 81 456 7890', role: 'client', status: 'active', rating: 4.5, joined: '2024-01-18' },
-  { id: 4, name: 'Mike Johnson', email: 'mike@email.com', phone: '+264 81 567 8901', role: 'provider', status: 'pending', rating: 0, available: true, joined: '2024-01-20' },
-  { id: 5, name: 'Admin User', email: 'admin@longa.com', phone: '+264 81 678 9012', role: 'admin', status: 'active', rating: null, joined: '2024-01-01' }
-];
-
-const initialBookings: Booking[] = [
-  { 
-    id: 1001, 
-    clientId: 1, 
-    clientName: 'John Doe', 
-    providerId: 2, 
-    providerName: 'Mary Smith', 
-    serviceId: 1, 
-    serviceName: 'House Cleaning', 
-    amount: 150, 
-    status: 'completed', 
-    date: '2024-05-25', 
-    time: '10:00 AM', 
-    duration: 120, 
-    notes: 'Regular weekly cleaning', 
-    createdAt: '2024-05-20',
-    jobType: 'one-off',
-    commissionPercentage: 15,
-    completionDate: '2024-05-25',
-    expectedPayout: 127.5,
-    paidOut: false
-  },
-  { 
-    id: 1002, 
-    clientId: 3, 
-    clientName: 'Sarah Wilson', 
-    providerId: 2, 
-    providerName: 'Mary Smith', 
-    serviceId: 2, 
-    serviceName: 'Garden Maintenance', 
-    amount: 800, 
-    status: 'accepted', 
-    date: '2024-05-28', 
-    time: '2:00 PM', 
-    duration: 180, 
-    notes: 'Hedge trimming and lawn care', 
-    createdAt: '2024-05-25',
-    jobType: 'subscription',
-    providerFee: 680,
-    expectedPayout: 680
-  },
-  { 
-    id: 1003, 
-    clientId: 1, 
-    clientName: 'John Doe', 
-    providerId: 4, 
-    providerName: 'Mike Johnson', 
-    serviceId: 3, 
-    serviceName: 'Laundry Service', 
-    amount: 80, 
-    status: 'pending', 
-    date: '2024-05-30', 
-    time: '9:00 AM', 
-    duration: 60, 
-    notes: 'Large load of clothes', 
-    createdAt: '2024-05-28',
-    jobType: 'one-off',
-    commissionPercentage: 20,
-    expectedPayout: 64
-  },
-  { 
-    id: 1004, 
-    clientId: 3, 
-    clientName: 'Sarah Wilson', 
-    providerId: 2, 
-    providerName: 'Mary Smith', 
-    serviceId: 1, 
-    serviceName: 'House Cleaning', 
-    amount: 150, 
-    status: 'completed', 
-    date: '2024-05-20', 
-    time: '11:00 AM', 
-    duration: 120, 
-    notes: 'Deep cleaning service', 
-    createdAt: '2024-05-18',
-    jobType: 'one-off',
-    commissionPercentage: 15,
-    completionDate: '2024-05-20',
-    expectedPayout: 127.5,
-    paidOut: false
-  }
-];
-
-const initialPayouts: Payout[] = [
+const mockUsers: User[] = [
   { 
     id: 1, 
-    providerId: 2, 
-    providerName: 'Mary Smith', 
-    bookingIds: [1001, 1004], 
-    totalEarnings: 255, 
-    commission: 45, 
-    netPayout: 255, 
-    status: 'pending', 
-    date: '2024-05-25',
-    calculationMethod: 'commission'
+    name: 'John Doe', 
+    email: 'john@example.com', 
+    role: 'client', 
+    rating: null, 
+    status: 'active' 
   },
   { 
     id: 2, 
-    providerId: 4, 
-    providerName: 'Mike Johnson', 
-    bookingIds: [1003], 
-    totalEarnings: 64, 
-    commission: 16, 
-    netPayout: 64, 
-    status: 'processing', 
-    date: '2024-05-24',
-    calculationMethod: 'commission'
+    name: 'Jane Smith', 
+    email: 'jane@example.com', 
+    role: 'provider', 
+    rating: 4.8, 
+    status: 'active', 
+    available: true,
+    bankMobileNumber: '+264 81 234 5678'
+  },
+  { 
+    id: 3, 
+    name: 'Mike Johnson', 
+    email: 'mike@example.com', 
+    role: 'provider', 
+    rating: 4.5, 
+    status: 'active', 
+    available: false,
+    bankMobileNumber: '+264 85 987 6543'
+  },
+  { 
+    id: 4, 
+    name: 'Sarah Wilson', 
+    email: 'sarah@example.com', 
+    role: 'admin', 
+    rating: null, 
+    status: 'active' 
+  },
+  { 
+    id: 5, 
+    name: 'Tom Brown', 
+    email: 'tom@example.com', 
+    role: 'provider', 
+    rating: 4.2, 
+    status: 'pending', 
+    available: true,
+    bankMobileNumber: 'Bank: 12345678901'
   }
 ];
 
-// Simulate API delay
-const simulateDelay = (ms: number = 1000) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Helper function to calculate expected payout
-const calculateExpectedPayout = (booking: Partial<Booking>, service: Service): number => {
-  if (service.type === 'one-off' && service.commissionPercentage) {
-    return booking.amount! - (booking.amount! * (service.commissionPercentage / 100));
-  } else if (service.type === 'subscription' && service.providerFee) {
-    return service.providerFee;
+const mockBookings: Booking[] = [
+  {
+    id: 1,
+    clientName: 'Alice Johnson',
+    providerName: 'Jane Smith',
+    providerId: 2,
+    serviceName: 'Basic Cleaning',
+    date: '2024-07-15',
+    time: '09:00',
+    amount: 150,
+    status: 'completed',
+    jobType: 'one-off',
+    completionDate: '2024-07-15',
+    expectedPayout: 135,
+    commissionPercentage: 10,
+    paidOut: true
+  },
+  {
+    id: 2,
+    clientName: 'Bob Williams',
+    providerName: 'Mike Johnson',
+    providerId: 3,
+    serviceName: 'Office Cleaning',
+    date: '2024-07-16',
+    time: '14:00',
+    amount: 200,
+    status: 'completed',
+    jobType: 'one-off',
+    completionDate: '2024-07-16',
+    expectedPayout: 180,
+    commissionPercentage: 15,
+    paidOut: false
+  },
+  {
+    id: 3,
+    clientName: 'Charlie Brown',
+    providerName: 'Jane Smith',
+    providerId: 2,
+    serviceName: 'Deep Cleaning Package',
+    date: '2024-07-17',
+    time: '11:00',
+    amount: 400,
+    status: 'in-progress',
+    jobType: 'subscription'
+  },
+  {
+    id: 4,
+    clientName: 'Diana Miller',
+    providerName: 'Mike Johnson',
+    providerId: 3,
+    serviceName: 'Basic Cleaning',
+    date: '2024-07-18',
+    time: '10:00',
+    amount: 150,
+    status: 'pending',
+    jobType: 'one-off'
+  },
+  {
+    id: 5,
+    clientName: 'Eve Davis',
+    providerName: 'Jane Smith',
+    providerId: 2,
+    serviceName: 'Custom Cleaning Package',
+    date: '2024-07-19',
+    time: '13:00',
+    amount: 500,
+    status: 'completed',
+    jobType: 'subscription',
+    completionDate: '2024-07-19',
+    expectedPayout: 400,
+    paidOut: false
+  },
+  {
+    id: 6,
+    clientName: 'Frank White',
+    providerName: 'Mike Johnson',
+    providerId: 3,
+    serviceName: 'Office Cleaning',
+    date: '2024-07-20',
+    time: '15:00',
+    amount: 200,
+    status: 'cancelled',
+    jobType: 'one-off'
+  },
+  {
+    id: 7,
+    clientName: 'Grace Taylor',
+    providerName: 'Jane Smith',
+    providerId: 2,
+    serviceName: 'Basic Cleaning',
+    date: '2024-07-21',
+    time: '16:00',
+    amount: 150,
+    status: 'accepted',
+    jobType: 'one-off'
+  },
+  {
+    id: 8,
+    clientName: 'Henry Moore',
+    providerName: 'Mike Johnson',
+    providerId: 3,
+    serviceName: 'Move-In/Move-Out Cleaning',
+    date: '2024-07-22',
+    time: '12:00',
+    amount: 180,
+    status: 'completed',
+    jobType: 'one-off',
+    completionDate: '2024-07-22',
+    expectedPayout: 162,
+    commissionPercentage: 12,
+    paidOut: false
+  },
+  {
+    id: 9,
+    clientName: 'Ivy Hall',
+    providerName: 'Jane Smith',
+    providerId: 2,
+    serviceName: 'Deep Cleaning Package',
+    date: '2024-07-23',
+    time: '14:00',
+    amount: 400,
+    status: 'completed',
+    jobType: 'subscription',
+    completionDate: '2024-07-23',
+    expectedPayout: 320,
+    paidOut: false
+  },
+  {
+    id: 10,
+    clientName: 'Jack Green',
+    providerName: 'Mike Johnson',
+    providerId: 3,
+    serviceName: 'Office Cleaning',
+    date: '2024-07-24',
+    time: '09:00',
+    amount: 200,
+    status: 'completed',
+    jobType: 'one-off',
+    completionDate: '2024-07-24',
+    expectedPayout: 180,
+    commissionPercentage: 15,
+    paidOut: false
   }
-  return 0;
-};
+];
 
-export const DataProvider = ({ children }: { children: ReactNode }) => {
-  const [services, setServices] = useState<Service[]>(initialServices);
-  const [users, setUsers] = useState<AppUser[]>(initialUsers);
-  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
-  const [payouts, setPayouts] = useState<Payout[]>(initialPayouts);
+const mockPayouts: Payout[] = [
+  {
+    id: 1,
+    providerName: 'Jane Smith',
+    bookingIds: [1, 5],
+    totalEarnings: 535,
+    commission: 55,
+    status: 'completed'
+  },
+  {
+    id: 2,
+    providerName: 'Mike Johnson',
+    bookingIds: [2, 8, 10],
+    totalEarnings: 522,
+    commission: 78,
+    status: 'pending'
+  }
+];
+
+export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [services, setServices] = useState<Service[]>(mockServices);
+  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [bookings, setBookings] = useState<Booking[]>(mockBookings);
+  const [payouts, setPayouts] = useState<Payout[]>(mockPayouts);
   const [isLoading, setIsLoading] = useState(false);
   const [servicesLoading, setServicesLoading] = useState(false);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [bookingsLoading, setBookingsLoading] = useState(false);
-  const [payoutsLoading, setPayoutsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const addService = async (serviceData: Omit<Service, 'id' | 'providers' | 'bookings' | 'price' | 'active'>) => {
+  useEffect(() => {
+    // Simulate loading data from an API
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+  }, []);
+
+  const addService = async (service: Omit<Service, 'id'>) => {
     setServicesLoading(true);
-    setError(null);
-    try {
-      await simulateDelay(800);
-      const newService: Service = {
-        ...serviceData,
-        id: Math.max(...services.map(s => s.id)) + 1,
-        providers: 0,
-        bookings: 0,
-        // Legacy compatibility
-        price: serviceData.clientPrice,
-        active: serviceData.status === 'active'
-      };
-      setServices(prev => [...prev, newService]);
-    } catch (err) {
-      setError('Failed to add service. Please try again.');
-    } finally {
-      setServicesLoading(false);
-    }
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        const newService: Service = {
+          id: services.length > 0 ? Math.max(...services.map(s => s.id)) + 1 : 1,
+          ...service
+        };
+        setServices([...services, newService]);
+        setServicesLoading(false);
+        resolve();
+      }, 500);
+    });
   };
 
   const updateService = async (id: number, updates: Partial<Service>) => {
     setServicesLoading(true);
-    setError(null);
-    try {
-      await simulateDelay(500);
-      setServices(prev => prev.map(service => {
-        if (service.id === id) {
-          const updatedService = { ...service, ...updates };
-          // Maintain legacy compatibility
-          if (updates.clientPrice) updatedService.price = updates.clientPrice;
-          if (updates.status) updatedService.active = updates.status === 'active';
-          return updatedService;
-        }
-        return service;
-      }));
-    } catch (err) {
-      setError('Failed to update service. Please try again.');
-    } finally {
-      setServicesLoading(false);
-    }
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        setServices(services.map(service =>
+          service.id === id ? { ...service, ...updates } : service
+        ));
+        setServicesLoading(false);
+        resolve();
+      }, 500);
+    });
   };
 
   const deleteService = async (id: number) => {
     setServicesLoading(true);
-    setError(null);
-    try {
-      await simulateDelay(500);
-      setServices(prev => prev.filter(service => service.id !== id));
-    } catch (err) {
-      setError('Failed to delete service. Please try again.');
-    } finally {
-      setServicesLoading(false);
-    }
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        setServices(services.filter(service => service.id !== id));
+        setServicesLoading(false);
+        resolve();
+      }, 500);
+    });
   };
 
   const toggleServiceStatus = async (id: number) => {
     setServicesLoading(true);
-    setError(null);
-    try {
-      await simulateDelay(500);
-      setServices(prev => prev.map(service => {
-        if (service.id === id) {
-          const newStatus = service.status === 'active' ? 'inactive' : 'active';
-          return {
-            ...service,
-            status: newStatus,
-            active: newStatus === 'active' // Legacy compatibility
-          };
-        }
-        return service;
-      }));
-    } catch (err) {
-      setError('Failed to update service status. Please try again.');
-    } finally {
-      setServicesLoading(false);
-    }
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        setServices(services.map(service =>
+          service.id === id ? { ...service, status: service.status === 'active' ? 'inactive' : 'active' } : service
+        ));
+        setServicesLoading(false);
+        resolve();
+      }, 500);
+    });
   };
 
-  const updateUser = async (id: number, updates: Partial<AppUser>) => {
-    setUsersLoading(true);
-    setError(null);
-    try {
-      await simulateDelay(500);
-      setUsers(prev => prev.map(user => 
-        user.id === id ? { ...user, ...updates } : user
-      ));
-    } catch (err) {
-      setError('Failed to update user. Please try again.');
-    } finally {
-      setUsersLoading(false);
-    }
-  };
-
-  const createBooking = async (bookingData: Omit<Booking, 'id' | 'createdAt' | 'expectedPayout'>) => {
-    setBookingsLoading(true);
-    setError(null);
-    try {
-      await simulateDelay(1000);
-      
-      // Get service to calculate expected payout
-      const service = services.find(s => s.id === bookingData.serviceId);
-      if (!service) {
-        throw new Error('Service not found');
-      }
-
-      // Calculate expected payout and add job type info
-      const expectedPayout = calculateExpectedPayout(bookingData, service);
-      
-      const newBooking: Booking = {
-        ...bookingData,
-        id: Math.max(...bookings.map(b => b.id)) + 1,
-        createdAt: new Date().toISOString().split('T')[0],
-        jobType: service.type,
-        commissionPercentage: service.type === 'one-off' ? service.commissionPercentage : undefined,
-        providerFee: service.type === 'subscription' ? service.providerFee : undefined,
-        expectedPayout,
-        paidOut: false
-      };
-      
-      setBookings(prev => [...prev, newBooking]);
-
-      // Update service booking count
-      setServices(prev => prev.map(service =>
-        service.id === bookingData.serviceId
-          ? { ...service, bookings: service.bookings + 1 }
-          : service
-      ));
-    } catch (err) {
-      setError('Failed to create booking. Please try again.');
-    } finally {
-      setBookingsLoading(false);
-    }
+  const updateUser = async (id: number, updates: Partial<User>) => {
+    setIsLoading(true);
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        setUsers(users.map(user =>
+          user.id === id ? { ...user, ...updates } : user
+        ));
+        setIsLoading(false);
+        resolve();
+      }, 500);
+    });
   };
 
   const updateBookingStatus = async (id: number, status: Booking['status']) => {
-    setBookingsLoading(true);
-    setError(null);
-    try {
-      await simulateDelay(500);
-      
-      setBookings(prev => prev.map(booking => {
-        if (booking.id === id) {
-          const updatedBooking = { ...booking, status };
-          
-          // If completing the job, set completion date
-          if (status === 'completed') {
-            updatedBooking.completionDate = new Date().toISOString().split('T')[0];
-          }
-          
-          return updatedBooking;
-        }
-        return booking;
-      }));
-
-      // If booking is completed, create payout if it doesn't exist
-      if (status === 'completed') {
-        const booking = bookings.find(b => b.id === id);
-        if (booking && booking.expectedPayout) {
-          const existingPayout = payouts.find(p => 
-            p.providerId === booking.providerId && p.status === 'pending'
-          );
-
-          if (existingPayout) {
-            // Add to existing payout
-            setPayouts(prev => prev.map(payout => {
-              if (payout.id === existingPayout.id) {
-                const newTotalEarnings = payout.totalEarnings + booking.expectedPayout!;
-                const commission = booking.jobType === 'one-off' 
-                  ? (booking.amount * (booking.commissionPercentage! / 100))
-                  : 0;
-                
-                return {
-                  ...payout,
-                  bookingIds: [...payout.bookingIds, id],
-                  totalEarnings: newTotalEarnings,
-                  commission: payout.commission + commission,
-                  netPayout: newTotalEarnings,
-                  calculationMethod: payout.calculationMethod === 'commission' && booking.jobType === 'subscription'
-                    ? 'mixed' as const
-                    : payout.calculationMethod === 'fixed-fee' && booking.jobType === 'one-off'
-                    ? 'mixed' as const
-                    : booking.jobType === 'one-off' ? 'commission' as const : 'fixed-fee' as const
-                };
-              }
-              return payout;
-            }));
-          } else {
-            // Create new payout
-            const commission = booking.jobType === 'one-off' 
-              ? (booking.amount * (booking.commissionPercentage! / 100))
-              : 0;
-
-            const newPayout: Payout = {
-              id: Math.max(...payouts.map(p => p.id)) + 1,
-              providerId: booking.providerId,
-              providerName: booking.providerName,
-              bookingIds: [id],
-              totalEarnings: booking.expectedPayout,
-              commission,
-              netPayout: booking.expectedPayout,
-              status: 'pending',
-              date: new Date().toISOString().split('T')[0],
-              calculationMethod: booking.jobType === 'one-off' ? 'commission' : 'fixed-fee'
-            };
-            setPayouts(prev => [...prev, newPayout]);
-          }
-        }
-      }
-    } catch (err) {
-      setError('Failed to update booking status. Please try again.');
-    } finally {
-      setBookingsLoading(false);
-    }
+    setIsLoading(true);
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        setBookings(bookings.map(booking =>
+          booking.id === id ? { ...booking, status } : booking
+        ));
+        setIsLoading(false);
+        resolve();
+      }, 500);
+    });
   };
 
   const processPayout = async (id: number) => {
-    setPayoutsLoading(true);
-    setError(null);
-    try {
-      await simulateDelay(1500);
-      setPayouts(prev => prev.map(payout => 
-        payout.id === id ? { ...payout, status: 'completed' } : payout
-      ));
-    } catch (err) {
-      setError('Failed to process payout. Please try again.');
-    } finally {
-      setPayoutsLoading(false);
-    }
+    setIsLoading(true);
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        setPayouts(payouts.map(payout =>
+          payout.id === id ? { ...payout, status: 'completed' } : payout
+        ));
+        setIsLoading(false);
+        resolve();
+      }, 500);
+    });
+  };
+
+  const value = {
+    services,
+    users,
+    bookings,
+    payouts,
+    addService,
+    updateService,
+    deleteService,
+    toggleServiceStatus,
+    updateUser,
+    updateBookingStatus,
+    processPayout,
+    isLoading,
+    servicesLoading,
+    error
   };
 
   return (
-    <DataContext.Provider value={{
-      services,
-      addService,
-      updateService,
-      deleteService,
-      toggleServiceStatus,
-      users,
-      updateUser,
-      bookings,
-      createBooking,
-      updateBookingStatus,
-      payouts,
-      processPayout,
-      isLoading,
-      servicesLoading,
-      usersLoading,
-      bookingsLoading,
-      payoutsLoading,
-      error,
-      setError
-    }}>
+    <DataContext.Provider value={value}>
       {children}
     </DataContext.Provider>
   );
 };
 
-export const useData = () => {
-  const context = useContext(DataContext);
-  if (context === undefined) {
-    throw new Error('useData must be used within a DataProvider');
-  }
-  return context;
-};
+export const useData = () => useContext(DataContext);

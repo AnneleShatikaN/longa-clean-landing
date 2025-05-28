@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,58 +12,17 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ArrowLeft, Calendar as CalendarIcon, Clock, Home, Car, Sparkles, Shirt, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Service } from '@/contexts/DataContext';
 
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  duration: string;
-  icon: React.ComponentType<{ className?: string }>;
-}
-
-const services: Service[] = [
-  {
-    id: 'basic-cleaning',
-    name: 'Basic Home Cleaning',
-    description: 'Regular cleaning of living areas, kitchen, and bathrooms',
-    price: 150,
-    duration: '2-3 hours',
-    icon: Home,
-  },
-  {
-    id: 'deep-cleaning',
-    name: 'Deep Home Cleaning',
-    description: 'Comprehensive cleaning including baseboards, inside appliances, and detailed scrubbing',
-    price: 300,
-    duration: '4-6 hours',
-    icon: Sparkles,
-  },
-  {
-    id: 'laundry',
-    name: 'Laundry Service',
-    description: 'Wash, dry, and fold your clothes with premium detergents',
-    price: 80,
-    duration: '3-4 hours',
-    icon: Shirt,
-  },
-  {
-    id: 'car-wash',
-    name: 'Car Wash',
-    description: 'Complete exterior and interior car cleaning',
-    price: 120,
-    duration: '1-2 hours',
-    icon: Car,
-  },
-  {
-    id: 'window-cleaning',
-    name: 'Window Cleaning',
-    description: 'Professional cleaning of interior and exterior windows',
-    price: 100,
-    duration: '1-2 hours',
-    icon: Eye,
-  },
-];
+const getServiceIcon = (serviceName: string) => {
+  const name = serviceName.toLowerCase();
+  if (name.includes('clean')) return Home;
+  if (name.includes('car') || name.includes('vehicle')) return Car;
+  if (name.includes('laundry') || name.includes('wash')) return Shirt;
+  if (name.includes('window')) return Eye;
+  if (name.includes('deep') || name.includes('premium')) return Sparkles;
+  return Home; // Default icon
+};
 
 const timeSlots = [
   '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'
@@ -71,10 +31,16 @@ const timeSlots = [
 const OneOffBooking = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { services, isLoading } = useData();
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Filter for active one-off services only
+  const oneOffServices = services.filter(service => 
+    service.type === 'one-off' && service.status === 'active'
+  );
 
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
@@ -85,14 +51,14 @@ const OneOffBooking = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Navigate back to dashboard with success message
     navigate('/dashboard/client');
-    setIsLoading(false);
+    setIsSubmitting(false);
   };
 
   const isFormValid = selectedService && selectedDate && selectedTime;
@@ -128,42 +94,81 @@ const OneOffBooking = () => {
           <div className="lg:col-span-2 space-y-6">
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Select a Service</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {services.map((service) => {
-                  const IconComponent = service.icon;
-                  return (
-                    <Card 
-                      key={service.id}
-                      className={cn(
-                        "cursor-pointer transition-all hover:shadow-md",
-                        selectedService?.id === service.id 
-                          ? "border-purple-200 bg-purple-50" 
-                          : "border-gray-200 hover:border-purple-100"
-                      )}
-                      onClick={() => handleServiceSelect(service)}
-                    >
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Card key={i} className="animate-pulse">
                       <CardContent className="p-6">
                         <div className="flex items-start space-x-4">
-                          <div className="bg-purple-100 p-3 rounded-lg">
-                            <IconComponent className="h-6 w-6 text-purple-600" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 mb-1">{service.name}</h3>
-                            <p className="text-sm text-gray-600 mb-3">{service.description}</p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-lg font-bold text-purple-600">N${service.price}</span>
-                              <Badge variant="secondary" className="text-xs">
-                                <Clock className="h-3 w-3 mr-1" />
-                                {service.duration}
-                              </Badge>
-                            </div>
+                          <div className="bg-gray-200 p-3 rounded-lg w-12 h-12"></div>
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div className="h-3 bg-gray-200 rounded w-full"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              ) : oneOffServices.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 mb-4">
+                    <Home className="h-16 w-16 mx-auto" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Services Available</h3>
+                  <p className="text-gray-600">There are currently no one-off services available for booking.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {oneOffServices.map((service) => {
+                    const IconComponent = getServiceIcon(service.name);
+                    return (
+                      <Card 
+                        key={service.id}
+                        className={cn(
+                          "cursor-pointer transition-all hover:shadow-md",
+                          selectedService?.id === service.id 
+                            ? "border-purple-200 bg-purple-50" 
+                            : "border-gray-200 hover:border-purple-100"
+                        )}
+                        onClick={() => handleServiceSelect(service)}
+                      >
+                        <CardContent className="p-6">
+                          <div className="flex items-start space-x-4">
+                            <div className="bg-purple-100 p-3 rounded-lg">
+                              <IconComponent className="h-6 w-6 text-purple-600" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900 mb-1">{service.name}</h3>
+                              <p className="text-sm text-gray-600 mb-3">{service.description}</p>
+                              
+                              {/* Service Tags */}
+                              {service.tags && service.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mb-3">
+                                  {service.tags.map((tag, index) => (
+                                    <Badge key={index} variant="secondary" className="text-xs">
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center justify-between">
+                                <span className="text-lg font-bold text-purple-600">N${service.clientPrice}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  {service.duration.hours}h {service.duration.minutes > 0 ? `${service.duration.minutes}m` : ''}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Date & Time Selection */}
@@ -242,9 +247,11 @@ const OneOffBooking = () => {
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-medium text-gray-900">{selectedService.name}</p>
-                          <p className="text-sm text-gray-600">{selectedService.duration}</p>
+                          <p className="text-sm text-gray-600">
+                            {selectedService.duration.hours}h {selectedService.duration.minutes > 0 ? `${selectedService.duration.minutes}m` : ''}
+                          </p>
                         </div>
-                        <span className="font-semibold text-gray-900">N${selectedService.price}</span>
+                        <span className="font-semibold text-gray-900">N${selectedService.clientPrice}</span>
                       </div>
                       
                       {selectedDate && (
@@ -263,16 +270,16 @@ const OneOffBooking = () => {
                     <div className="border-t pt-4">
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-semibold text-gray-900">Total</span>
-                        <span className="text-lg font-bold text-purple-600">N${selectedService.price}</span>
+                        <span className="text-lg font-bold text-purple-600">N${selectedService.clientPrice}</span>
                       </div>
                     </div>
 
                     <Button 
                       className="w-full bg-purple-600 hover:bg-purple-700" 
                       onClick={handleConfirmBooking}
-                      disabled={!isFormValid || isLoading}
+                      disabled={!isFormValid || isSubmitting}
                     >
-                      {isLoading ? 'Processing...' : 'Confirm & Pay'}
+                      {isSubmitting ? 'Processing...' : 'Confirm & Pay'}
                     </Button>
                   </>
                 ) : (

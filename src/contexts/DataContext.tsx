@@ -1,13 +1,24 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { UserRole } from './AuthContext';
+
+export type ServiceType = 'one-off' | 'subscription';
 
 export interface Service {
   id: number;
   name: string;
+  type: ServiceType;
+  clientPrice: number;
+  providerFee?: number; // For subscription services
+  commissionPercentage?: number; // For one-off services (1-50%)
+  duration: {
+    hours: number;
+    minutes: number;
+  };
+  status: 'active' | 'inactive';
+  tags: string[];
   description: string;
+  // Legacy fields for backwards compatibility
   price: number;
-  duration: number;
   active: boolean;
   providers: number;
   bookings: number;
@@ -57,8 +68,9 @@ export interface Payout {
 interface DataContextType {
   // Services
   services: Service[];
-  addService: (service: Omit<Service, 'id' | 'providers' | 'bookings'>) => Promise<void>;
+  addService: (service: Omit<Service, 'id' | 'providers' | 'bookings' | 'price' | 'active'>) => Promise<void>;
   updateService: (id: number, updates: Partial<Service>) => Promise<void>;
+  deleteService: (id: number) => Promise<void>;
   toggleServiceStatus: (id: number) => Promise<void>;
   
   // Users
@@ -86,12 +98,72 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// Mock data
+// Updated mock data with new service structure
 const initialServices: Service[] = [
-  { id: 1, name: 'House Cleaning', description: 'Professional home cleaning service', price: 150, duration: 120, active: true, providers: 25, bookings: 450 },
-  { id: 2, name: 'Garden Maintenance', description: 'Complete garden care and maintenance', price: 200, duration: 180, active: true, providers: 18, bookings: 320 },
-  { id: 3, name: 'Laundry Service', description: 'Wash, dry and fold laundry service', price: 80, duration: 60, active: true, providers: 15, bookings: 280 },
-  { id: 4, name: 'Car Washing', description: 'Complete car cleaning service', price: 120, duration: 90, active: false, providers: 12, bookings: 180 }
+  {
+    id: 1,
+    name: 'Basic House Cleaning',
+    type: 'one-off',
+    clientPrice: 150,
+    commissionPercentage: 15,
+    duration: { hours: 2, minutes: 0 },
+    status: 'active',
+    tags: ['Requires Own Supplies', 'Residential Only'],
+    description: 'Professional home cleaning service including kitchen, bathrooms, and living areas',
+    // Legacy fields
+    price: 150,
+    active: true,
+    providers: 25,
+    bookings: 450
+  },
+  {
+    id: 2,
+    name: 'Premium Garden Care Package',
+    type: 'subscription',
+    clientPrice: 800,
+    providerFee: 680,
+    duration: { hours: 3, minutes: 0 },
+    status: 'active',
+    tags: ['Business Only', 'Requires Own Supplies'],
+    description: 'Monthly garden maintenance including lawn care, hedge trimming, and seasonal planting',
+    // Legacy fields
+    price: 800,
+    active: true,
+    providers: 18,
+    bookings: 320
+  },
+  {
+    id: 3,
+    name: 'Express Laundry Service',
+    type: 'one-off',
+    clientPrice: 80,
+    commissionPercentage: 20,
+    duration: { hours: 1, minutes: 0 },
+    status: 'active',
+    tags: ['Residential Only'],
+    description: 'Quick wash, dry and fold service for everyday clothing',
+    // Legacy fields
+    price: 80,
+    active: true,
+    providers: 15,
+    bookings: 280
+  },
+  {
+    id: 4,
+    name: 'Premium Car Detailing Package',
+    type: 'subscription',
+    clientPrice: 500,
+    providerFee: 425,
+    duration: { hours: 1, minutes: 30 },
+    status: 'inactive',
+    tags: ['Requires Own Supplies'],
+    description: 'Bi-weekly complete car cleaning and detailing service',
+    // Legacy fields
+    price: 500,
+    active: false,
+    providers: 12,
+    bookings: 180
+  }
 ];
 
 const initialUsers: AppUser[] = [
@@ -129,7 +201,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [payoutsLoading, setPayoutsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const addService = async (serviceData: Omit<Service, 'id' | 'providers' | 'bookings'>) => {
+  const addService = async (serviceData: Omit<Service, 'id' | 'providers' | 'bookings' | 'price' | 'active'>) => {
     setServicesLoading(true);
     setError(null);
     try {
@@ -138,7 +210,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         ...serviceData,
         id: Math.max(...services.map(s => s.id)) + 1,
         providers: 0,
-        bookings: 0
+        bookings: 0,
+        // Legacy compatibility
+        price: serviceData.clientPrice,
+        active: serviceData.status === 'active'
       };
       setServices(prev => [...prev, newService]);
     } catch (err) {
@@ -153,11 +228,31 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await simulateDelay(500);
-      setServices(prev => prev.map(service => 
-        service.id === id ? { ...service, ...updates } : service
-      ));
+      setServices(prev => prev.map(service => {
+        if (service.id === id) {
+          const updatedService = { ...service, ...updates };
+          // Maintain legacy compatibility
+          if (updates.clientPrice) updatedService.price = updates.clientPrice;
+          if (updates.status) updatedService.active = updates.status === 'active';
+          return updatedService;
+        }
+        return service;
+      }));
     } catch (err) {
       setError('Failed to update service. Please try again.');
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
+  const deleteService = async (id: number) => {
+    setServicesLoading(true);
+    setError(null);
+    try {
+      await simulateDelay(500);
+      setServices(prev => prev.filter(service => service.id !== id));
+    } catch (err) {
+      setError('Failed to delete service. Please try again.');
     } finally {
       setServicesLoading(false);
     }
@@ -168,9 +263,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await simulateDelay(500);
-      setServices(prev => prev.map(service => 
-        service.id === id ? { ...service, active: !service.active } : service
-      ));
+      setServices(prev => prev.map(service => {
+        if (service.id === id) {
+          const newStatus = service.status === 'active' ? 'inactive' : 'active';
+          return {
+            ...service,
+            status: newStatus,
+            active: newStatus === 'active' // Legacy compatibility
+          };
+        }
+        return service;
+      }));
     } catch (err) {
       setError('Failed to update service status. Please try again.');
     } finally {
@@ -291,6 +394,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       services,
       addService,
       updateService,
+      deleteService,
       toggleServiceStatus,
       users,
       updateUser,

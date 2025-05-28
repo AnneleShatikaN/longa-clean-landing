@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useData } from '@/contexts/DataContext';
+import { useData, ServiceType } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,6 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Switch } from '@/components/ui/switch';
 import { Toggle } from '@/components/ui/toggle';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Loading } from '@/components/ui/loading';
 import { 
   Users, 
   UserCheck, 
@@ -32,9 +33,11 @@ import {
   Save,
   Filter,
   CreditCard,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { useToast } from '@/hooks/use-toast';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -44,30 +47,43 @@ const AdminDashboard = () => {
     bookings, 
     payouts, 
     addService, 
-    updateService, 
+    updateService,
+    deleteService,
     toggleServiceStatus, 
     updateUser, 
     updateBookingStatus, 
     processPayout,
     isLoading,
+    servicesLoading,
     error 
   } = useData();
   
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
   const [editingUser, setEditingUser] = useState<number | null>(null);
   const [editingService, setEditingService] = useState<number | null>(null);
   const [showAddService, setShowAddService] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const addServiceForm = useForm({
+  const availableTags = ['Requires Own Supplies', 'Business Only', 'Residential Only'];
+
+  const serviceForm = useForm({
     defaultValues: {
       name: '',
-      description: '',
-      price: '',
-      duration: ''
+      type: 'one-off' as ServiceType,
+      clientPrice: '',
+      providerFee: '',
+      commissionPercentage: '',
+      hours: '1',
+      minutes: '0',
+      status: 'active' as 'active' | 'inactive',
+      tags: [] as string[],
+      description: ''
     }
   });
+
+  const watchedServiceType = serviceForm.watch('type');
 
   // Calculate metrics from real data
   const metrics = {
@@ -154,12 +170,77 @@ const AdminDashboard = () => {
     setShowAddService(false);
   };
 
+  const handleServiceSubmit = async (data: any) => {
+    try {
+      const serviceData = {
+        name: data.name,
+        type: data.type as ServiceType,
+        clientPrice: parseInt(data.clientPrice),
+        duration: {
+          hours: parseInt(data.hours),
+          minutes: parseInt(data.minutes)
+        },
+        status: data.status as 'active' | 'inactive',
+        tags: data.tags,
+        description: data.description,
+        ...(data.type === 'subscription' && { providerFee: parseInt(data.providerFee) }),
+        ...(data.type === 'one-off' && { commissionPercentage: parseInt(data.commissionPercentage) })
+      };
+
+      await addService(serviceData);
+      serviceForm.reset();
+      setShowAddService(false);
+      toast({
+        title: "Service Created",
+        description: `${data.name} has been successfully created.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create service. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteService = async (id: number, name: string) => {
+    try {
+      await deleteService(id);
+      toast({
+        title: "Service Deleted",
+        description: `${name} has been successfully deleted.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete service. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredBookings = statusFilter === 'all' 
     ? bookings 
     : bookings.filter(booking => booking.status === statusFilter);
 
   const calculateProviderEarnings = (amount: number) => Math.round(amount * 0.85);
   const calculateCommission = (amount: number) => Math.round(amount * 0.15);
+
+  const getServiceTypeBadge = (type: ServiceType) => {
+    return type === 'one-off' 
+      ? <Badge className="bg-blue-100 text-blue-800">One-Off</Badge>
+      : <Badge className="bg-green-100 text-green-800">Subscription</Badge>;
+  };
+
+  const formatDuration = (duration: { hours: number; minutes: number }) => {
+    if (duration.hours > 0 && duration.minutes > 0) {
+      return `${duration.hours}h ${duration.minutes}m`;
+    } else if (duration.hours > 0) {
+      return `${duration.hours}h`;
+    } else {
+      return `${duration.minutes}m`;
+    }
+  };
 
   if (error) {
     return (
@@ -425,31 +506,32 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Services Tab */}
+          {/* Enhanced Services Tab */}
           <TabsContent value="services" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Service Management</h2>
               <Button onClick={() => setShowAddService(!showAddService)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add New Service
+                Create New Service
               </Button>
             </div>
 
             {showAddService && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Add New Service</CardTitle>
+                  <CardTitle>Create New Service</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Form {...addServiceForm}>
-                    <form onSubmit={addServiceForm.handleSubmit(handleAddService)} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                  <Form {...serviceForm}>
+                    <form onSubmit={serviceForm.handleSubmit(handleServiceSubmit)} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
-                          control={addServiceForm.control}
+                          control={serviceForm.control}
                           name="name"
+                          rules={{ required: "Service name is required" }}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Service Name</FormLabel>
+                              <FormLabel>Service Name *</FormLabel>
                               <FormControl>
                                 <Input placeholder="Enter service name" {...field} />
                               </FormControl>
@@ -457,12 +539,41 @@ const AdminDashboard = () => {
                             </FormItem>
                           )}
                         />
+                        
                         <FormField
-                          control={addServiceForm.control}
-                          name="price"
+                          control={serviceForm.control}
+                          name="type"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Price (N$)</FormLabel>
+                              <FormLabel>Service Type *</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select service type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="one-off">One-Off</SelectItem>
+                                  <SelectItem value="subscription">Subscription Package</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={serviceForm.control}
+                          name="clientPrice"
+                          rules={{ 
+                            required: "Client price is required",
+                            min: { value: 1, message: "Price must be greater than 0" }
+                          }}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Client Price (NAD) *</FormLabel>
                               <FormControl>
                                 <Input type="number" placeholder="Enter price" {...field} />
                               </FormControl>
@@ -470,37 +581,183 @@ const AdminDashboard = () => {
                             </FormItem>
                           )}
                         />
+
+                        {watchedServiceType === 'subscription' && (
+                          <FormField
+                            control={serviceForm.control}
+                            name="providerFee"
+                            rules={{ 
+                              required: watchedServiceType === 'subscription' ? "Provider fee is required for packages" : false,
+                              min: { value: 1, message: "Fee must be greater than 0" }
+                            }}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Provider Fee (NAD) *</FormLabel>
+                                <FormControl>
+                                  <Input type="number" placeholder="Enter provider fee" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+
+                        {watchedServiceType === 'one-off' && (
+                          <FormField
+                            control={serviceForm.control}
+                            name="commissionPercentage"
+                            rules={{ 
+                              required: watchedServiceType === 'one-off' ? "Commission percentage is required for one-offs" : false,
+                              min: { value: 1, message: "Commission must be at least 1%" },
+                              max: { value: 50, message: "Commission cannot exceed 50%" }
+                            }}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Commission Percentage (1-50%) *</FormLabel>
+                                <FormControl>
+                                  <Input type="number" placeholder="Enter commission %" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <FormField
-                          control={addServiceForm.control}
-                          name="duration"
+                          control={serviceForm.control}
+                          name="hours"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Duration (minutes)</FormLabel>
-                              <FormControl>
-                                <Input type="number" placeholder="Enter duration" {...field} />
-                              </FormControl>
+                              <FormLabel>Duration (Hours)</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {Array.from({ length: 24 }, (_, i) => (
+                                    <SelectItem key={i} value={i.toString()}>{i} hours</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={serviceForm.control}
+                          name="minutes"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Duration (Minutes)</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {[0, 15, 30, 45].map((min) => (
+                                    <SelectItem key={min} value={min.toString()}>{min} minutes</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={serviceForm.control}
+                          name="status"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Status</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="active">Active</SelectItem>
+                                  <SelectItem value="inactive">Inactive</SelectItem>
+                                </SelectContent>
+                              </Select>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                       </div>
+
                       <FormField
-                        control={addServiceForm.control}
+                        control={serviceForm.control}
+                        name="tags"
+                        render={() => (
+                          <FormItem>
+                            <FormLabel>Tags</FormLabel>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {availableTags.map((tag) => (
+                                <FormField
+                                  key={tag}
+                                  control={serviceForm.control}
+                                  name="tags"
+                                  render={({ field }) => (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value?.includes(tag)}
+                                          onCheckedChange={(checked) => {
+                                            const current = field.value || [];
+                                            if (checked) {
+                                              field.onChange([...current, tag]);
+                                            } else {
+                                              field.onChange(current.filter((t) => t !== tag));
+                                            }
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="text-sm font-normal">
+                                        {tag}
+                                      </FormLabel>
+                                    </FormItem>
+                                  )}
+                                />
+                              ))}
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={serviceForm.control}
                         name="description"
+                        rules={{ required: "Description is required" }}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Description</FormLabel>
+                            <FormLabel>Description *</FormLabel>
                             <FormControl>
-                              <Textarea placeholder="Enter service description" {...field} />
+                              <Textarea 
+                                placeholder="Enter service description" 
+                                className="min-h-[100px]" 
+                                {...field} 
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
                       <div className="flex space-x-2">
-                        <Button type="submit">Add Service</Button>
+                        <Button type="submit" disabled={servicesLoading}>
+                          {servicesLoading ? <Loading size="sm" className="mr-2" /> : null}
+                          Create Service
+                        </Button>
                         <Button type="button" variant="outline" onClick={() => setShowAddService(false)}>
                           Cancel
                         </Button>
@@ -516,106 +773,75 @@ const AdminDashboard = () => {
                 <CardTitle>Services List</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Price (N$)</TableHead>
-                      <TableHead>Duration (min)</TableHead>
-                      <TableHead>Providers</TableHead>
-                      <TableHead>Bookings</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {services.map((service) => (
-                      <TableRow key={service.id}>
-                        <TableCell>
-                          {editingService === service.id ? (
-                            <Input 
-                              value={service.name}
-                              onChange={(e) => handleServiceEdit(service.id, 'name', e.target.value)}
-                              className="w-32"
-                            />
-                          ) : (
-                            service.name
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingService === service.id ? (
-                            <Textarea 
-                              value={service.description}
-                              onChange={(e) => handleServiceEdit(service.id, 'description', e.target.value)}
-                              className="w-48 min-h-[60px]"
-                            />
-                          ) : (
-                            <div className="max-w-48 truncate">{service.description}</div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingService === service.id ? (
-                            <Input 
-                              type="number"
-                              value={service.price}
-                              onChange={(e) => handleServiceEdit(service.id, 'price', parseInt(e.target.value))}
-                              className="w-20"
-                            />
-                          ) : (
-                            service.price
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingService === service.id ? (
-                            <Input 
-                              type="number"
-                              value={service.duration}
-                              onChange={(e) => handleServiceEdit(service.id, 'duration', parseInt(e.target.value))}
-                              className="w-20"
-                            />
-                          ) : (
-                            service.duration
-                          )}
-                        </TableCell>
-                        <TableCell>{service.providers}</TableCell>
-                        <TableCell>{service.bookings}</TableCell>
-                        <TableCell>
-                          <Toggle 
-                            pressed={service.active}
-                            onPressedChange={() => toggleServiceStatus(service.id)}
-                            className="data-[state=on]:bg-green-500 data-[state=on]:text-white"
-                          >
-                            {service.active ? 'Active' : 'Inactive'}
-                          </Toggle>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-1">
-                            {editingService === service.id ? (
-                              <Button 
-                                size="sm" 
-                                onClick={() => setEditingService(null)}
-                              >
-                                <Save className="h-3 w-3" />
+                {servicesLoading ? (
+                  <Loading text="Loading services..." />
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Client Price</TableHead>
+                        <TableHead>Provider Fee/Commission</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Tags</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {services.map((service) => (
+                        <TableRow key={service.id}>
+                          <TableCell className="font-medium">{service.name}</TableCell>
+                          <TableCell>{getServiceTypeBadge(service.type)}</TableCell>
+                          <TableCell>N${service.clientPrice}</TableCell>
+                          <TableCell>
+                            {service.type === 'subscription' 
+                              ? `N$${service.providerFee}` 
+                              : `${service.commissionPercentage}%`
+                            }
+                          </TableCell>
+                          <TableCell>{formatDuration(service.duration)}</TableCell>
+                          <TableCell>
+                            <Toggle 
+                              pressed={service.status === 'active'}
+                              onPressedChange={() => toggleServiceStatus(service.id)}
+                              className="data-[state=on]:bg-green-500 data-[state=on]:text-white"
+                            >
+                              {service.status === 'active' ? 'Active' : 'Inactive'}
+                            </Toggle>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {service.tags.map((tag) => (
+                                <Badge key={tag} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-1">
+                              <Button size="sm" variant="outline">
+                                <Edit className="h-3 w-3" />
                               </Button>
-                            ) : (
+                              <Button size="sm" variant="outline">
+                                <Eye className="h-3 w-3" />
+                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline"
-                                onClick={() => setEditingService(service.id)}
+                                onClick={() => handleDeleteService(service.id, service.name)}
                               >
-                                <Edit className="h-3 w-3" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
-                            )}
-                            <Button size="sm" variant="outline">
-                              <Eye className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

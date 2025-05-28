@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,9 +70,9 @@ const ProviderDashboard = () => {
     id: booking.id,
     service: booking.serviceName,
     clientName: booking.clientName,
-    clientPhone: '+264 81 123 4567', // Mock data
-    clientEmail: 'client@email.com', // Mock data
-    location: 'Windhoek', // Mock data
+    clientPhone: '+264 81 123 4567',
+    clientEmail: 'client@email.com',
+    location: 'Windhoek',
     amount: booking.amount,
     date: booking.date,
     status: booking.status as 'requested' | 'accepted' | 'completed',
@@ -390,8 +391,8 @@ const ProviderDashboard = () => {
                     </div>
                     <p className="text-xl sm:text-2xl font-bold text-purple-600">N${avgSubscriptionPayout.toFixed(0)}</p>
                     <p className="text-xs text-gray-500">Per package average</p>
-                  </Card>
-                </div>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Availability Toggle */}

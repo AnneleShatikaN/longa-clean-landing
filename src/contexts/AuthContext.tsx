@@ -1,7 +1,7 @@
-import React, { createContext, useContext, ReactNode, useEffect } from 'react';
+
+import React, { createContext, useContext, ReactNode } from 'react';
 import { useUsers, User, UserRole } from '@/contexts/UserContext';
 import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
-import { useSessionManagement } from '@/hooks/useSessionManagement';
 import { logSecurityEvent, detectSuspiciousActivity, checkRateLimit } from '@/utils/security';
 
 interface AuthContextType {
@@ -38,9 +38,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     verifyEmail: verifyUserEmail,
     setupAdmin: setupAdminUser
   } = useUsers();
-
-  // Initialize session management
-  useSessionManagement();
 
   const login = async (loginData: LoginData): Promise<boolean> => {
     // Check rate limiting

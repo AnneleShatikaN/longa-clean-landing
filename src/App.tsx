@@ -12,6 +12,7 @@ import { BookingProvider } from "@/contexts/BookingContext";
 import { PayoutProvider } from "@/contexts/PayoutContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NetworkErrorHandler } from "@/components/NetworkErrorHandler";
+import { SessionManager } from "@/components/SessionManager";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ClientDashboard from "./pages/ClientDashboard";
@@ -50,6 +51,7 @@ const App: React.FC = () => (
           <Sonner />
           <UserProvider>
             <AuthProvider>
+              <SessionManager />
               <ServiceProvider>
                 <BookingProvider>
                   <PayoutProvider>

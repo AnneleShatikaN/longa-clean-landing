@@ -1,15 +1,15 @@
-
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { UserRegistration, UserUpdate, LoginData, PasswordReset, ChangePassword, AdminSetup, userRegistrationSchema, userUpdateSchema, loginSchema, passwordResetSchema, changePasswordSchema, adminSetupSchema } from '@/schemas/validation';
 
-export type UserRole = 'client' | 'provider' | 'admin';
+// Remove duplicate UserRole export - use the one from AuthContext
+export type { UserRole } from '@/contexts/AuthContext';
 
 export interface User {
   id: number;
   name: string;
   email: string;
   phone: string;
-  role: UserRole;
+  role: 'client' | 'provider' | 'admin';
   rating?: number;
   status: 'active' | 'inactive' | 'pending';
   available?: boolean;
@@ -117,7 +117,7 @@ interface UserContextType extends UserState {
   updateUser: (id: number, updates: UserUpdate) => Promise<void>;
   deleteUser: (id: number) => Promise<void>;
   getUserById: (id: number) => User | undefined;
-  getUsersByRole: (role: UserRole) => User[];
+  getUsersByRole: (role: 'client' | 'provider' | 'admin') => User[];
   verifyEmail: (userId: number, token: string) => Promise<void>;
   requestPasswordReset: (data: PasswordReset) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
@@ -477,7 +477,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     return state.users.find(user => user.id === id);
   };
 
-  const getUsersByRole = (role: UserRole): User[] => {
+  const getUsersByRole = (role: 'client' | 'provider' | 'admin'): User[] => {
     return state.users.filter(user => user.role === role);
   };
 

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +11,7 @@ export interface UserProfile {
   id: string;
   email: string;
   full_name: string;
+  name: string; // Add for compatibility
   phone: string | null;
   role: UserRole;
   avatar_url: string | null;
@@ -20,6 +20,24 @@ export interface UserProfile {
   total_jobs: number;
   created_at: string;
   updated_at: string;
+  // Additional properties for compatibility
+  address?: string;
+  profilePicture?: string;
+  bankMobileNumber?: string;
+  paymentMethod?: 'bank_transfer' | 'mobile_money';
+  bankDetails?: {
+    accountNumber?: string;
+    bankName?: string;
+    accountHolder?: string;
+  };
+  servicesOffered?: string[];
+  available?: boolean;
+  status: 'active' | 'inactive' | 'pending';
+  jobsCompleted?: number;
+  totalEarnings?: number;
+  joinDate: string;
+  lastActive: string;
+  isEmailVerified: boolean;
 }
 
 interface AuthContextType {
@@ -77,7 +95,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       if (error) throw error;
-      return data as UserProfile;
+      
+      // Transform data to match UserProfile interface
+      const profile: UserProfile = {
+        ...data,
+        name: data.full_name, // Map full_name to name for compatibility
+        status: data.is_active ? 'active' : 'inactive',
+        joinDate: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        lastActive: data.updated_at || new Date().toISOString(),
+        isEmailVerified: true, // Assume verified if in database
+        jobsCompleted: 0, // Default values
+        totalEarnings: 0,
+        available: true
+      };
+      
+      return profile;
     } catch (error) {
       console.error('Error fetching user profile:', error);
       return null;

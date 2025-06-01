@@ -1,14 +1,22 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useUsers, User, UserRole } from '@/contexts/UserContext';
+import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string, role: UserRole) => Promise<boolean>;
-  signup: (name: string, email: string, phone: string, password: string, role: UserRole) => Promise<boolean>;
+  login: (loginData: LoginData) => Promise<boolean>;
+  signup: (userData: UserRegistration) => Promise<{ success: boolean; needsEmailVerification: boolean }>;
   logout: () => void;
+  requestPasswordReset: (data: PasswordReset) => Promise<boolean>;
+  resetPassword: (token: string, newPassword: string) => Promise<boolean>;
+  changePassword: (data: ChangePassword) => Promise<boolean>;
+  verifyEmail: (userId: number, token: string) => Promise<boolean>;
+  setupAdmin: (data: AdminSetup) => Promise<boolean>;
   isLoading: boolean;
   error: string | null;
+  needsAdminSetup: boolean;
+  isInitialized: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,31 +26,84 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     currentUser, 
     isLoading, 
     error, 
+    needsAdminSetup,
+    isInitialized,
     loginUser, 
     registerUser, 
-    logoutUser 
+    logoutUser,
+    requestPasswordReset: requestReset,
+    resetPassword: resetPass,
+    changePassword: changePass,
+    verifyEmail: verifyUserEmail,
+    setupAdmin: setupAdminUser
   } = useUsers();
 
-  const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
+  const login = async (loginData: LoginData): Promise<boolean> => {
     try {
-      await loginUser(email, password, role);
+      await loginUser(loginData);
       return true;
     } catch {
       return false;
     }
   };
 
-  const signup = async (name: string, email: string, phone: string, password: string, role: UserRole): Promise<boolean> => {
+  const signup = async (userData: UserRegistration): Promise<{ success: boolean; needsEmailVerification: boolean }> => {
     try {
-      await registerUser({ name, email, phone, password, role });
-      return true;
+      const result = await registerUser(userData);
+      return { success: true, needsEmailVerification: result.needsEmailVerification };
     } catch {
-      return false;
+      return { success: false, needsEmailVerification: false };
     }
   };
 
   const logout = () => {
     logoutUser();
+  };
+
+  const requestPasswordReset = async (data: PasswordReset): Promise<boolean> => {
+    try {
+      await requestReset(data);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const resetPassword = async (token: string, newPassword: string): Promise<boolean> => {
+    try {
+      await resetPass(token, newPassword);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const changePassword = async (data: ChangePassword): Promise<boolean> => {
+    try {
+      if (!currentUser) return false;
+      await changePass(currentUser.id, data);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const verifyEmail = async (userId: number, token: string): Promise<boolean> => {
+    try {
+      await verifyUserEmail(userId, token);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const setupAdmin = async (data: AdminSetup): Promise<boolean> => {
+    try {
+      await setupAdminUser(data);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   return (
@@ -51,8 +112,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       login, 
       signup, 
       logout, 
+      requestPasswordReset,
+      resetPassword,
+      changePassword,
+      verifyEmail,
+      setupAdmin,
       isLoading, 
-      error 
+      error,
+      needsAdminSetup,
+      isInitialized
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, Mail, KeyRound } from "lucide-react";
+import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, Mail } from "lucide-react";
 import { useAuth, UserRole } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,9 +31,44 @@ const Auth = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [emailSent, setEmailSent] = useState(false);
 
-  const { login, signup, requestPasswordReset, setupAdmin, isLoading, error, needsAdminSetup, isInitialized } = useAuth();
+  const { 
+    user,
+    login, 
+    signup, 
+    requestPasswordReset, 
+    setupAdmin, 
+    isLoading, 
+    error, 
+    needsAdminSetup, 
+    isInitialized 
+  } = useAuth();
+  
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get the intended destination from location state
+  const from = location.state?.from?.pathname || '/';
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user && isInitialized) {
+      // Redirect based on user role
+      switch (user.role) {
+        case 'admin':
+          navigate('/dashboard/admin');
+          break;
+        case 'provider':
+          navigate('/dashboard/provider');
+          break;
+        case 'client':
+          navigate('/dashboard/client');
+          break;
+        default:
+          navigate(from);
+      }
+    }
+  }, [user, isInitialized, navigate, from]);
 
   // Check if admin setup is needed
   useEffect(() => {
@@ -112,13 +148,7 @@ const Auth = () => {
           rememberMe: formData.rememberMe
         });
 
-        if (success) {
-          toast({
-            title: "Welcome back!",
-            description: "You have been logged in successfully.",
-          });
-          navigate('/');
-        }
+        // Navigation is handled by the useEffect hook after successful login
       } else if (mode === 'signup') {
         const result = await signup({
           name: formData.name,
@@ -131,16 +161,8 @@ const Auth = () => {
 
         if (result.success) {
           if (result.needsEmailVerification) {
-            toast({
-              title: "Registration successful!",
-              description: "Please check your email to verify your account before logging in.",
-            });
             setEmailSent(true);
           } else {
-            toast({
-              title: "Account created!",
-              description: "You can now log in with your credentials.",
-            });
             setMode('login');
           }
         }
@@ -148,10 +170,6 @@ const Auth = () => {
         const success = await requestPasswordReset({ email: formData.email });
         
         if (success) {
-          toast({
-            title: "Reset link sent!",
-            description: "Check your email for password reset instructions.",
-          });
           setEmailSent(true);
         }
       } else if (mode === 'admin-setup') {
@@ -165,13 +183,7 @@ const Auth = () => {
           companyPhone: formData.companyPhone
         });
 
-        if (success) {
-          toast({
-            title: "Admin account created!",
-            description: "Your Longa platform is now ready to use.",
-          });
-          navigate('/dashboard/admin');
-        }
+        // Navigation is handled by the useEffect hook after successful setup
       }
     } catch (err) {
       console.error('Auth error:', err);

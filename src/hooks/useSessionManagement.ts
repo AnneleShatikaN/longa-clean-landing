@@ -10,17 +10,17 @@ import {
 } from '@/utils/security';
 
 export const useSessionManagement = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, session } = useAuth();
   const { toast } = useEnhancedToast();
 
   const handleActivity = useCallback(() => {
-    if (user) {
+    if (user && session) {
       updateLastActivity();
     }
-  }, [user]);
+  }, [user, session]);
 
   const checkSession = useCallback(() => {
-    if (user && isSessionExpired()) {
+    if (user && session && isSessionExpired()) {
       toast.warning('Session Expired', 'You have been logged out due to inactivity');
       logSecurityEvent({
         type: 'logout',
@@ -29,10 +29,10 @@ export const useSessionManagement = () => {
       });
       logout();
     }
-  }, [user, logout, toast]);
+  }, [user, session, logout, toast]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !session) return;
 
     // Add activity listeners
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
@@ -49,7 +49,7 @@ export const useSessionManagement = () => {
       });
       clearInterval(interval);
     };
-  }, [user, handleActivity, checkSession]);
+  }, [user, session, handleActivity, checkSession]);
 
   return { handleActivity };
 };

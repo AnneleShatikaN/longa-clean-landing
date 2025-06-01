@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -100,6 +101,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const profile: UserProfile = {
         ...data,
         name: data.full_name, // Map full_name to name for compatibility
+        role: data.role as UserRole, // Cast to UserRole type
         status: data.is_active ? 'active' : 'inactive',
         joinDate: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         lastActive: data.updated_at || new Date().toISOString(),
@@ -586,5 +588,4 @@ export const useAuth = () => {
 };
 
 // Re-export types for backward compatibility
-export type { UserRole };
 export type { UserProfile as User };

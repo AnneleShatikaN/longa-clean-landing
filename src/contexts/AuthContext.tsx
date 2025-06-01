@@ -9,10 +9,10 @@ import { logSecurityEvent, detectSuspiciousActivity, checkRateLimit } from '@/ut
 export type UserRole = 'client' | 'provider' | 'admin';
 
 export interface UserProfile {
-  id: string; // Changed to string for Supabase UUID
+  id: string;
   email: string;
   full_name: string;
-  name: string; // Add for compatibility
+  name: string;
   phone: string | null;
   role: UserRole;
   avatar_url: string | null;
@@ -99,9 +99,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Transform data to match UserProfile interface
       const profile: UserProfile = {
-        ...data,
+        id: data.id,
+        email: data.email,
+        full_name: data.full_name,
         name: data.full_name, // Map full_name to name for compatibility
-        role: data.role as UserRole, // Cast to UserRole type
+        phone: data.phone,
+        role: data.role as UserRole,
+        avatar_url: data.avatar_url,
+        is_active: data.is_active,
+        rating: data.rating || 0,
+        total_jobs: data.total_jobs || 0,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
         status: data.is_active ? 'active' : 'inactive',
         joinDate: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         lastActive: data.updated_at || new Date().toISOString(),

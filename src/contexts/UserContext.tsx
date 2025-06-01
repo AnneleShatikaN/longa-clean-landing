@@ -28,9 +28,9 @@ export interface User {
   servicesOffered?: string[];
   availability?: Record<string, any>;
   bankDetails?: {
-    accountNumber: string;
-    bankName: string;
-    accountHolder: string;
+    accountNumber?: string;
+    bankName?: string;
+    accountHolder?: string;
   };
   isEmailVerified: boolean;
   loginAttempts: number;

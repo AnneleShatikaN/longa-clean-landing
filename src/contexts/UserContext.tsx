@@ -5,7 +5,7 @@ import { UserRegistration, UserUpdate, LoginData, PasswordReset, ChangePassword,
 export type { UserRole } from '@/contexts/AuthContext';
 
 export interface User {
-  id: number;
+  id: string; // Changed to string for Supabase UUID compatibility
   name: string;
   email: string;
   phone: string;
@@ -54,8 +54,8 @@ type UserAction =
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_CURRENT_USER'; payload: User | null }
   | { type: 'ADD_USER'; payload: User }
-  | { type: 'UPDATE_USER'; payload: { id: number; updates: Partial<User> } }
-  | { type: 'DELETE_USER'; payload: number }
+  | { type: 'UPDATE_USER'; payload: { id: string; updates: Partial<User> } } // Changed id to string
+  | { type: 'DELETE_USER'; payload: string } // Changed to string
   | { type: 'SET_USERS'; payload: User[] }
   | { type: 'SET_INITIALIZED'; payload: boolean }
   | { type: 'SET_NEEDS_ADMIN_SETUP'; payload: boolean }
@@ -114,14 +114,14 @@ interface UserContextType extends UserState {
   registerUser: (userData: UserRegistration) => Promise<{ user: User; needsEmailVerification: boolean }>;
   loginUser: (loginData: LoginData) => Promise<User>;
   logoutUser: () => void;
-  updateUser: (id: number, updates: UserUpdate) => Promise<void>;
-  deleteUser: (id: number) => Promise<void>;
-  getUserById: (id: number) => User | undefined;
+  updateUser: (id: string, updates: UserUpdate) => Promise<void>; // Changed id to string
+  deleteUser: (id: string) => Promise<void>; // Changed id to string
+  getUserById: (id: string) => User | undefined; // Changed id to string
   getUsersByRole: (role: 'client' | 'provider' | 'admin') => User[];
-  verifyEmail: (userId: number, token: string) => Promise<void>;
+  verifyEmail: (userId: string, token: string) => Promise<void>; // Changed userId to string
   requestPasswordReset: (data: PasswordReset) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
-  changePassword: (userId: number, data: ChangePassword) => Promise<void>;
+  changePassword: (userId: string, data: ChangePassword) => Promise<void>; // Changed userId to string
   setupAdmin: (data: AdminSetup) => Promise<User>;
   checkInitialization: () => void;
 }
@@ -195,7 +195,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const newUser: User = {
-        id: Date.now(),
+        id: crypto.randomUUID(), // Generate UUID string instead of timestamp
         name: validatedData.name,
         email: validatedData.email,
         phone: validatedData.phone,
@@ -300,7 +300,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('longa_current_user');
   };
 
-  const verifyEmail = async (userId: number, token: string): Promise<void> => {
+  const verifyEmail = async (userId: string, token: string): Promise<void> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     
     try {
@@ -389,7 +389,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const changePassword = async (userId: number, data: ChangePassword): Promise<void> => {
+  const changePassword = async (userId: string, data: ChangePassword): Promise<void> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     
     try {
@@ -415,7 +415,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const adminUser: User = {
-        id: Date.now(),
+        id: crypto.randomUUID(),
         name: validatedData.name,
         email: validatedData.email,
         phone: validatedData.phone,
@@ -441,7 +441,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const updateUser = async (id: number, updates: UserUpdate): Promise<void> => {
+  const updateUser = async (id: string, updates: UserUpdate): Promise<void> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
@@ -458,7 +458,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const deleteUser = async (id: number): Promise<void> => {
+  const deleteUser = async (id: string): Promise<void> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
@@ -473,7 +473,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const getUserById = (id: number): User | undefined => {
+  const getUserById = (id: string): User | undefined => {
     return state.users.find(user => user.id === id);
   };
 

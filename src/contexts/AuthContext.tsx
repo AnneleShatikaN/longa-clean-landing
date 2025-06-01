@@ -9,7 +9,7 @@ import { logSecurityEvent, detectSuspiciousActivity, checkRateLimit } from '@/ut
 export type UserRole = 'client' | 'provider' | 'admin';
 
 export interface UserProfile {
-  id: string;
+  id: string; // Changed to string for Supabase UUID
   email: string;
   full_name: string;
   name: string; // Add for compatibility

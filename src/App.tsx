@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -21,6 +20,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import OneOffBooking from "./pages/OneOffBooking";
 import SubscriptionPackages from "./pages/SubscriptionPackages";
 import NotFound from "./pages/NotFound";
+import { MaintenanceMode } from "@/components/MaintenanceMode";
+import FeedbackSystem from "@/components/FeedbackSystem";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,32 +48,35 @@ const App: React.FC = () => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <NetworkErrorHandler>
-          <Toaster />
-          <Sonner />
-          <UserProvider>
-            <AuthProvider>
-              <SessionManager />
-              <ServiceProvider>
-                <BookingProvider>
-                  <PayoutProvider>
-                    <BrowserRouter>
-                      <Routes>
-                        <Route path="/" element={<Index />} />
-                        <Route path="/auth" element={<Auth />} />
-                        <Route path="/dashboard/client" element={<ClientDashboard />} />
-                        <Route path="/dashboard/provider" element={<ProviderDashboard />} />
-                        <Route path="/dashboard/admin" element={<AdminDashboard />} />
-                        <Route path="/booking/one-off" element={<OneOffBooking />} />
-                        <Route path="/subscription-packages" element={<SubscriptionPackages />} />
-                        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </BrowserRouter>
-                  </PayoutProvider>
-                </BookingProvider>
-              </ServiceProvider>
-            </AuthProvider>
-          </UserProvider>
+          <MaintenanceMode>
+            <Toaster />
+            <Sonner />
+            <UserProvider>
+              <AuthProvider>
+                <SessionManager />
+                <ServiceProvider>
+                  <BookingProvider>
+                    <PayoutProvider>
+                      <BrowserRouter>
+                        <Routes>
+                          <Route path="/" element={<Index />} />
+                          <Route path="/auth" element={<Auth />} />
+                          <Route path="/dashboard/client" element={<ClientDashboard />} />
+                          <Route path="/dashboard/provider" element={<ProviderDashboard />} />
+                          <Route path="/dashboard/admin" element={<AdminDashboard />} />
+                          <Route path="/booking/one-off" element={<OneOffBooking />} />
+                          <Route path="/subscription-packages" element={<SubscriptionPackages />} />
+                          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                        <FeedbackSystem />
+                      </BrowserRouter>
+                    </PayoutProvider>
+                  </BookingProvider>
+                </ServiceProvider>
+              </AuthProvider>
+            </UserProvider>
+          </MaintenanceMode>
         </NetworkErrorHandler>
       </TooltipProvider>
     </QueryClientProvider>

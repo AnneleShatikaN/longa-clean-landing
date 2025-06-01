@@ -2,15 +2,13 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { ServiceData, serviceSchema } from '@/schemas/validation';
 
-export type ServiceType = 'one-off' | 'subscription';
-
 export interface Service {
   id: number;
   name: string;
-  type: ServiceType;
+  type: 'one-off' | 'subscription';
   clientPrice: number;
-  providerFee?: number;
-  commissionPercentage?: number;
+  providerFee: number;
+  commissionPercentage: number;
   duration: {
     hours: number;
     minutes: number;
@@ -60,7 +58,7 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
         ...state,
         services: state.services.map(service =>
           service.id === action.payload.id 
-            ? { ...service, ...action.payload.updates, updatedAt: new Date().toISOString() }
+            ? { ...service, ...action.payload.updates, updatedAt: new Date().toISOString() } 
             : service
         )
       };
@@ -82,7 +80,7 @@ interface ServiceContextType extends ServiceState {
   deleteService: (id: number) => Promise<void>;
   toggleServiceStatus: (id: number) => Promise<void>;
   getServiceById: (id: number) => Service | undefined;
-  getServicesByType: (type: ServiceType) => Service[];
+  getServicesByType: (type: 'one-off' | 'subscription') => Service[];
   getActiveServices: () => Service[];
 }
 
@@ -96,23 +94,22 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      // Validate input data
       const validatedData = serviceSchema.parse(serviceData);
       
-      // Check if service name already exists
-      const existingService = state.services.find(service => 
-        service.name.toLowerCase() === validatedData.name.toLowerCase()
-      );
-      if (existingService) {
-        throw new Error('Service with this name already exists');
-      }
-
-      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const newService: Service = {
         id: Date.now(),
-        ...validatedData,
+        name: validatedData.name,
+        type: validatedData.type,
+        clientPrice: validatedData.clientPrice,
+        providerFee: validatedData.providerFee || (validatedData.clientPrice * (1 - (validatedData.commissionPercentage || 15) / 100)),
+        commissionPercentage: validatedData.commissionPercentage || 15,
+        duration: validatedData.duration,
+        status: validatedData.status,
+        tags: validatedData.tags,
+        description: validatedData.description,
+        requirements: validatedData.requirements || [],
         popularity: 0,
         averageRating: 0,
         totalBookings: 0,
@@ -137,12 +134,6 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      // Validate update data if provided
-      if (Object.keys(updates).length > 0) {
-        serviceSchema.partial().parse(updates);
-      }
-      
-      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
 
       dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates } });
@@ -159,7 +150,6 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
 
       dispatch({ type: 'DELETE_SERVICE', payload: id });
@@ -173,9 +163,7 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
 
   const toggleServiceStatus = async (id: number): Promise<void> => {
     const service = state.services.find(s => s.id === id);
-    if (!service) {
-      throw new Error('Service not found');
-    }
+    if (!service) throw new Error('Service not found');
 
     const newStatus = service.status === 'active' ? 'inactive' : 'active';
     await updateService(id, { status: newStatus });
@@ -185,7 +173,7 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     return state.services.find(service => service.id === id);
   };
 
-  const getServicesByType = (type: ServiceType): Service[] => {
+  const getServicesByType = (type: 'one-off' | 'subscription'): Service[] => {
     return state.services.filter(service => service.type === type);
   };
 

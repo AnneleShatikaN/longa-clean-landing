@@ -51,7 +51,7 @@ const OneOffBooking = () => {
 
     try {
       await createBooking({
-        clientId: parseInt(user.id || '1'),
+        clientId: typeof user.id === 'string' ? parseInt(user.id) : user.id || 1,
         clientName: user.name || 'Client',
         providerId: bookingData.providerId,
         providerName: bookingData.providerName,

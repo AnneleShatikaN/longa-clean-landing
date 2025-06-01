@@ -1,14 +1,17 @@
 
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { PayoutData, payoutSchema } from '@/schemas/validation';
+import { calculatePayout, ServiceFinancials } from '@/utils/financialCalculations';
 
 export interface Payout {
   id: number;
   providerId: number;
   providerName: string;
   bookingIds: number[];
-  totalEarnings: number;
-  commission: number;
+  grossAmount: number;
+  platformCommission: number;
+  incomeTax: number;
+  withholdingTax: number;
   netPayout: number;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   payoutDate?: string;
@@ -18,6 +21,12 @@ export interface Payout {
   type: 'weekly_auto' | 'manual' | 'instant';
   createdAt: string;
   updatedAt: string;
+  urgencyLevel?: 'normal' | 'urgent' | 'emergency';
+  approved: boolean;
+  approvedBy?: string;
+  failureReason?: string;
+  retryCount: number;
+  scheduledDate?: string;
 }
 
 export interface PayoutExport {
@@ -89,14 +98,17 @@ function payoutReducer(state: PayoutState, action: PayoutAction): PayoutState {
 }
 
 interface PayoutContextType extends PayoutState {
-  createPayout: (payoutData: PayoutData & { providerName: string }) => Promise<Payout>;
+  createPayout: (serviceData: ServiceFinancials & { providerId: number; providerName: string; bookingIds: number[] }) => Promise<Payout>;
   processPayout: (id: number) => Promise<void>;
   updatePayoutStatus: (id: number, status: Payout['status']) => Promise<void>;
   exportPayouts: (period: string, format: 'excel' | 'csv' | 'pdf') => Promise<PayoutExport>;
   getPayoutById: (id: number) => Payout | undefined;
   getPayoutsByProvider: (providerId: number) => Payout[];
   getPayoutsByStatus: (status: Payout['status']) => Payout[];
-  calculatePayout: (bookingIds: number[], providerId: number) => { totalEarnings: number; commission: number; netPayout: number };
+  calculateJobPayout: (serviceData: ServiceFinancials) => ReturnType<typeof calculatePayout>;
+  approvePayout: (id: number, approvedBy: string) => Promise<void>;
+  schedulePayout: (id: number, scheduleDate: string) => Promise<void>;
+  retryFailedPayout: (id: number) => Promise<void>;
 }
 
 const PayoutContext = createContext<PayoutContextType | undefined>(undefined);
@@ -104,17 +116,14 @@ const PayoutContext = createContext<PayoutContextType | undefined>(undefined);
 export const PayoutProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(payoutReducer, initialState);
 
-  const createPayout = async (payoutData: PayoutData & { providerName: string }): Promise<Payout> => {
+  const createPayout = async (payoutData: ServiceFinancials & { providerId: number; providerName: string; bookingIds: number[] }): Promise<Payout> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      // Validate input data
-      const validatedData = payoutSchema.parse(payoutData);
-      
       // Check for duplicate payouts for same bookings
       const existingPayout = state.payouts.find(payout => 
-        payout.bookingIds.some(id => validatedData.bookingIds.includes(id)) &&
+        payout.bookingIds.some(id => payoutData.bookingIds.includes(id)) &&
         payout.status !== 'failed'
       );
       
@@ -122,23 +131,31 @@ export const PayoutProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Payout already exists for one or more of these bookings');
       }
 
+      // Calculate real payout amounts using financial calculations
+      const calculation = calculatePayout(payoutData);
+
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const newPayout: Payout = {
         id: Date.now(),
-        providerId: validatedData.providerId,
+        providerId: payoutData.providerId,
         providerName: payoutData.providerName,
-        bookingIds: validatedData.bookingIds,
-        totalEarnings: validatedData.totalEarnings,
-        commission: validatedData.commission,
-        netPayout: validatedData.netPayout,
-        paymentMethod: validatedData.paymentMethod,
-        type: validatedData.type,
+        bookingIds: payoutData.bookingIds,
+        grossAmount: calculation.grossAmount,
+        platformCommission: calculation.platformCommission,
+        incomeTax: calculation.incomeTax,
+        withholdingTax: calculation.withholdingTax,
+        netPayout: calculation.netPayout,
+        paymentMethod: 'bank_transfer', // Default, can be updated
+        type: 'weekly_auto', // Default type
         status: 'pending',
         payoutDate: new Date().toISOString().split('T')[0],
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        approved: false,
+        retryCount: 0,
+        urgencyLevel: payoutData.isEmergency ? 'emergency' : 'normal'
       };
 
       dispatch({ type: 'ADD_PAYOUT', payload: newPayout });
@@ -160,13 +177,25 @@ export const PayoutProvider = ({ children }: { children: ReactNode }) => {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const updates: Partial<Payout> = {
-        status: 'completed',
-        processedDate: new Date().toISOString().split('T')[0],
-        paymentReference: `AUTO${Date.now()}`
-      };
+      // Simulate 95% success rate
+      const isSuccess = Math.random() > 0.05;
 
-      dispatch({ type: 'UPDATE_PAYOUT', payload: { id, updates } });
+      if (isSuccess) {
+        const updates: Partial<Payout> = {
+          status: 'completed',
+          processedDate: new Date().toISOString().split('T')[0],
+          paymentReference: `AUTO${Date.now()}`
+        };
+        dispatch({ type: 'UPDATE_PAYOUT', payload: { id, updates } });
+      } else {
+        const updates: Partial<Payout> = {
+          status: 'failed',
+          failureReason: 'Network timeout during payment processing',
+          retryCount: (state.payouts.find(p => p.id === id)?.retryCount || 0) + 1
+        };
+        dispatch({ type: 'UPDATE_PAYOUT', payload: { id, updates } });
+      }
+
       dispatch({ type: 'SET_LOADING', payload: false });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Payout processing failed';
@@ -197,6 +226,58 @@ export const PayoutProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
       throw error;
     }
+  };
+
+  const approvePayout = async (id: number, approvedBy: string): Promise<void> => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const updates: Partial<Payout> = {
+        approved: true,
+        approvedBy,
+        status: 'pending'
+      };
+
+      dispatch({ type: 'UPDATE_PAYOUT', payload: { id, updates } });
+      dispatch({ type: 'SET_LOADING', payload: false });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Approval failed';
+      dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      throw error;
+    }
+  };
+
+  const schedulePayout = async (id: number, scheduleDate: string): Promise<void> => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const updates: Partial<Payout> = {
+        scheduledDate: scheduleDate,
+        type: 'manual'
+      };
+
+      dispatch({ type: 'UPDATE_PAYOUT', payload: { id, updates } });
+      dispatch({ type: 'SET_LOADING', payload: false });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Scheduling failed';
+      dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      throw error;
+    }
+  };
+
+  const retryFailedPayout = async (id: number): Promise<void> => {
+    const payout = state.payouts.find(p => p.id === id);
+    if (!payout || payout.status !== 'failed') return;
+
+    if (payout.retryCount >= 3) {
+      throw new Error('Maximum retry attempts reached');
+    }
+
+    await processPayout(id);
   };
 
   const exportPayouts = async (period: string, format: 'excel' | 'csv' | 'pdf'): Promise<PayoutExport> => {
@@ -241,14 +322,8 @@ export const PayoutProvider = ({ children }: { children: ReactNode }) => {
     return state.payouts.filter(payout => payout.status === status);
   };
 
-  const calculatePayout = (bookingIds: number[], providerId: number): { totalEarnings: number; commission: number; netPayout: number } => {
-    // This would typically calculate based on actual booking data
-    // For now, return a basic calculation
-    const totalEarnings = bookingIds.length * 100; // Mock calculation
-    const commission = totalEarnings * 0.15; // 15% commission
-    const netPayout = totalEarnings - commission;
-    
-    return { totalEarnings, commission, netPayout };
+  const calculateJobPayout = (serviceData: ServiceFinancials) => {
+    return calculatePayout(serviceData);
   };
 
   const value: PayoutContextType = {
@@ -260,7 +335,10 @@ export const PayoutProvider = ({ children }: { children: ReactNode }) => {
     getPayoutById,
     getPayoutsByProvider,
     getPayoutsByStatus,
-    calculatePayout
+    calculateJobPayout,
+    approvePayout,
+    schedulePayout,
+    retryFailedPayout
   };
 
   return (

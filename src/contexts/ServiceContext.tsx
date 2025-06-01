@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { ServiceData, serviceSchema } from '@/schemas/validation';
 
@@ -105,7 +104,10 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
         clientPrice: validatedData.clientPrice,
         providerFee: validatedData.providerFee || (validatedData.clientPrice * (1 - (validatedData.commissionPercentage || 15) / 100)),
         commissionPercentage: validatedData.commissionPercentage || 15,
-        duration: validatedData.duration,
+        duration: {
+          hours: validatedData.duration?.hours || 0,
+          minutes: validatedData.duration?.minutes || 0
+        },
         status: validatedData.status,
         tags: validatedData.tags,
         description: validatedData.description,
@@ -136,7 +138,18 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates } });
+      // Convert ServiceData updates to Service updates
+      const serviceUpdates: Partial<Service> = {
+        ...updates,
+        ...(updates.duration && {
+          duration: {
+            hours: updates.duration.hours || 0,
+            minutes: updates.duration.minutes || 0
+          }
+        })
+      };
+
+      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates: serviceUpdates } });
       dispatch({ type: 'SET_LOADING', payload: false });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Service update failed';

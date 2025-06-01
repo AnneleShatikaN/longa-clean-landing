@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,7 +34,7 @@ const ClientDashboard = () => {
 
   // Filter bookings for current user
   const userBookings = bookings.filter(booking => 
-    booking.clientName === user?.name || (booking.clientId && booking.clientId === parseInt(user?.id || '0'))
+    booking.clientName === user?.name || (booking.clientId && booking.clientId === parseInt(user?.id?.toString() || '0'))
   );
 
   // Apply filters

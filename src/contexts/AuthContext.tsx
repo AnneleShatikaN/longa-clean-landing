@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -107,8 +106,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role: data.role as UserRole,
         avatar_url: data.avatar_url,
         is_active: data.is_active,
-        rating: Number(data.rating) || 0, // Convert to number
-        total_jobs: Number(data.total_jobs) || 0, // Convert to number
+        rating: typeof data.rating === 'string' ? parseFloat(data.rating) || 0 : (data.rating || 0),
+        total_jobs: typeof data.total_jobs === 'string' ? parseInt(data.total_jobs) || 0 : (data.total_jobs || 0),
         created_at: data.created_at,
         updated_at: data.updated_at,
         status: data.is_active ? 'active' : 'inactive',
@@ -323,8 +322,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             phone: userData.phone,
             role: userData.role,
             is_active: true,
-            rating: 0, // Ensure number type
-            total_jobs: 0, // Ensure number type
+            rating: 0,
+            total_jobs: 0,
           });
 
         if (profileError) {
@@ -537,8 +536,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             phone: data.phone,
             role: 'admin',
             is_active: true,
-            rating: 0, // Ensure number type
-            total_jobs: 0, // Ensure number type
+            rating: 0,
+            total_jobs: 0,
           });
 
         if (profileError) throw profileError;

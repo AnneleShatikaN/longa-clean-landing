@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,17 +43,26 @@ export const BankingIntegration = () => {
   const [activeTab, setActiveTab] = useState<'bank' | 'mobile'>('bank');
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // Bank account form
-  const [bankForm, setBankForm] = useState({
+  // Bank account form - fix type to allow both savings and current
+  const [bankForm, setBankForm] = useState<{
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+    accountType: 'savings' | 'current';
+  }>({
     bankName: '',
     accountNumber: '',
     accountHolder: '',
-    accountType: 'savings' as const
+    accountType: 'savings'
   });
 
-  // Mobile money form
-  const [mobileForm, setMobileForm] = useState({
-    provider: 'MTC' as const,
+  // Mobile money form - fix type to allow both providers
+  const [mobileForm, setMobileForm] = useState<{
+    provider: 'MTC' | 'Telecom';
+    phoneNumber: string;
+    accountHolder: string;
+  }>({
+    provider: 'MTC',
     phoneNumber: '',
     accountHolder: ''
   });

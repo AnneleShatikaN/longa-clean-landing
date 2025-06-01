@@ -86,15 +86,15 @@ export const FinancialReporting = () => {
     }
   ];
 
-  const generateReport = (type: string, format: 'pdf' | 'csv' | 'excel') => {
+  const generateReport = (type: string, formatType: 'pdf' | 'csv' | 'excel') => {
     // Simulate report generation
     toast({
       title: "Report Generated",
-      description: `${type} report generated in ${format.toUpperCase()} format and will be downloaded shortly.`,
+      description: `${type} report generated in ${formatType.toUpperCase()} format and will be downloaded shortly.`,
     });
 
     // In real implementation, this would trigger actual file generation and download
-    console.log(`Generating ${type} report in ${format} format for period ${format(dateFrom, 'yyyy-MM-dd')} to ${format(dateTo, 'yyyy-MM-dd')}`);
+    console.log(`Generating ${type} report in ${formatType} format for period ${format(dateFrom, 'yyyy-MM-dd')} to ${format(dateTo, 'yyyy-MM-dd')}`);
   };
 
   const setQuickDateRange = (range: 'thisMonth' | 'lastMonth' | 'thisYear' | 'lastYear') => {

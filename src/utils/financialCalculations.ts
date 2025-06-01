@@ -1,4 +1,3 @@
-
 // Namibian tax rates and financial calculations
 export const NAMIBIAN_TAX_RATES = {
   INCOME_TAX: 0.18, // 18% income tax
@@ -81,8 +80,59 @@ export const calculateBatchPayout = (services: ServiceFinancials[]): PayoutCalcu
   });
 };
 
+// Update the formatCurrency function to use NAD
 export const formatCurrency = (amount: number): string => {
-  return `N$${amount.toFixed(2)}`;
+  return new Intl.NumberFormat('en-NA', {
+    style: 'currency',
+    currency: 'NAD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
+// Add new Namibian-specific functions
+export const formatNAD = (amount: number): string => {
+  return formatCurrency(amount);
+};
+
+// Namibian tax calculation (18% income tax + 10% withholding for contractors)
+export const calculateNamibianTax = (grossAmount: number): {
+  incomeTax: number;
+  withholdingTax: number;
+  totalTax: number;
+  netAmount: number;
+} => {
+  const incomeTax = grossAmount * 0.18; // 18% income tax
+  const withholdingTax = grossAmount * 0.10; // 10% withholding tax for contractors
+  const totalTax = incomeTax + withholdingTax;
+  const netAmount = grossAmount - totalTax;
+
+  return {
+    incomeTax,
+    withholdingTax,
+    totalTax,
+    netAmount
+  };
+};
+
+// Calculate location-based price adjustment
+export const calculateLocationPricing = (
+  basePrice: number,
+  travelDistance: number,
+  travelRate: number = 5
+): {
+  basePrice: number;
+  travelCost: number;
+  totalPrice: number;
+} => {
+  const travelCost = travelDistance * travelRate;
+  const totalPrice = basePrice + travelCost;
+
+  return {
+    basePrice,
+    travelCost,
+    totalPrice
+  };
 };
 
 export const getPayoutSchedule = (frequency: 'weekly' | 'bi-weekly' | 'monthly'): Date => {

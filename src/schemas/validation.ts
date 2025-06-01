@@ -1,5 +1,6 @@
 
 import { z } from 'zod';
+import { validateNamibianPhone } from '@/utils/locationUtils';
 
 // Service schemas
 export const serviceSchema = z.object({
@@ -20,18 +21,38 @@ export const serviceSchema = z.object({
   requirements: z.string().array().optional(),
   averageRating: z.number().optional(),
   totalBookings: z.number().optional(),
+  popularity: z.number().optional(),
+  coverageAreas: z.string().array().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional()
 });
 
-// User schemas
+// Location schemas
+export const locationSchema = z.object({
+  street: z.string().min(1, "Street address is required"),
+  suburb: z.string().optional(),
+  city: z.enum(['Windhoek', 'Walvis Bay', 'Swakopmund'], {
+    errorMap: () => ({ message: "Please select a valid Namibian city" })
+  }),
+  district: z.string().min(1, "District is required"),
+  postalCode: z.string().regex(/^\d{5}$/, "Postal code must be 5 digits").optional(),
+  coordinates: z.object({
+    lat: z.number(),
+    lng: z.number()
+  }).optional()
+});
+
+// User schemas with Namibian validations
 export const userRegistrationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  phone: z.string().refine(validateNamibianPhone, {
+    message: "Please provide a valid Namibian phone number (+264)"
+  }),
   role: z.enum(['client', 'provider', 'admin']),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string()
+  confirmPassword: z.string(),
+  location: locationSchema.optional()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"]
@@ -40,7 +61,9 @@ export const userRegistrationSchema = z.object({
 export const userUpdateSchema = z.object({
   name: z.string().min(2).optional(),
   email: z.string().email().optional(),
-  phone: z.string().min(10).optional(),
+  phone: z.string().refine((phone) => !phone || validateNamibianPhone(phone), {
+    message: "Please provide a valid Namibian phone number (+264)"
+  }).optional(),
   status: z.enum(['active', 'inactive', 'pending']).optional(),
   available: z.boolean().optional(),
   bankMobileNumber: z.string().optional(),
@@ -48,6 +71,9 @@ export const userUpdateSchema = z.object({
   profilePicture: z.string().optional(),
   address: z.string().optional(),
   servicesOffered: z.string().array().optional(),
+  location: locationSchema.optional(),
+  serviceRadius: z.number().min(1).max(50).optional(), // kilometers
+  travelRate: z.number().min(0).optional(), // NAD per km
   bankDetails: z.object({
     accountNumber: z.string().optional(),
     bankName: z.string().optional(),
@@ -78,17 +104,21 @@ export const changePasswordSchema = z.object({
 export const adminSetupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  phone: z.string().refine(validateNamibianPhone, {
+    message: "Please provide a valid Namibian phone number (+264)"
+  }),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
   companyName: z.string().min(1, "Company name is required").optional(),
-  companyPhone: z.string().min(10, "Company phone must be at least 10 digits").optional()
+  companyPhone: z.string().refine((phone) => !phone || validateNamibianPhone(phone), {
+    message: "Please provide a valid Namibian phone number (+264)"
+  }).optional()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"]
 });
 
-// Booking schemas
+// Booking schemas with location
 export const bookingSchema = z.object({
   clientId: z.number(),
   providerId: z.number(), 
@@ -98,7 +128,10 @@ export const bookingSchema = z.object({
   amount: z.number(),
   jobType: z.enum(['one-off', 'subscription']),
   duration: z.number().optional(),
-  emergencyBooking: z.boolean().optional()
+  emergencyBooking: z.boolean().optional(),
+  location: locationSchema.optional(),
+  travelDistance: z.number().optional(), // kilometers
+  travelCost: z.number().optional() // NAD
 });
 
 export const bookingUpdateSchema = z.object({
@@ -125,12 +158,15 @@ export const payoutSchema = z.object({
   commission: z.number().optional(),
   netPayout: z.number().optional(),
   paymentMethod: z.enum(['bank_transfer', 'mobile_money', 'cash']).optional(),
-  type: z.enum(['weekly_auto', 'manual', 'instant']).optional()
+  type: z.enum(['weekly_auto', 'manual', 'instant']).optional(),
+  taxWithheld: z.number().optional(),
+  namraTaxReference: z.string().optional() // Namibian tax reference
 });
 
 // Type exports
 export type Service = z.infer<typeof serviceSchema>;
 export type ServiceData = z.infer<typeof serviceSchema>;
+export type Location = z.infer<typeof locationSchema>;
 export type User = z.infer<typeof userRegistrationSchema>;
 export type UserRegistration = z.infer<typeof userRegistrationSchema>;
 export type UserUpdate = z.infer<typeof userUpdateSchema>;

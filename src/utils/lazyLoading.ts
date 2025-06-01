@@ -1,108 +1,50 @@
 
-import { lazy, ComponentType } from 'react';
-import { Loading } from '@/components/ui/loading';
+import React, { lazy, Suspense, ComponentType } from 'react';
 
-interface LazyLoadOptions {
-  fallback?: ComponentType;
-  retries?: number;
-  retryDelay?: number;
-}
+// Loading fallback component
+export const LoadingFallback: React.FC = () => (
+  <div className="flex items-center justify-center min-h-[200px]">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+  </div>
+);
 
+// Utility for creating lazy-loaded components with error boundaries
 export const createLazyComponent = <T extends ComponentType<any>>(
-  importFunc: () => Promise<{ default: T }>,
-  options: LazyLoadOptions = {}
+  factory: () => Promise<{ default: T }>
 ) => {
-  const { fallback = () => <Loading variant="spinner" size="lg" />, retries = 3, retryDelay = 1000 } = options;
-
-  return lazy(() => {
-    let retryCount = 0;
-    
-    const tryImport = (): Promise<{ default: T }> => {
-      return importFunc().catch((error) => {
-        console.warn(`Failed to load component (attempt ${retryCount + 1}):`, error);
-        
-        if (retryCount < retries) {
-          retryCount++;
-          return new Promise((resolve) => {
-            setTimeout(() => {
-              resolve(tryImport());
-            }, retryDelay);
-          });
-        }
-        
-        throw error;
-      });
-    };
-
-    return tryImport();
-  });
+  const LazyComponent = lazy(factory);
+  
+  return (props: React.ComponentProps<T>) => (
+    <Suspense fallback={<LoadingFallback />}>
+      <LazyComponent {...props} />
+    </Suspense>
+  );
 };
 
-// Lazy loaded page components
-export const LazyClientDashboard = createLazyComponent(
-  () => import('../pages/ClientDashboard'),
-  { retries: 2 }
-);
+// Pre-built lazy components for common use cases
+export const LazyDashboard = createLazyComponent(() => import('@/pages/AdminDashboard'));
+export const LazyUserProfile = createLazyComponent(() => import('@/components/UserProfile'));
 
-export const LazyProviderDashboard = createLazyComponent(
-  () => import('../pages/ProviderDashboard'),
-  { retries: 2 }
-);
-
-export const LazyAdminDashboard = createLazyComponent(
-  () => import('../pages/AdminDashboard'),
-  { retries: 2 }
-);
-
-export const LazyOneOffBooking = createLazyComponent(
-  () => import('../pages/OneOffBooking'),
-  { retries: 2 }
-);
-
-export const LazySubscriptionPackages = createLazyComponent(
-  () => import('../pages/SubscriptionPackages'),
-  { retries: 2 }
-);
-
-// Preload functions for better UX
-export const preloadComponent = (importFunc: () => Promise<any>) => {
-  const link = document.createElement('link');
-  link.rel = 'modulepreload';
-  link.href = importFunc.toString();
-  document.head.appendChild(link);
+// Performance monitoring for lazy loading
+export const trackLazyComponentLoad = (componentName: string) => {
+  const startTime = performance.now();
+  return () => {
+    const endTime = performance.now();
+    console.log(`🚀 ${componentName} loaded in ${endTime - startTime}ms`);
+  };
 };
 
-export const preloadDashboards = () => {
-  // Preload dashboard components when user is likely to navigate to them
-  preloadComponent(() => import('../pages/ClientDashboard'));
-  preloadComponent(() => import('../pages/ProviderDashboard'));
-  preloadComponent(() => import('../pages/AdminDashboard'));
+// Bundle size optimization utilities
+export const preloadComponent = (factory: () => Promise<any>) => {
+  // Preload on idle or user interaction
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => factory());
+  } else {
+    setTimeout(() => factory(), 100);
+  }
 };
 
-// Cache management
-export class ComponentCache {
-  private cache = new Map<string, any>();
-  private maxSize = 50;
-
-  set(key: string, component: any) {
-    if (this.cache.size >= this.maxSize) {
-      const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
-    }
-    this.cache.set(key, component);
-  }
-
-  get(key: string) {
-    return this.cache.get(key);
-  }
-
-  clear() {
-    this.cache.clear();
-  }
-
-  size() {
-    return this.cache.size;
-  }
-}
-
-export const componentCache = new ComponentCache();
+// Route-based code splitting helper
+export const createRouteComponent = (importFn: () => Promise<any>) => {
+  return createLazyComponent(importFn);
+};

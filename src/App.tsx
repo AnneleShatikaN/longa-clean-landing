@@ -22,6 +22,7 @@ import SubscriptionPackages from "./pages/SubscriptionPackages";
 import NotFound from "./pages/NotFound";
 import { MaintenanceMode } from "@/components/MaintenanceMode";
 import FeedbackSystem from "@/components/FeedbackSystem";
+import AdminSetup from "./pages/AdminSetup";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +65,7 @@ const App: React.FC = () => (
                           <Route path="/dashboard/client" element={<ClientDashboard />} />
                           <Route path="/dashboard/provider" element={<ProviderDashboard />} />
                           <Route path="/dashboard/admin" element={<AdminDashboard />} />
+                          <Route path="/admin/setup" element={<AdminSetup />} />
                           <Route path="/booking/one-off" element={<OneOffBooking />} />
                           <Route path="/subscription-packages" element={<SubscriptionPackages />} />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

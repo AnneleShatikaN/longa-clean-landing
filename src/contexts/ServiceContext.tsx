@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { ServiceData, serviceSchema } from '@/schemas/validation';
 
@@ -22,6 +23,9 @@ export interface Service {
   totalRevenue: number;
   createdAt: string;
   updatedAt: string;
+  category?: string;
+  icon?: string;
+  coverageAreas?: string[];
 }
 
 interface ServiceState {
@@ -38,6 +42,7 @@ type ServiceAction =
   | { type: 'DELETE_SERVICE'; payload: number }
   | { type: 'SET_SERVICES'; payload: Service[] };
 
+// Start with empty services array - no mock data
 const initialState: ServiceState = {
   services: [],
   isLoading: false,
@@ -81,6 +86,9 @@ interface ServiceContextType extends ServiceState {
   getServiceById: (id: number) => Service | undefined;
   getServicesByType: (type: 'one-off' | 'subscription') => Service[];
   getActiveServices: () => Service[];
+  getServicesByCategory: (category: string) => Service[];
+  searchServices: (query: string) => Service[];
+  getPopularServices: () => Service[];
 }
 
 const ServiceContext = createContext<ServiceContextType | undefined>(undefined);
@@ -194,6 +202,26 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     return state.services.filter(service => service.status === 'active');
   };
 
+  const getServicesByCategory = (category: string): Service[] => {
+    return state.services.filter(service => service.category === category);
+  };
+
+  const searchServices = (query: string): Service[] => {
+    const lowercaseQuery = query.toLowerCase();
+    return state.services.filter(service => 
+      service.name.toLowerCase().includes(lowercaseQuery) ||
+      service.description.toLowerCase().includes(lowercaseQuery) ||
+      service.tags.some(tag => tag.toLowerCase().includes(lowercaseQuery))
+    );
+  };
+
+  const getPopularServices = (): Service[] => {
+    return state.services
+      .filter(service => service.status === 'active')
+      .sort((a, b) => b.popularity - a.popularity)
+      .slice(0, 6);
+  };
+
   const value: ServiceContextType = {
     ...state,
     createService,
@@ -202,7 +230,10 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     toggleServiceStatus,
     getServiceById,
     getServicesByType,
-    getActiveServices
+    getActiveServices,
+    getServicesByCategory,
+    searchServices,
+    getPopularServices
   };
 
   return (

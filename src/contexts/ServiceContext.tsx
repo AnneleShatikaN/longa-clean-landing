@@ -1,9 +1,11 @@
 
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { ServiceData, serviceSchema } from '@/schemas/validation';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export interface Service {
-  id: number;
+  id: string;
   name: string;
   type: 'one-off' | 'subscription';
   clientPrice: number;
@@ -38,11 +40,10 @@ type ServiceAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'ADD_SERVICE'; payload: Service }
-  | { type: 'UPDATE_SERVICE'; payload: { id: number; updates: Partial<Service> } }
-  | { type: 'DELETE_SERVICE'; payload: number }
+  | { type: 'UPDATE_SERVICE'; payload: { id: string; updates: Partial<Service> } }
+  | { type: 'DELETE_SERVICE'; payload: string }
   | { type: 'SET_SERVICES'; payload: Service[] };
 
-// Start with empty services array - no mock data
 const initialState: ServiceState = {
   services: [],
   isLoading: false,
@@ -78,23 +79,80 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
   }
 }
 
+// Helper function to convert Supabase service to our Service interface
+const mapSupabaseService = (supabaseService: any): Service => {
+  const durationHours = Math.floor(supabaseService.duration_minutes / 60);
+  const durationMinutes = supabaseService.duration_minutes % 60;
+
+  return {
+    id: supabaseService.id,
+    name: supabaseService.name,
+    type: supabaseService.service_type as 'one-off' | 'subscription',
+    clientPrice: supabaseService.client_price,
+    providerFee: supabaseService.provider_fee || 0,
+    commissionPercentage: supabaseService.commission_percentage || 0,
+    duration: {
+      hours: durationHours,
+      minutes: durationMinutes
+    },
+    status: supabaseService.is_active ? 'active' : 'inactive',
+    tags: supabaseService.tags || [],
+    description: supabaseService.description || '',
+    requirements: [],
+    popularity: 0,
+    averageRating: 0,
+    totalBookings: 0,
+    totalRevenue: 0,
+    createdAt: supabaseService.created_at,
+    updatedAt: supabaseService.updated_at
+  };
+};
+
 interface ServiceContextType extends ServiceState {
   createService: (serviceData: ServiceData) => Promise<Service>;
-  updateService: (id: number, updates: Partial<ServiceData>) => Promise<void>;
-  deleteService: (id: number) => Promise<void>;
-  toggleServiceStatus: (id: number) => Promise<void>;
-  getServiceById: (id: number) => Service | undefined;
+  updateService: (id: string, updates: Partial<ServiceData>) => Promise<void>;
+  deleteService: (id: string) => Promise<void>;
+  toggleServiceStatus: (id: string) => Promise<void>;
+  getServiceById: (id: string) => Service | undefined;
   getServicesByType: (type: 'one-off' | 'subscription') => Service[];
   getActiveServices: () => Service[];
   getServicesByCategory: (category: string) => Service[];
   searchServices: (query: string) => Service[];
   getPopularServices: () => Service[];
+  loadServices: () => Promise<void>;
 }
 
 const ServiceContext = createContext<ServiceContextType | undefined>(undefined);
 
 export const ServiceProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(serviceReducer, initialState);
+  const { toast } = useToast();
+
+  const loadServices = async (): Promise<void> => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
+
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const mappedServices = data?.map(mapSupabaseService) || [];
+      dispatch({ type: 'SET_SERVICES', payload: mappedServices });
+      dispatch({ type: 'SET_LOADING', payload: false });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load services';
+      dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
 
   const createService = async (serviceData: ServiceData): Promise<Service> => {
     dispatch({ type: 'SET_LOADING', payload: true });
@@ -103,86 +161,128 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     try {
       const validatedData = serviceSchema.parse(serviceData);
       
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const totalMinutes = (validatedData.duration?.hours || 0) * 60 + (validatedData.duration?.minutes || 0);
+      
+      const { data, error } = await supabase
+        .from('services')
+        .insert({
+          name: validatedData.name,
+          description: validatedData.description,
+          service_type: validatedData.type,
+          client_price: validatedData.clientPrice,
+          provider_fee: validatedData.providerFee || (validatedData.clientPrice * (1 - (validatedData.commissionPercentage || 15) / 100)),
+          commission_percentage: validatedData.commissionPercentage || 15,
+          duration_minutes: totalMinutes,
+          is_active: validatedData.status === 'active',
+          tags: validatedData.tags
+        })
+        .select()
+        .single();
 
-      const newService: Service = {
-        id: Date.now(),
-        name: validatedData.name,
-        type: validatedData.type,
-        clientPrice: validatedData.clientPrice,
-        providerFee: validatedData.providerFee || (validatedData.clientPrice * (1 - (validatedData.commissionPercentage || 15) / 100)),
-        commissionPercentage: validatedData.commissionPercentage || 15,
-        duration: {
-          hours: validatedData.duration?.hours || 0,
-          minutes: validatedData.duration?.minutes || 0
-        },
-        status: validatedData.status,
-        tags: validatedData.tags,
-        description: validatedData.description,
-        requirements: validatedData.requirements || [],
-        popularity: 0,
-        averageRating: 0,
-        totalBookings: 0,
-        totalRevenue: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+      if (error) throw error;
 
+      const newService = mapSupabaseService(data);
       dispatch({ type: 'ADD_SERVICE', payload: newService });
       dispatch({ type: 'SET_LOADING', payload: false });
+      
+      toast({
+        title: "Success",
+        description: "Service created successfully",
+      });
       
       return newService;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Service creation failed';
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
       throw error;
     }
   };
 
-  const updateService = async (id: number, updates: Partial<ServiceData>): Promise<void> => {
+  const updateService = async (id: string, updates: Partial<ServiceData>): Promise<void> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const updateData: any = {};
+      
+      if (updates.name) updateData.name = updates.name;
+      if (updates.description) updateData.description = updates.description;
+      if (updates.type) updateData.service_type = updates.type;
+      if (updates.clientPrice) updateData.client_price = updates.clientPrice;
+      if (updates.providerFee) updateData.provider_fee = updates.providerFee;
+      if (updates.commissionPercentage) updateData.commission_percentage = updates.commissionPercentage;
+      if (updates.status) updateData.is_active = updates.status === 'active';
+      if (updates.tags) updateData.tags = updates.tags;
+      if (updates.duration) {
+        updateData.duration_minutes = (updates.duration.hours || 0) * 60 + (updates.duration.minutes || 0);
+      }
 
-      // Convert ServiceData updates to Service updates
-      const serviceUpdates: Partial<Service> = {
-        ...updates,
-        ...(updates.duration && {
-          duration: {
-            hours: updates.duration.hours || 0,
-            minutes: updates.duration.minutes || 0
-          }
-        })
-      };
+      const { data, error } = await supabase
+        .from('services')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
 
-      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates: serviceUpdates } });
+      if (error) throw error;
+
+      const updatedService = mapSupabaseService(data);
+      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates: updatedService } });
       dispatch({ type: 'SET_LOADING', payload: false });
+
+      toast({
+        title: "Success",
+        description: "Service updated successfully",
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Service update failed';
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
       throw error;
     }
   };
 
-  const deleteService = async (id: number): Promise<void> => {
+  const deleteService = async (id: string): Promise<void> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
 
       dispatch({ type: 'DELETE_SERVICE', payload: id });
       dispatch({ type: 'SET_LOADING', payload: false });
+
+      toast({
+        title: "Success",
+        description: "Service deleted successfully",
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Service deletion failed';
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
       throw error;
     }
   };
 
-  const toggleServiceStatus = async (id: number): Promise<void> => {
+  const toggleServiceStatus = async (id: string): Promise<void> => {
     const service = state.services.find(s => s.id === id);
     if (!service) throw new Error('Service not found');
 
@@ -190,7 +290,7 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     await updateService(id, { status: newStatus });
   };
 
-  const getServiceById = (id: number): Service | undefined => {
+  const getServiceById = (id: string): Service | undefined => {
     return state.services.find(service => service.id === id);
   };
 
@@ -222,6 +322,11 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
       .slice(0, 6);
   };
 
+  // Load services on component mount
+  useEffect(() => {
+    loadServices();
+  }, []);
+
   const value: ServiceContextType = {
     ...state,
     createService,
@@ -233,7 +338,8 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     getActiveServices,
     getServicesByCategory,
     searchServices,
-    getPopularServices
+    getPopularServices,
+    loadServices
   };
 
   return (

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -398,7 +397,7 @@ const Auth = () => {
                 </div>
               )}
 
-              {(mode === 'login' || mode === 'signup') && mode !== 'admin-setup' && (
+              {(mode === 'login' || mode === 'signup') && (
                 <div className="space-y-2">
                   <Label className="text-gray-700">Role</Label>
                   <div className="grid grid-cols-2 gap-2">

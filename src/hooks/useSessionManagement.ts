@@ -24,7 +24,7 @@ export const useSessionManagement = () => {
       toast.warning('Session Expired', 'You have been logged out due to inactivity');
       logSecurityEvent({
         type: 'logout',
-        userId: user.id, // This is now correctly typed as string
+        userId: user.id, // user.id is now correctly typed as string
         details: { reason: 'session_timeout' }
       });
       logout();

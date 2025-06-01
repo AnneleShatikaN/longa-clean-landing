@@ -6,7 +6,7 @@ import { useServices } from '@/contexts/ServiceContext';
 import { useBookings } from '@/contexts/BookingContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BookingCalendar } from '@/components/booking/BookingCalendar';
 import { ArrowLeft, Home, Car, Sparkles, Shirt, Eye, AlertCircle } from 'lucide-react';
@@ -51,8 +51,8 @@ const OneOffBooking = () => {
 
     try {
       await createBooking({
-        clientId: typeof user.id === 'string' ? parseInt(user.id) : user.id || 1,
-        clientName: user.name || 'Client',
+        clientId: typeof user.id === 'string' ? parseInt(user.id) : parseInt(user.id) || 1,
+        clientName: user.full_name || user.name || 'Client',
         providerId: bookingData.providerId,
         providerName: bookingData.providerName,
         serviceId: selectedService.id,
@@ -118,7 +118,7 @@ const OneOffBooking = () => {
               </h1>
             </div>
             <div className="text-sm text-gray-600">
-              Welcome, {user?.name}
+              Welcome, {user?.full_name || user?.name}
             </div>
           </div>
         </div>

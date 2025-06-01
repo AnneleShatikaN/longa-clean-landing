@@ -9,7 +9,7 @@ import { Search, Star, Clock, MapPin, Package } from 'lucide-react';
 import { useServices } from '@/contexts/ServiceContext';
 
 interface ServiceDisplayProps {
-  onBookService?: (serviceId: number) => void;
+  onBookService?: (serviceId: string) => void; // Changed to string for Supabase UUID
   showBookingButton?: boolean;
 }
 
@@ -17,7 +17,7 @@ const ServiceDisplay: React.FC<ServiceDisplayProps> = ({
   onBookService, 
   showBookingButton = false 
 }) => {
-  const { services, searchServices, getServicesByType } = useServices();
+  const { services, searchServices, isLoading, error } = useServices();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'one-off' | 'subscription'>('all');
   const [sortBy, setSortBy] = useState<'popularity' | 'price' | 'rating'>('popularity');
@@ -52,6 +52,55 @@ const ServiceDisplay: React.FC<ServiceDisplayProps> = ({
   };
 
   const filteredServices = getFilteredAndSortedServices();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 h-10 bg-gray-200 rounded animate-pulse"></div>
+              <div className="w-[150px] h-10 bg-gray-200 rounded animate-pulse"></div>
+              <div className="w-[150px] h-10 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="pb-4">
+                <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div className="h-8 bg-gray-200 rounded w-2/3"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <Package className="mx-auto h-16 w-16 text-red-400 mb-4" />
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          Error Loading Services
+        </h3>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <Button onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   if (services.length === 0) {
     return (

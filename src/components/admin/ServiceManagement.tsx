@@ -13,7 +13,7 @@ import EmptyServicesState from './EmptyServicesState';
 import { toast } from 'sonner';
 
 const ServiceManagement: React.FC = () => {
-  const { services, deleteService, toggleServiceStatus } = useServices();
+  const { services, deleteService, toggleServiceStatus, isLoading } = useServices();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -28,7 +28,7 @@ const ServiceManagement: React.FC = () => {
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const handleDeleteService = async (serviceId: number, serviceName: string) => {
+  const handleDeleteService = async (serviceId: string, serviceName: string) => {
     if (window.confirm(`Are you sure you want to delete "${serviceName}"? This action cannot be undone.`)) {
       try {
         await deleteService(serviceId);
@@ -39,7 +39,7 @@ const ServiceManagement: React.FC = () => {
     }
   };
 
-  const handleToggleStatus = async (serviceId: number) => {
+  const handleToggleStatus = async (serviceId: string) => {
     try {
       await toggleServiceStatus(serviceId);
       toast.success('Service status updated');
@@ -47,6 +47,37 @@ const ServiceManagement: React.FC = () => {
       toast.error('Failed to update service status');
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="h-8 bg-gray-200 rounded w-64 mb-2 animate-pulse"></div>
+            <div className="h-4 bg-gray-200 rounded w-80 animate-pulse"></div>
+          </div>
+          <div className="h-10 bg-gray-200 rounded w-40 animate-pulse"></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="pb-4">
+                <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (services.length === 0 && !isCreateModalOpen) {
     return <EmptyServicesState onCreateService={() => setIsCreateModalOpen(true)} />;

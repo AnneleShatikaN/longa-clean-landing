@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
+import { useServices } from '@/contexts/ServiceContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +16,14 @@ const getServiceIcon = (serviceName: string) => {
 
 const SubscriptionPackages = () => {
   const navigate = useNavigate();
-  const { services, isLoading } = useData();
+  const { services, isLoading } = useServices();
 
   // Filter for active subscription services only
   const subscriptionServices = services.filter(service => 
     service.type === 'subscription' && service.status === 'active'
   );
 
-  const handleGetStarted = (serviceId: number) => {
+  const handleGetStarted = (serviceId: string) => {
     console.log(`Getting started with service ${serviceId}`);
     // TODO: Navigate to subscription signup/payment flow
   };

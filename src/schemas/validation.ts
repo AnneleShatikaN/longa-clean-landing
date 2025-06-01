@@ -80,7 +80,9 @@ export const adminSetupSchema = z.object({
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string()
+  confirmPassword: z.string(),
+  companyName: z.string().min(1, "Company name is required").optional(),
+  companyPhone: z.string().min(10, "Company phone must be at least 10 digits").optional()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"]
@@ -117,7 +119,13 @@ export const payoutSchema = z.object({
   status: z.enum(['pending', 'processing', 'completed', 'failed']),
   transactionId: z.string().optional(),
   processedAt: z.string().optional(),
-  createdAt: z.string().optional()
+  createdAt: z.string().optional(),
+  bookingIds: z.array(z.number()).optional(),
+  totalEarnings: z.number().optional(),
+  commission: z.number().optional(),
+  netPayout: z.number().optional(),
+  paymentMethod: z.enum(['bank_transfer', 'mobile_money', 'cash']).optional(),
+  type: z.enum(['weekly_auto', 'manual', 'instant']).optional()
 });
 
 // Type exports

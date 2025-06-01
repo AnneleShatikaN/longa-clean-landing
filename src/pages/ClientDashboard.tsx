@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBookings } from '@/contexts/BookingContext';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loading, TableSkeleton, CardSkeleton } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
+import { BookingManager } from '@/components/booking/BookingManager';
 import Footer from '@/components/Footer';
 import { 
   Calendar, 
@@ -20,30 +22,24 @@ import {
   Filter,
   Search,
   Menu,
-  X
+  X,
+  Bell
 } from 'lucide-react';
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
-  const { bookings, users, isLoading, error } = useData();
+  const { bookings, getBookingsByClient, getUpcomingBookings, notifications, isLoading, error } = useBookings();
+  const { users } = useData();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings'>('overview');
 
-  // Filter bookings for current user
-  const userBookings = bookings.filter(booking => 
-    booking.clientName === user?.name || (booking.clientId && booking.clientId === parseInt(user?.id?.toString() || '0'))
-  );
-
-  // Apply filters
-  const filteredBookings = userBookings.filter(booking => {
-    const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
-    const matchesSearch = booking.serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         booking.providerName.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  // Get user bookings
+  const userId = parseInt(user?.id?.toString() || '0');
+  const userBookings = getBookingsByClient(userId);
+  const upcomingBookings = getUpcomingBookings(userId, 'client');
+  const unreadNotifications = notifications.filter(n => !n.read);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -58,12 +54,12 @@ const ClientDashboard = () => {
   const stats = {
     totalBookings: userBookings.length,
     completedJobs: userBookings.filter(b => b.status === 'completed').length,
-    totalSpent: userBookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + b.amount, 0)
+    totalSpent: userBookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + b.amount, 0),
+    upcomingJobs: upcomingBookings.length
   };
 
-  const nextAppointment = userBookings
-    .filter(b => b.status === 'accepted' || b.status === 'pending')
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+  const nextAppointment = upcomingBookings
+    .sort((a, b) => new Date(a.date + 'T' + a.time).getTime() - new Date(b.date + 'T' + b.time).getTime())[0];
 
   const currentUser = users.find(u => u.email === user?.email);
 
@@ -134,8 +130,19 @@ const ClientDashboard = () => {
               </h2>
             </div>
             
-            {/* Mobile menu button */}
+            {/* Header Actions */}
             <div className="flex items-center space-x-2">
+              {/* Notifications */}
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-4 w-4" />
+                {unreadNotifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadNotifications.length}
+                  </span>
+                )}
+              </Button>
+
+              {/* Mobile menu button */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -161,190 +168,162 @@ const ClientDashboard = () => {
 
       <div className="flex-1">
         <div className="max-w-7xl mx-auto mobile-container py-4 sm:py-8">
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 lg:gap-8">
-            {/* Main Content */}
-            <div className="xl:col-span-3 space-y-6 lg:space-y-8">
-              {/* Quick Actions */}
-              <div className="animate-fade-in">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                <div className="mobile-grid">
-                  <Card 
-                    className="hover:shadow-lg transition-all duration-300 cursor-pointer border-purple-100 hover:border-purple-200 hover-lift"
-                    onClick={() => handleQuickAction('one-off')}
-                  >
-                    <CardContent className="mobile-card">
-                      <div className="flex items-center space-x-4">
-                        <div className="bg-purple-100 p-3 rounded-lg transition-colors hover:bg-purple-200 flex-shrink-0">
-                          <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-semibold text-gray-900 text-sm sm:text-base">One-Off Booking</h4>
-                          <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">Book a service for a specific date</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card 
-                    className="hover:shadow-lg transition-all duration-300 cursor-pointer border-purple-100 hover:border-purple-200 hover-lift"
-                    onClick={() => handleQuickAction('subscription')}
-                  >
-                    <CardContent className="mobile-card">
-                      <div className="flex items-center space-x-4">
-                        <div className="bg-purple-100 p-3 rounded-lg transition-colors hover:bg-purple-200 flex-shrink-0">
-                          <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-semibold text-gray-900 text-sm sm:text-base">Subscription Plan</h4>
-                          <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">Set up recurring services</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
-              {/* Booking Filters */}
-              <div className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-                <div className="mobile-stack mb-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <input
-                      type="text"
-                      placeholder="Search bookings..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="form-input pl-10"
-                      aria-label="Search bookings"
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Filter className="h-4 w-4 text-gray-500" />
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="form-select"
-                      aria-label="Filter by status"
-                    >
-                      <option value="all">All Status</option>
-                      <option value="pending">Pending</option>
-                      <option value="accepted">Accepted</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* My Bookings */}
-              <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">My Bookings</h3>
-                <Card className="overflow-hidden">
-                  <CardContent className="p-0">
-                    {isLoading ? (
-                      <div className="p-6">
-                        <TableSkeleton rows={3} columns={5} />
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full mobile-table">
-                          <thead className="bg-gray-50">
-                            <tr className="mobile-table-row">
-                              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Service
-                              </th>
-                              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider mobile-hide">
-                                Provider
-                              </th>
-                              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Date
-                              </th>
-                              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider mobile-hide">
-                                Amount
-                              </th>
-                              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredBookings.map((booking, index) => (
-                              <tr 
-                                key={booking.id} 
-                                className="hover:bg-gray-50 transition-colors animate-fade-in mobile-table-row"
-                                style={{ animationDelay: `${index * 0.1}s` }}
-                              >
-                                <td className="px-4 sm:px-6 py-4 mobile-table-cell">
-                                  <div>
-                                    <div className="text-sm font-medium text-gray-900">
-                                      {booking.serviceName}
-                                    </div>
-                                    <div className="text-xs text-gray-500 lg:hidden">
-                                      {booking.providerName}
-                                    </div>
-                                    <div className="text-xs text-gray-500 md:hidden">
-                                      N${booking.amount}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-4 sm:px-6 py-4 mobile-table-cell text-sm text-gray-600 mobile-hide">
-                                  {booking.providerName}
-                                </td>
-                                <td className="px-4 sm:px-6 py-4 mobile-table-cell">
-                                  <div className="text-sm text-gray-900">{booking.date}</div>
-                                  <div className="text-xs text-gray-500">{booking.time}</div>
-                                </td>
-                                <td className="px-4 sm:px-6 py-4 mobile-table-cell text-sm text-gray-600 mobile-hide">
-                                  N${booking.amount}
-                                </td>
-                                <td className="px-4 sm:px-6 py-4 mobile-table-cell">
-                                  <Badge className={`${getStatusColor(booking.status)} text-xs`}>
-                                    {booking.status}
-                                  </Badge>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        {filteredBookings.length === 0 && (
-                          <div className="text-center py-8 text-gray-500">
-                            <p>No bookings found matching your criteria.</p>
-                            <p className="text-sm text-gray-400 mt-1">Try adjusting your search or filters!</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+          {/* Tab Navigation */}
+          <div className="mb-6">
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('overview')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'overview'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Dashboard Overview
+                </button>
+                <button
+                  onClick={() => setActiveTab('bookings')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'bookings'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  My Bookings
+                </button>
+              </nav>
             </div>
+          </div>
 
-            {/* Sidebar */}
-            <div className={`xl:col-span-1 space-y-6 ${isMobileMenuOpen ? 'mobile-sidebar-panel' : 'mobile-sidebar'}`}>
-              {/* Mobile sidebar close button */}
-              {isMobileMenuOpen && (
-                <div className="flex justify-end lg:hidden mb-4 pt-4 px-4">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    aria-label="Close sidebar"
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
+          {activeTab === 'overview' ? (
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 lg:gap-8">
+              {/* Main Content */}
+              <div className="xl:col-span-3 space-y-6 lg:space-y-8">
+                {/* Quick Actions */}
+                <div className="animate-fade-in">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                  <div className="mobile-grid">
+                    <Card 
+                      className="hover:shadow-lg transition-all duration-300 cursor-pointer border-purple-100 hover:border-purple-200 hover-lift"
+                      onClick={() => handleQuickAction('one-off')}
+                    >
+                      <CardContent className="mobile-card">
+                        <div className="flex items-center space-x-4">
+                          <div className="bg-purple-100 p-3 rounded-lg transition-colors hover:bg-purple-200 flex-shrink-0">
+                            <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-semibold text-gray-900 text-sm sm:text-base">One-Off Booking</h4>
+                            <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">Book a service for a specific date</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card 
+                      className="hover:shadow-lg transition-all duration-300 cursor-pointer border-purple-100 hover:border-purple-200 hover-lift"
+                      onClick={() => handleQuickAction('subscription')}
+                    >
+                      <CardContent className="mobile-card">
+                        <div className="flex items-center space-x-4">
+                          <div className="bg-purple-100 p-3 rounded-lg transition-colors hover:bg-purple-200 flex-shrink-0">
+                            <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-semibold text-gray-900 text-sm sm:text-base">Subscription Plan</h4>
+                            <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">Set up recurring services</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
-              )}
 
-              <div className={`space-y-6 ${isMobileMenuOpen ? 'p-6' : ''}`}>
-                {/* User Profile Card */}
-                <Card className="animate-fade-in">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Profile</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <CardSkeleton />
-                    ) : (
+                {/* Recent Bookings Preview */}
+                <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Recent Bookings</h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setActiveTab('bookings')}
+                    >
+                      View All
+                    </Button>
+                  </div>
+                  <Card className="overflow-hidden">
+                    <CardContent className="p-0">
+                      {isLoading ? (
+                        <div className="p-6">
+                          <TableSkeleton rows={3} columns={4} />
+                        </div>
+                      ) : userBookings.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <Calendar className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                          <p>No bookings yet</p>
+                          <p className="text-sm text-gray-400 mt-1">Start by booking your first service!</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full mobile-table">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {userBookings.slice(0, 3).map((booking) => (
+                                <tr key={booking.id} className="hover:bg-gray-50">
+                                  <td className="px-6 py-4">
+                                    <div className="text-sm font-medium text-gray-900">{booking.serviceName}</div>
+                                    <div className="text-sm text-gray-500">{booking.providerName}</div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="text-sm text-gray-900">{booking.date}</div>
+                                    <div className="text-sm text-gray-500">{booking.time}</div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <Badge className={getStatusColor(booking.status)}>
+                                      {booking.status}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Sidebar */}
+              <div className={`xl:col-span-1 space-y-6 ${isMobileMenuOpen ? 'mobile-sidebar-panel' : 'mobile-sidebar'}`}>
+                {/* Mobile sidebar close button */}
+                {isMobileMenuOpen && (
+                  <div className="flex justify-end lg:hidden mb-4 pt-4 px-4">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      aria-label="Close sidebar"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
+                )}
+
+                <div className={`space-y-6 ${isMobileMenuOpen ? 'p-6' : ''}`}>
+                  {/* User Profile Card */}
+                  <Card className="animate-fade-in">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Profile</CardTitle>
+                    </CardHeader>
+                    <CardContent>
                       <div className="text-center">
                         <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3 transition-transform hover:scale-105">
                           <User className="h-8 w-8 text-purple-600" />
@@ -357,65 +336,67 @@ const ClientDashboard = () => {
                           <span className="text-sm text-gray-600">(24 reviews)</span>
                         </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                {/* Quick Stats */}
-                <Card className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Quick Stats</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {isLoading ? (
-                      <CardSkeleton />
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg transition-colors hover:bg-gray-100">
-                          <span className="text-sm text-gray-600">Total Bookings</span>
-                          <span className="font-semibold text-gray-900 text-lg">{stats.totalBookings}</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg transition-colors hover:bg-green-100">
-                          <span className="text-sm text-gray-600">Completed Jobs</span>
-                          <span className="font-semibold text-green-600 text-lg">{stats.completedJobs}</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg transition-colors hover:bg-purple-100">
-                          <span className="text-sm text-gray-600">Total Spent</span>
-                          <span className="font-semibold text-purple-600 text-lg">N${stats.totalSpent}</span>
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
+                  {/* Quick Stats */}
+                  <Card className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Quick Stats</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm text-gray-600">Total Bookings</span>
+                        <span className="font-semibold text-gray-900 text-lg">{stats.totalBookings}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                        <span className="text-sm text-gray-600">Completed Jobs</span>
+                        <span className="font-semibold text-green-600 text-lg">{stats.completedJobs}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                        <span className="text-sm text-gray-600">Total Spent</span>
+                        <span className="font-semibold text-purple-600 text-lg">N${stats.totalSpent}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                        <span className="text-sm text-gray-600">Upcoming</span>
+                        <span className="font-semibold text-blue-600 text-lg">{stats.upcomingJobs}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                {/* Next Appointment */}
-                <Card className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center">
-                      <Calendar className="h-5 w-5 mr-2 text-purple-600" />
-                      Next Appointment
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <CardSkeleton />
-                    ) : nextAppointment ? (
-                      <div className="p-3 bg-blue-50 rounded-lg">
-                        <p className="font-medium text-gray-900">{nextAppointment.serviceName}</p>
-                        <p className="text-sm text-gray-600">{nextAppointment.date} at {nextAppointment.time}</p>
-                        <p className="text-sm text-gray-600">with {nextAppointment.providerName}</p>
-                      </div>
-                    ) : (
-                      <div className="text-center p-6 text-gray-500">
-                        <Calendar className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                        <p className="text-sm">No upcoming appointments</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  {/* Next Appointment */}
+                  <Card className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <Calendar className="h-5 w-5 mr-2 text-purple-600" />
+                        Next Appointment
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {nextAppointment ? (
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <p className="font-medium text-gray-900">{nextAppointment.serviceName}</p>
+                          <p className="text-sm text-gray-600">{nextAppointment.date} at {nextAppointment.time}</p>
+                          <p className="text-sm text-gray-600">with {nextAppointment.providerName}</p>
+                          <Badge className="mt-2" variant="outline">
+                            {nextAppointment.status}
+                          </Badge>
+                        </div>
+                      ) : (
+                        <div className="text-center p-6 text-gray-500">
+                          <Calendar className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                          <p className="text-sm">No upcoming appointments</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            // Bookings Tab
+            <BookingManager userRole="client" userId={userId} />
+          )}
         </div>
       </div>
       

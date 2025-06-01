@@ -4,23 +4,29 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 interface LoadingProps {
-  variant?: 'spinner' | 'skeleton' | 'pulse';
+  variant?: 'spinner' | 'skeleton' | 'pulse' | 'dots';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   text?: string;
+  fullScreen?: boolean;
 }
 
 export const Loading: React.FC<LoadingProps> = ({ 
   variant = 'spinner', 
   size = 'md', 
   className,
-  text 
+  text,
+  fullScreen = false
 }) => {
   const sizeClasses = {
     sm: 'w-4 h-4',
     md: 'w-8 h-8',
     lg: 'w-12 h-12'
   };
+
+  const containerClass = fullScreen 
+    ? "fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center"
+    : "flex items-center justify-center";
 
   if (variant === 'skeleton') {
     return (
@@ -38,8 +44,33 @@ export const Loading: React.FC<LoadingProps> = ({
     );
   }
 
+  if (variant === 'dots') {
+    return (
+      <div className={cn(containerClass, className)}>
+        <div className="flex space-x-1">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className={cn(
+                "rounded-full bg-purple-600 animate-pulse",
+                size === 'sm' ? 'w-2 h-2' : size === 'lg' ? 'w-4 h-4' : 'w-3 h-3'
+              )}
+              style={{
+                animationDelay: `${i * 0.2}s`,
+                animationDuration: '1s'
+              }}
+            />
+          ))}
+        </div>
+        {text && (
+          <p className="text-sm text-gray-600 animate-pulse ml-3">{text}</p>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className={cn("flex items-center justify-center", className)}>
+    <div className={cn(containerClass, className)}>
       <div className="flex flex-col items-center space-y-2">
         <div 
           className={cn(
@@ -86,4 +117,12 @@ export const CardSkeleton: React.FC = () => {
       </div>
     </div>
   );
+};
+
+export const PageLoader: React.FC<{ text?: string }> = ({ text = "Loading page..." }) => {
+  return <Loading variant="spinner" size="lg" text={text} fullScreen />;
+};
+
+export const InlineLoader: React.FC<{ text?: string }> = ({ text }) => {
+  return <Loading variant="dots" size="sm" text={text} className="py-4" />;
 };

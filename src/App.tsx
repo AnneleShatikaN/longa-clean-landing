@@ -1,129 +1,64 @@
 
-import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { ServiceProvider } from "@/contexts/ServiceContext";
+import { SupabaseBookingProvider } from "@/contexts/SupabaseBookingContext";
 import { BookingProvider } from "@/contexts/BookingContext";
+import { ServiceProvider } from "@/contexts/ServiceContext";
+import { UserProvider } from "@/contexts/UserContext";
 import { PayoutProvider } from "@/contexts/PayoutContext";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { NetworkErrorHandler } from "@/components/NetworkErrorHandler";
+import { DataProvider } from "@/contexts/DataContext";
 import { SessionManager } from "@/components/SessionManager";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import AdminSetup from "./pages/AdminSetup";
 import ClientDashboard from "./pages/ClientDashboard";
 import ProviderDashboard from "./pages/ProviderDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import OneOffBooking from "./pages/OneOffBooking";
 import SubscriptionPackages from "./pages/SubscriptionPackages";
 import NotFound from "./pages/NotFound";
-import { MaintenanceMode } from "@/components/MaintenanceMode";
-import FeedbackSystem from "@/components/FeedbackSystem";
-import AdminSetup from "./pages/AdminSetup";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error: any) => {
-        // Don't retry on 4xx errors
-        if (error?.status >= 400 && error?.status < 500) {
-          return false;
-        }
-        return failureCount < 3;
-      },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      refetchOnWindowFocus: false,
-    },
-    mutations: {
-      retry: 1,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
-const App: React.FC = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <NetworkErrorHandler>
-          <MaintenanceMode>
-            <Toaster />
-            <Sonner />
-            <AuthProvider>
-              <SessionManager />
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AuthProvider>
+          <DataProvider>
+            <UserProvider>
               <ServiceProvider>
-                <BookingProvider>
-                  <PayoutProvider>
-                    <BrowserRouter>
+                <PayoutProvider>
+                  <BookingProvider>
+                    <SupabaseBookingProvider>
+                      <SessionManager />
                       <Routes>
                         <Route path="/" element={<Index />} />
                         <Route path="/auth" element={<Auth />} />
-                        <Route 
-                          path="/dashboard/client" 
-                          element={
-                            <ProtectedRoute requiredRole="client">
-                              <ClientDashboard />
-                            </ProtectedRoute>
-                          } 
-                        />
-                        <Route 
-                          path="/dashboard/provider" 
-                          element={
-                            <ProtectedRoute requiredRole="provider">
-                              <ProviderDashboard />
-                            </ProtectedRoute>
-                          } 
-                        />
-                        <Route 
-                          path="/dashboard/admin" 
-                          element={
-                            <ProtectedRoute requiredRole="admin">
-                              <AdminDashboard />
-                            </ProtectedRoute>
-                          } 
-                        />
-                        <Route 
-                          path="/admin/setup" 
-                          element={
-                            <ProtectedRoute requireAuth={false}>
-                              <AdminSetup />
-                            </ProtectedRoute>
-                          } 
-                        />
-                        <Route 
-                          path="/booking/one-off" 
-                          element={
-                            <ProtectedRoute allowedRoles={["client", "admin"]}>
-                              <OneOffBooking />
-                            </ProtectedRoute>
-                          } 
-                        />
-                        <Route 
-                          path="/subscription-packages" 
-                          element={
-                            <ProtectedRoute allowedRoles={["client", "admin"]}>
-                              <SubscriptionPackages />
-                            </ProtectedRoute>
-                          } 
-                        />
-                        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                        <Route path="/admin/setup" element={<AdminSetup />} />
+                        <Route path="/dashboard/client" element={<ClientDashboard />} />
+                        <Route path="/dashboard/provider" element={<ProviderDashboard />} />
+                        <Route path="/dashboard/admin" element={<AdminDashboard />} />
+                        <Route path="/book/one-off" element={<OneOffBooking />} />
+                        <Route path="/book/subscription" element={<SubscriptionPackages />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
-                      <FeedbackSystem />
-                    </BrowserRouter>
-                  </PayoutProvider>
-                </BookingProvider>
+                    </SupabaseBookingProvider>
+                  </BookingProvider>
+                </PayoutProvider>
               </ServiceProvider>
-            </AuthProvider>
-          </MaintenanceMode>
-        </NetworkErrorHandler>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
+            </UserProvider>
+          </DataProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
 );
 
 export default App;

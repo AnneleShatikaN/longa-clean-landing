@@ -11,50 +11,71 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
+          acceptance_deadline: string | null
           booking_date: string
           booking_time: string
+          check_in_time: string | null
           client_id: string
           created_at: string | null
+          duration_minutes: number | null
+          emergency_booking: boolean | null
           id: string
+          modification_history: Json | null
+          progress_photos: string[] | null
           provider_id: string | null
           provider_payout: number | null
+          quality_score: number | null
           rating: number | null
           review: string | null
           service_id: string
           special_instructions: string | null
-          status: string | null
+          status: Database["public"]["Enums"]["booking_status"] | null
           total_amount: number
           updated_at: string | null
         }
         Insert: {
+          acceptance_deadline?: string | null
           booking_date: string
           booking_time: string
+          check_in_time?: string | null
           client_id: string
           created_at?: string | null
+          duration_minutes?: number | null
+          emergency_booking?: boolean | null
           id?: string
+          modification_history?: Json | null
+          progress_photos?: string[] | null
           provider_id?: string | null
           provider_payout?: number | null
+          quality_score?: number | null
           rating?: number | null
           review?: string | null
           service_id: string
           special_instructions?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["booking_status"] | null
           total_amount: number
           updated_at?: string | null
         }
         Update: {
+          acceptance_deadline?: string | null
           booking_date?: string
           booking_time?: string
+          check_in_time?: string | null
           client_id?: string
           created_at?: string | null
+          duration_minutes?: number | null
+          emergency_booking?: boolean | null
           id?: string
+          modification_history?: Json | null
+          progress_photos?: string[] | null
           provider_id?: string | null
           provider_payout?: number | null
+          quality_score?: number | null
           rating?: number | null
           review?: string | null
           service_id?: string
           special_instructions?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["booking_status"] | null
           total_amount?: number
           updated_at?: string | null
         }
@@ -78,6 +99,54 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          booking_id: string | null
+          created_at: string | null
+          id: string
+          message: string
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string | null
+          id?: string
+          message: string
+          read?: boolean | null
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string | null
+          id?: string
+          message?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -234,13 +303,41 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_provider_payout: {
+        Args: { service_id: string; client_price: number }
+        Returns: number
+      }
+      check_booking_conflicts: {
+        Args: {
+          provider_id: string
+          booking_date: string
+          booking_time: string
+          duration_minutes: number
+        }
+        Returns: boolean
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      send_notification: {
+        Args: {
+          user_id: string
+          notification_type: string
+          title: string
+          message: string
+          booking_id?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
-      [_ in never]: never
+      booking_status:
+        | "pending"
+        | "accepted"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -355,6 +452,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      booking_status: [
+        "pending",
+        "accepted",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+    },
   },
 } as const

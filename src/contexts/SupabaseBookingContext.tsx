@@ -9,6 +9,13 @@ type BookingInsert = Database['public']['Tables']['bookings']['Insert'];
 type BookingUpdate = Database['public']['Tables']['bookings']['Update'];
 type ServiceRow = Database['public']['Tables']['services']['Row'];
 type NotificationRow = Database['public']['Tables']['notifications']['Row'];
+type UserRow = Database['public']['Tables']['users']['Row'];
+
+export interface BookingWithRelations extends BookingRow {
+  service?: ServiceRow | null;
+  client?: UserRow | null;
+  provider?: UserRow | null;
+}
 
 export interface BookingData {
   serviceId: string;

@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         joinDate: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         lastActive: data.updated_at || new Date().toISOString(),
         isEmailVerified: true, // Assume verified if in database
-        jobsCompleted: 0, // Default values
+        jobsCompleted: Number(data.total_jobs) || 0,
         totalEarnings: 0,
         available: true
       };

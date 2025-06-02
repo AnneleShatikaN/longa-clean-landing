@@ -1,510 +1,248 @@
-import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { UserRegistration, UserUpdate, LoginData, PasswordReset, ChangePassword, AdminSetup, userRegistrationSchema, userUpdateSchema, loginSchema, passwordResetSchema, changePasswordSchema, adminSetupSchema } from '@/schemas/validation';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { UserRole } from '@/types/auth';
 
-// Remove duplicate UserRole export - use the one from AuthContext
-export type { UserRole } from '@/contexts/AuthContext';
-
-export interface User {
-  id: string; // Changed to string for Supabase UUID compatibility
+interface UserProfile {
+  id: string;
   name: string;
   email: string;
   phone: string;
-  role: 'client' | 'provider' | 'admin';
-  rating?: number;
-  status: 'active' | 'inactive' | 'pending';
-  available?: boolean;
-  bankMobileNumber?: string;
-  paymentMethod?: 'bank_transfer' | 'mobile_money';
-  totalEarnings?: number;
-  jobsCompleted?: number;
-  responseRate?: number;
-  joinDate: string;
-  lastActive: string;
-  createdAt: string;
-  updatedAt: string;
+  role: UserRole;
   profilePicture?: string;
   address?: string;
-  preferences?: Record<string, any>;
-  servicesOffered?: string[];
-  availability?: Record<string, any>;
+  bankMobileNumber?: string;
+  paymentMethod?: 'bank_transfer' | 'mobile_money';
   bankDetails?: {
     accountNumber?: string;
     bankName?: string;
     accountHolder?: string;
   };
+  servicesOffered?: string[];
+  available?: boolean;
+  status: 'active' | 'inactive' | 'pending';
+  rating: number;
+  jobsCompleted?: number;
+  totalEarnings?: number;
+  joinDate: string;
+  lastActive: string;
   isEmailVerified: boolean;
-  loginAttempts: number;
-  lockedUntil?: string;
-  passwordResetToken?: string;
-  passwordResetExpires?: string;
 }
 
-interface UserState {
-  users: User[];
-  currentUser: User | null;
+interface UserContextType {
+  users: UserProfile[];
+  providers: UserProfile[];
+  clients: UserProfile[];
+  admins: UserProfile[];
   isLoading: boolean;
   error: string | null;
-  isInitialized: boolean;
-  needsAdminSetup: boolean;
-  rememberMe: boolean;
-}
-
-type UserAction = 
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_CURRENT_USER'; payload: User | null }
-  | { type: 'ADD_USER'; payload: User }
-  | { type: 'UPDATE_USER'; payload: { id: string; updates: Partial<User> } } // Changed id to string
-  | { type: 'DELETE_USER'; payload: string } // Changed to string
-  | { type: 'SET_USERS'; payload: User[] }
-  | { type: 'SET_INITIALIZED'; payload: boolean }
-  | { type: 'SET_NEEDS_ADMIN_SETUP'; payload: boolean }
-  | { type: 'SET_REMEMBER_ME'; payload: boolean };
-
-const initialState: UserState = {
-  users: [],
-  currentUser: null,
-  isLoading: false,
-  error: null,
-  isInitialized: false,
-  needsAdminSetup: true,
-  rememberMe: false
-};
-
-function userReducer(state: UserState, action: UserAction): UserState {
-  switch (action.type) {
-    case 'SET_LOADING':
-      return { ...state, isLoading: action.payload };
-    case 'SET_ERROR':
-      return { ...state, error: action.payload, isLoading: false };
-    case 'SET_CURRENT_USER':
-      return { ...state, currentUser: action.payload };
-    case 'ADD_USER':
-      return { ...state, users: [...state.users, action.payload] };
-    case 'UPDATE_USER':
-      return {
-        ...state,
-        users: state.users.map(user =>
-          user.id === action.payload.id ? { ...user, ...action.payload.updates, updatedAt: new Date().toISOString() } : user
-        ),
-        currentUser: state.currentUser?.id === action.payload.id 
-          ? { ...state.currentUser, ...action.payload.updates, updatedAt: new Date().toISOString() }
-          : state.currentUser
-      };
-    case 'DELETE_USER':
-      return {
-        ...state,
-        users: state.users.filter(user => user.id !== action.payload),
-        currentUser: state.currentUser?.id === action.payload ? null : state.currentUser
-      };
-    case 'SET_USERS':
-      return { ...state, users: action.payload };
-    case 'SET_INITIALIZED':
-      return { ...state, isInitialized: action.payload };
-    case 'SET_NEEDS_ADMIN_SETUP':
-      return { ...state, needsAdminSetup: action.payload };
-    case 'SET_REMEMBER_ME':
-      return { ...state, rememberMe: action.payload };
-    default:
-      return state;
-  }
-}
-
-interface UserContextType extends UserState {
-  registerUser: (userData: UserRegistration) => Promise<{ user: User; needsEmailVerification: boolean }>;
-  loginUser: (loginData: LoginData) => Promise<User>;
-  logoutUser: () => void;
-  updateUser: (id: string, updates: UserUpdate) => Promise<void>; // Changed id to string
-  deleteUser: (id: string) => Promise<void>; // Changed id to string
-  getUserById: (id: string) => User | undefined; // Changed id to string
-  getUsersByRole: (role: 'client' | 'provider' | 'admin') => User[];
-  verifyEmail: (userId: string, token: string) => Promise<void>; // Changed userId to string
-  requestPasswordReset: (data: PasswordReset) => Promise<void>;
-  resetPassword: (token: string, newPassword: string) => Promise<void>;
-  changePassword: (userId: string, data: ChangePassword) => Promise<void>; // Changed userId to string
-  setupAdmin: (data: AdminSetup) => Promise<User>;
-  checkInitialization: () => void;
+  fetchUsers: () => Promise<void>;
+  updateUserStatus: (userId: string, status: 'active' | 'inactive' | 'pending') => Promise<void>;
+  updateUserProfile: (userId: string, updates: Partial<UserProfile>) => Promise<void>;
+  deleteUser: (userId: string) => Promise<void>;
+  searchUsers: (query: string, role?: UserRole) => UserProfile[];
+  getUserById: (userId: string) => UserProfile | undefined;
+  getUsersByRole: (role: UserRole) => UserProfile[];
+  getActiveProviders: () => UserProfile[];
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const [state, dispatch] = useReducer(userReducer, initialState);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  // Check if system needs initialization
-  useEffect(() => {
-    const savedUsers = localStorage.getItem('longa_users');
-    const savedCurrentUser = localStorage.getItem('longa_current_user');
-    const rememberMe = localStorage.getItem('longa_remember_me') === 'true';
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    setError(null);
 
-    if (savedUsers) {
-      const users = JSON.parse(savedUsers);
-      dispatch({ type: 'SET_USERS', payload: users });
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedUsers: UserProfile[] = data.map(user => ({
+        id: user.id,
+        name: user.full_name || user.email,
+        email: user.email,
+        phone: user.phone || '',
+        role: user.role as UserRole,
+        status: user.is_active ? 'active' : 'inactive',
+        rating: typeof user.rating === 'string' ? parseFloat(user.rating) || 0 : (user.rating || 0),
+        jobsCompleted: typeof user.total_jobs === 'string' ? parseInt(user.total_jobs, 10) || 0 : (user.total_jobs || 0),
+        totalEarnings: 0,
+        joinDate: user.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        lastActive: user.updated_at || new Date().toISOString(),
+        isEmailVerified: true,
+        available: user.is_active
+      }));
+
+      setUsers(formattedUsers);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch users';
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateUserStatus = async (userId: string, status: 'active' | 'inactive' | 'pending') => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          is_active: status === 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === userId ? { ...user, status } : user
+        )
+      );
+
+      toast({
+        title: "User updated",
+        description: `User status changed to ${status}`,
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update user status';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateUserProfile = async (userId: string, updates: Partial<UserProfile>) => {
+    try {
+      const dbUpdates: any = {};
       
-      // Check if there are any admin users
-      const hasAdmin = users.some((user: User) => user.role === 'admin');
-      dispatch({ type: 'SET_NEEDS_ADMIN_SETUP', payload: !hasAdmin });
-    }
+      if (updates.name) dbUpdates.full_name = updates.name;
+      if (updates.email) dbUpdates.email = updates.email;
+      if (updates.phone) dbUpdates.phone = updates.phone;
+      if (updates.role) dbUpdates.role = updates.role;
+      if (updates.status !== undefined) dbUpdates.is_active = updates.status === 'active';
+      
+      dbUpdates.updated_at = new Date().toISOString();
 
-    if (savedCurrentUser && rememberMe) {
-      const currentUser = JSON.parse(savedCurrentUser);
-      dispatch({ type: 'SET_CURRENT_USER', payload: currentUser });
-    }
+      const { error } = await supabase
+        .from('users')
+        .update(dbUpdates)
+        .eq('id', userId);
 
-    dispatch({ type: 'SET_REMEMBER_ME', payload: rememberMe });
-    dispatch({ type: 'SET_INITIALIZED', payload: true });
+      if (error) throw error;
+
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === userId ? { ...user, ...updates } : user
+        )
+      );
+
+      toast({
+        title: "Profile updated",
+        description: "User profile has been updated successfully",
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update user profile';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+
+      toast({
+        title: "User deleted",
+        description: "User has been permanently deleted",
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete user';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const searchUsers = (query: string, role?: UserRole): UserProfile[] => {
+    return users.filter(user => {
+      const matchesQuery = query === '' || 
+        user.name.toLowerCase().includes(query.toLowerCase()) ||
+        user.email.toLowerCase().includes(query.toLowerCase()) ||
+        user.phone.includes(query);
+      
+      const matchesRole = !role || user.role === role;
+      
+      return matchesQuery && matchesRole;
+    });
+  };
+
+  const getUserById = (userId: string): UserProfile | undefined => {
+    return users.find(user => user.id === userId);
+  };
+
+  const getUsersByRole = (role: UserRole): UserProfile[] => {
+    return users.filter(user => user.role === role);
+  };
+
+  const getActiveProviders = (): UserProfile[] => {
+    return users.filter(user => user.role === 'provider' && user.status === 'active' && user.available);
+  };
+
+  // Computed values
+  const providers = getUsersByRole('provider');
+  const clients = getUsersByRole('client');
+  const admins = getUsersByRole('admin');
+
+  useEffect(() => {
+    fetchUsers();
   }, []);
 
-  // Save to localStorage when users change
-  useEffect(() => {
-    if (state.isInitialized) {
-      localStorage.setItem('longa_users', JSON.stringify(state.users));
-    }
-  }, [state.users, state.isInitialized]);
-
-  // Save current user to localStorage
-  useEffect(() => {
-    if (state.isInitialized) {
-      if (state.currentUser && state.rememberMe) {
-        localStorage.setItem('longa_current_user', JSON.stringify(state.currentUser));
-      } else {
-        localStorage.removeItem('longa_current_user');
-      }
-    }
-  }, [state.currentUser, state.rememberMe, state.isInitialized]);
-
-  const registerUser = async (userData: UserRegistration): Promise<{ user: User; needsEmailVerification: boolean }> => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    dispatch({ type: 'SET_ERROR', payload: null });
-
-    try {
-      const validatedData = userRegistrationSchema.parse(userData);
-      
-      // Check if email already exists
-      const existingUser = state.users.find(user => user.email === validatedData.email);
-      if (existingUser) {
-        throw new Error('Email already registered');
-      }
-
-      // Check if phone already exists
-      const existingPhone = state.users.find(user => user.phone === validatedData.phone);
-      if (existingPhone) {
-        throw new Error('Phone number already registered');
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const newUser: User = {
-        id: crypto.randomUUID(), // Generate UUID string instead of timestamp
-        name: validatedData.name,
-        email: validatedData.email,
-        phone: validatedData.phone,
-        role: validatedData.role,
-        status: validatedData.role === 'provider' ? 'pending' : 'active',
-        joinDate: new Date().toISOString().split('T')[0],
-        lastActive: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isEmailVerified: false,
-        loginAttempts: 0
-      };
-
-      dispatch({ type: 'ADD_USER', payload: newUser });
-      dispatch({ type: 'SET_LOADING', payload: false });
-      
-      return { user: newUser, needsEmailVerification: true };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Registration failed';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
-    }
-  };
-
-  const loginUser = async (loginData: LoginData): Promise<User> => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    dispatch({ type: 'SET_ERROR', payload: null });
-
-    try {
-      const validatedData = loginSchema.parse(loginData);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const user = state.users.find(u => u.email === validatedData.email && u.role === validatedData.role);
-      if (!user) {
-        throw new Error('Invalid email or role');
-      }
-
-      // Check if account is locked
-      if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
-        throw new Error('Account is temporarily locked due to multiple failed login attempts');
-      }
-
-      // Check if email is verified
-      if (!user.isEmailVerified) {
-        throw new Error('Please verify your email before logging in');
-      }
-
-      if (user.status === 'inactive') {
-        throw new Error('Account is deactivated');
-      }
-
-      if (user.status === 'pending' && user.role === 'provider') {
-        throw new Error('Account is pending approval');
-      }
-
-      // Simulate password check (in real app, this would be properly hashed)
-      // For demo purposes, we'll assume password is correct
-      
-      // Reset login attempts on successful login
-      dispatch({ 
-        type: 'UPDATE_USER', 
-        payload: { 
-          id: user.id, 
-          updates: { 
-            lastActive: new Date().toISOString(),
-            loginAttempts: 0,
-            lockedUntil: undefined
-          }
-        }
-      });
-
-      dispatch({ type: 'SET_CURRENT_USER', payload: user });
-      dispatch({ type: 'SET_REMEMBER_ME', payload: validatedData.rememberMe || false });
-      localStorage.setItem('longa_remember_me', String(validatedData.rememberMe || false));
-      dispatch({ type: 'SET_LOADING', payload: false });
-      
-      return user;
-    } catch (error) {
-      // Increment login attempts on failed login
-      const user = state.users.find(u => u.email === loginData.email && u.role === loginData.role);
-      if (user) {
-        const newAttempts = (user.loginAttempts || 0) + 1;
-        const updates: Partial<User> = { loginAttempts: newAttempts };
-        
-        // Lock account after 5 failed attempts for 30 minutes
-        if (newAttempts >= 5) {
-          updates.lockedUntil = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-        }
-        
-        dispatch({ type: 'UPDATE_USER', payload: { id: user.id, updates } });
-      }
-
-      const errorMessage = error instanceof Error ? error.message : 'Login failed';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
-    }
-  };
-
-  const logoutUser = () => {
-    dispatch({ type: 'SET_CURRENT_USER', payload: null });
-    dispatch({ type: 'SET_ERROR', payload: null });
-    localStorage.removeItem('longa_current_user');
-  };
-
-  const verifyEmail = async (userId: string, token: string): Promise<void> => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // In real app, would verify token against backend
-      dispatch({ 
-        type: 'UPDATE_USER', 
-        payload: { id: userId, updates: { isEmailVerified: true } }
-      });
-      
-      dispatch({ type: 'SET_LOADING', payload: false });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Email verification failed';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
-    }
-  };
-
-  const requestPasswordReset = async (data: PasswordReset): Promise<void> => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    
-    try {
-      const validatedData = passwordResetSchema.parse(data);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const user = state.users.find(u => u.email === validatedData.email);
-      if (user) {
-        const resetToken = Math.random().toString(36).substring(2, 15);
-        const resetExpires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
-        
-        dispatch({ 
-          type: 'UPDATE_USER', 
-          payload: { 
-            id: user.id, 
-            updates: { 
-              passwordResetToken: resetToken,
-              passwordResetExpires: resetExpires
-            }
-          }
-        });
-      }
-      
-      dispatch({ type: 'SET_LOADING', payload: false });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Password reset request failed';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
-    }
-  };
-
-  const resetPassword = async (token: string, newPassword: string): Promise<void> => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const user = state.users.find(u => 
-        u.passwordResetToken === token && 
-        u.passwordResetExpires && 
-        new Date(u.passwordResetExpires) > new Date()
-      );
-      
-      if (!user) {
-        throw new Error('Invalid or expired reset token');
-      }
-      
-      dispatch({ 
-        type: 'UPDATE_USER', 
-        payload: { 
-          id: user.id, 
-          updates: { 
-            passwordResetToken: undefined,
-            passwordResetExpires: undefined,
-            loginAttempts: 0,
-            lockedUntil: undefined
-          }
-        }
-      });
-      
-      dispatch({ type: 'SET_LOADING', payload: false });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Password reset failed';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
-    }
-  };
-
-  const changePassword = async (userId: string, data: ChangePassword): Promise<void> => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    
-    try {
-      const validatedData = changePasswordSchema.parse(data);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // In real app, would verify current password
-      dispatch({ type: 'UPDATE_USER', payload: { id: userId, updates: {} } });
-      dispatch({ type: 'SET_LOADING', payload: false });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Password change failed';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
-    }
-  };
-
-  const setupAdmin = async (data: AdminSetup): Promise<User> => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    dispatch({ type: 'SET_ERROR', payload: null });
-
-    try {
-      const validatedData = adminSetupSchema.parse(data);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const adminUser: User = {
-        id: crypto.randomUUID(),
-        name: validatedData.name,
-        email: validatedData.email,
-        phone: validatedData.phone,
-        role: 'admin',
-        status: 'active',
-        joinDate: new Date().toISOString().split('T')[0],
-        lastActive: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isEmailVerified: true,
-        loginAttempts: 0
-      };
-
-      dispatch({ type: 'ADD_USER', payload: adminUser });
-      dispatch({ type: 'SET_NEEDS_ADMIN_SETUP', payload: false });
-      dispatch({ type: 'SET_LOADING', payload: false });
-      
-      return adminUser;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Admin setup failed';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
-    }
-  };
-
-  const updateUser = async (id: string, updates: UserUpdate): Promise<void> => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    dispatch({ type: 'SET_ERROR', payload: null });
-
-    try {
-      const validatedUpdates = userUpdateSchema.parse(updates);
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      dispatch({ type: 'UPDATE_USER', payload: { id, updates: validatedUpdates } });
-      dispatch({ type: 'SET_LOADING', payload: false });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Update failed';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
-    }
-  };
-
-  const deleteUser = async (id: string): Promise<void> => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    dispatch({ type: 'SET_ERROR', payload: null });
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      dispatch({ type: 'DELETE_USER', payload: id });
-      dispatch({ type: 'SET_LOADING', payload: false });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Delete failed';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
-    }
-  };
-
-  const getUserById = (id: string): User | undefined => {
-    return state.users.find(user => user.id === id);
-  };
-
-  const getUsersByRole = (role: 'client' | 'provider' | 'admin'): User[] => {
-    return state.users.filter(user => user.role === role);
-  };
-
-  const checkInitialization = () => {
-    const hasAdmin = state.users.some(user => user.role === 'admin');
-    dispatch({ type: 'SET_NEEDS_ADMIN_SETUP', payload: !hasAdmin });
-  };
-
-  const value: UserContextType = {
-    ...state,
-    registerUser,
-    loginUser,
-    logoutUser,
-    updateUser,
-    deleteUser,
-    getUserById,
-    getUsersByRole,
-    verifyEmail,
-    requestPasswordReset,
-    resetPassword,
-    changePassword,
-    setupAdmin,
-    checkInitialization
-  };
-
   return (
-    <UserContext.Provider value={value}>
+    <UserContext.Provider value={{
+      users,
+      providers,
+      clients,
+      admins,
+      isLoading,
+      error,
+      fetchUsers,
+      updateUserStatus,
+      updateUserProfile,
+      deleteUser,
+      searchUsers,
+      getUserById,
+      getUsersByRole,
+      getActiveProviders
+    }}>
       {children}
     </UserContext.Provider>
   );

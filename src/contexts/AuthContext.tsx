@@ -1,10 +1,9 @@
-
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
-import { UserProfile, AuthContextType } from '@/types/auth';
+import { UserProfile, AuthContextType, UserRole } from '@/types/auth';
 import { fetchUserProfile, checkAdminSetup } from '@/utils/userProfile';
 import {
   loginUser,
@@ -27,13 +26,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [needsAdminSetup, setNeedsAdminSetup] = useState(false);
   const { toast } = useToast();
 
-  // Initialize auth state
   useEffect(() => {
     let mounted = true;
 
     const initializeAuth = async () => {
       try {
-        // Set up auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
             if (!mounted) return;
@@ -42,7 +39,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setError(null);
 
             if (session?.user) {
-              // Defer profile fetching to avoid deadlocks
               setTimeout(async () => {
                 const profile = await fetchUserProfile(session.user.id);
                 if (mounted) {
@@ -61,7 +57,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         );
 
-        // Check for existing session
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
 
@@ -329,5 +324,5 @@ export const useAuth = () => {
   return context;
 };
 
-// Re-export types for backward compatibility
-export type { UserProfile as User };
+// Export types for backward compatibility
+export type { UserProfile as User, UserRole };

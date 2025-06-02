@@ -22,11 +22,13 @@ export const useSessionManagement = () => {
   const checkSession = useCallback(() => {
     if (user && session && isSessionExpired()) {
       toast.warning('Session Expired', 'You have been logged out due to inactivity');
-      logSecurityEvent({
-        type: 'logout',
-        userId: user.id,
-        details: { reason: 'session_timeout' }
-      });
+      if (user.id) {
+        logSecurityEvent({
+          type: 'logout',
+          userId: user.id,
+          details: { reason: 'session_timeout' }
+        });
+      }
       logout();
     }
   }, [user, session, logout, toast]);

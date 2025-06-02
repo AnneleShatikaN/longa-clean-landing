@@ -1,61 +1,20 @@
+
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
-import { logSecurityEvent, detectSuspiciousActivity, checkRateLimit } from '@/utils/security';
-
-export type UserRole = 'client' | 'provider' | 'admin';
-
-export interface UserProfile {
-  id: string;
-  email: string;
-  full_name: string;
-  name: string;
-  phone: string | null;
-  role: UserRole;
-  avatar_url: string | null;
-  is_active: boolean;
-  rating: number;
-  total_jobs: number;
-  created_at: string;
-  updated_at: string;
-  // Additional properties for compatibility
-  address?: string;
-  profilePicture?: string;
-  bankMobileNumber?: string;
-  paymentMethod?: 'bank_transfer' | 'mobile_money';
-  bankDetails?: {
-    accountNumber?: string;
-    bankName?: string;
-    accountHolder?: string;
-  };
-  servicesOffered?: string[];
-  available?: boolean;
-  status: 'active' | 'inactive' | 'pending';
-  jobsCompleted?: number;
-  totalEarnings?: number;
-  joinDate: string;
-  lastActive: string;
-  isEmailVerified: boolean;
-}
-
-interface AuthContextType {
-  user: UserProfile | null;
-  session: Session | null;
-  isLoading: boolean;
-  error: string | null;
-  isInitialized: boolean;
-  needsAdminSetup: boolean;
-  login: (loginData: LoginData) => Promise<boolean>;
-  signup: (userData: UserRegistration) => Promise<{ success: boolean; needsEmailVerification: boolean }>;
-  logout: () => Promise<void>;
-  requestPasswordReset: (data: PasswordReset) => Promise<boolean>;
-  resetPassword: (token: string, newPassword: string) => Promise<boolean>;
-  changePassword: (data: ChangePassword) => Promise<boolean>;
-  verifyEmail: (userId: string, token: string) => Promise<boolean>;
-  setupAdmin: (data: AdminSetup) => Promise<boolean>;
-}
+import { UserProfile, AuthContextType } from '@/types/auth';
+import { fetchUserProfile, checkAdminSetup } from '@/utils/userProfile';
+import {
+  loginUser,
+  signupUser,
+  logoutUser,
+  requestPasswordResetService,
+  resetPasswordService,
+  changePasswordService,
+  setupAdminService
+} from '@/services/authService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -67,64 +26,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [needsAdminSetup, setNeedsAdminSetup] = useState(false);
   const { toast } = useToast();
-
-  // Check if admin setup is needed
-  const checkAdminSetup = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id')
-        .eq('role', 'admin')
-        .limit(1);
-
-      if (error) throw error;
-      setNeedsAdminSetup(!data || data.length === 0);
-    } catch (error) {
-      console.error('Error checking admin setup:', error);
-      setNeedsAdminSetup(true);
-    }
-  };
-
-  // Fetch user profile from database
-  const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-      
-      // Transform data to match UserProfile interface with proper type conversion
-      const profile: UserProfile = {
-        id: data.id,
-        email: data.email,
-        full_name: data.full_name,
-        name: data.full_name, // Map full_name to name for compatibility
-        phone: data.phone,
-        role: data.role as UserRole,
-        avatar_url: data.avatar_url,
-        is_active: data.is_active,
-        rating: typeof data.rating === 'string' ? parseFloat(data.rating) || 0 : (data.rating || 0),
-        total_jobs: typeof data.total_jobs === 'string' ? parseInt(data.total_jobs) || 0 : (data.total_jobs || 0),
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-        status: data.is_active ? 'active' : 'inactive',
-        joinDate: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-        lastActive: data.updated_at || new Date().toISOString(),
-        isEmailVerified: true, // Assume verified if in database
-        jobsCompleted: typeof data.total_jobs === 'string' ? parseInt(data.total_jobs) || 0 : (data.total_jobs || 0),
-        totalEarnings: 0,
-        available: true
-      };
-      
-      return profile;
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      return null;
-    }
-  };
 
   // Initialize auth state
   useEffect(() => {
@@ -169,7 +70,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(profile);
         }
 
-        await checkAdminSetup();
+        const adminSetupNeeded = await checkAdminSetup();
+        setNeedsAdminSetup(adminSetupNeeded);
         setIsInitialized(true);
         setIsLoading(false);
 
@@ -189,88 +91,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (loginData: LoginData): Promise<boolean> => {
-    // Check rate limiting
-    const rateLimitKey = `login_${loginData.email}`;
-    if (!checkRateLimit(rateLimitKey, 5, 15 * 60 * 1000)) {
-      logSecurityEvent({
-        type: 'failed_login',
-        details: { email: loginData.email, reason: 'rate_limited' }
-      });
-      throw new Error('Too many login attempts. Please try again later.');
-    }
-
     setIsLoading(true);
     setError(null);
 
     try {
-      // Clean up any existing session
-      await supabase.auth.signOut();
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginData.email,
-        password: loginData.password,
+      const success = await loginUser(loginData);
+      
+      toast({
+        title: "Welcome back!",
+        description: "You have been logged in successfully.",
       });
 
-      if (error) throw error;
-
-      if (data.user) {
-        const profile = await fetchUserProfile(data.user.id);
-        
-        if (!profile) {
-          throw new Error('User profile not found');
-        }
-
-        // Verify role matches if specified
-        if (loginData.role && profile.role !== loginData.role) {
-          await supabase.auth.signOut();
-          throw new Error(`Access denied. This account is not registered as a ${loginData.role}.`);
-        }
-
-        // Log successful login
-        logSecurityEvent({
-          type: 'login',
-          userId: profile.id,
-          details: { email: loginData.email, role: profile.role }
-        });
-
-        // Check for suspicious activity
-        const suspiciousCheck = detectSuspiciousActivity({
-          userId: profile.id,
-          action: 'login',
-          timestamp: Date.now(),
-          metadata: { email: loginData.email }
-        });
-
-        if (suspiciousCheck.isSuspicious) {
-          logSecurityEvent({
-            type: 'suspicious_activity',
-            userId: profile.id,
-            details: { reasons: suspiciousCheck.reasons, action: 'login' }
-          });
-        }
-
-        toast({
-          title: "Welcome back!",
-          description: "You have been logged in successfully.",
-        });
-
-        return true;
-      }
-
-      return false;
+      return success;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
       setError(errorMessage);
       
-      // Log failed login
-      logSecurityEvent({
-        type: 'failed_login',
-        details: { 
-          email: loginData.email, 
-          reason: errorMessage
-        }
-      });
-
       toast({
         title: "Login Failed",
         description: errorMessage,
@@ -288,79 +124,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      // Check if email already exists
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('email')
-        .eq('email', userData.email)
-        .single();
+      const result = await signupUser(userData);
 
-      if (existingUser) {
-        throw new Error('An account with this email already exists');
-      }
-
-      // Sign up with Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth`,
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.user) {
-        // Insert user profile into our users table
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: data.user.id,
-            email: userData.email,
-            password_hash: 'managed_by_supabase_auth',
-            full_name: userData.name,
-            phone: userData.phone,
-            role: userData.role,
-            is_active: true,
-            rating: 0,
-            total_jobs: 0,
-          });
-
-        if (profileError) {
-          // If profile creation fails, clean up the auth user
-          console.error('Profile creation failed:', profileError);
-          throw new Error('Failed to create user profile');
-        }
-
-        // Log new user registration
-        logSecurityEvent({
-          type: 'login',
-          userId: data.user.id,
-          details: { 
-            action: 'registration',
-            email: userData.email, 
-            role: userData.role 
-          }
+      if (result.needsEmailVerification) {
+        toast({
+          title: "Registration successful!",
+          description: "Please check your email to verify your account before logging in.",
         });
-
-        const needsEmailVerification = !data.session;
-
-        if (needsEmailVerification) {
-          toast({
-            title: "Registration successful!",
-            description: "Please check your email to verify your account before logging in.",
-          });
-        } else {
-          toast({
-            title: "Account created!",
-            description: "Your account has been created successfully.",
-          });
-        }
-
-        return { success: true, needsEmailVerification };
+      } else {
+        toast({
+          title: "Account created!",
+          description: "Your account has been created successfully.",
+        });
       }
 
-      return { success: false, needsEmailVerification: false };
+      return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Registration failed';
       setError(errorMessage);
@@ -381,15 +159,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
 
     try {
-      if (user) {
-        logSecurityEvent({
-          type: 'logout',
-          userId: user.id,
-          details: { email: user.email }
-        });
-      }
-
-      await supabase.auth.signOut();
+      await logoutUser(user?.id, user?.email);
       setUser(null);
       setSession(null);
       
@@ -409,11 +179,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: `${window.location.origin}/auth`,
-      });
-
-      if (error) throw error;
+      await requestPasswordResetService(data);
 
       toast({
         title: "Reset link sent!",
@@ -442,11 +208,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-
-      if (error) throw error;
+      await resetPasswordService(token, newPassword);
 
       toast({
         title: "Password updated!",
@@ -475,11 +237,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: data.newPassword
-      });
-
-      if (error) throw error;
+      await changePasswordService(data);
 
       toast({
         title: "Password changed!",
@@ -513,46 +271,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      // First create the admin user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard/admin`,
-        }
-      });
+      const success = await setupAdminService(data);
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Insert admin profile
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            email: data.email,
-            password_hash: 'managed_by_supabase_auth',
-            full_name: data.name,
-            phone: data.phone,
-            role: 'admin',
-            is_active: true,
-            rating: 0,
-            total_jobs: 0,
-          });
-
-        if (profileError) throw profileError;
-
+      if (success) {
         setNeedsAdminSetup(false);
         
         toast({
           title: "Admin account created!",
           description: "Your Longa platform is now ready to use.",
         });
-
-        return true;
       }
 
-      return false;
+      return success;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Admin setup failed';
       setError(errorMessage);

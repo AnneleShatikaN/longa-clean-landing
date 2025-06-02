@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +18,7 @@ interface UserProfileProps {
 
 const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   const { user } = useAuth();
-  const { updateUser, isLoading } = useUsers();
+  const { updateUserProfile, isLoading } = useUsers();
   const { toast } = useToast();
   
   const [isEditing, setIsEditing] = useState(false);
@@ -70,7 +69,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     if (!validateForm()) return;
 
     try {
-      await updateUser(user.id, formData);
+      await updateUserProfile(user.id, formData);
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",

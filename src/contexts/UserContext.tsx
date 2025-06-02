@@ -1,50 +1,20 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types/auth';
-
-interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: UserRole;
-  profilePicture?: string;
-  address?: string;
-  bankMobileNumber?: string;
-  paymentMethod?: 'bank_transfer' | 'mobile_money';
-  bankDetails?: {
-    accountNumber?: string;
-    bankName?: string;
-    accountHolder?: string;
-  };
-  servicesOffered?: string[];
-  available?: boolean;
-  status: 'active' | 'inactive' | 'pending';
-  rating: number;
-  jobsCompleted?: number;
-  totalEarnings?: number;
-  joinDate: string;
-  lastActive: string;
-  isEmailVerified: boolean;
-}
-
-interface UserContextType {
-  users: UserProfile[];
-  providers: UserProfile[];
-  clients: UserProfile[];
-  admins: UserProfile[];
-  isLoading: boolean;
-  error: string | null;
-  fetchUsers: () => Promise<void>;
-  updateUserStatus: (userId: string, status: 'active' | 'inactive' | 'pending') => Promise<void>;
-  updateUserProfile: (userId: string, updates: Partial<UserProfile>) => Promise<void>;
-  deleteUser: (userId: string) => Promise<void>;
-  searchUsers: (query: string, role?: UserRole) => UserProfile[];
-  getUserById: (userId: string) => UserProfile | undefined;
-  getUsersByRole: (role: UserRole) => UserProfile[];
-  getActiveProviders: () => UserProfile[];
-}
+import { UserProfile, UserContextType } from '@/types/user';
+import { 
+  fetchUsersFromDatabase, 
+  updateUserStatusInDatabase, 
+  updateUserProfileInDatabase, 
+  deleteUserFromDatabase 
+} from '@/services/userService';
+import { 
+  searchUsers as searchUsersUtil, 
+  getUserById as getUserByIdUtil, 
+  getUsersByRole as getUsersByRoleUtil, 
+  getActiveProviders as getActiveProvidersUtil 
+} from '@/utils/userUtils';
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
@@ -59,29 +29,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const formattedUsers: UserProfile[] = data.map(user => ({
-        id: user.id,
-        name: user.full_name || user.email,
-        email: user.email,
-        phone: user.phone || '',
-        role: user.role as UserRole,
-        status: user.is_active ? 'active' : 'inactive',
-        rating: typeof user.rating === 'string' ? parseFloat(user.rating) || 0 : (user.rating || 0),
-        jobsCompleted: typeof user.total_jobs === 'string' ? parseInt(user.total_jobs, 10) || 0 : (user.total_jobs || 0),
-        totalEarnings: 0,
-        joinDate: user.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-        lastActive: user.updated_at || new Date().toISOString(),
-        isEmailVerified: true,
-        available: user.is_active
-      }));
-
+      const formattedUsers = await fetchUsersFromDatabase();
       setUsers(formattedUsers);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch users';
@@ -98,15 +46,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUserStatus = async (userId: string, status: 'active' | 'inactive' | 'pending') => {
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ 
-          is_active: status === 'active',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId);
-
-      if (error) throw error;
+      await updateUserStatusInDatabase(userId, status);
 
       setUsers(prevUsers =>
         prevUsers.map(user =>
@@ -130,22 +70,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUserProfile = async (userId: string, updates: Partial<UserProfile>) => {
     try {
-      const dbUpdates: any = {};
-      
-      if (updates.name) dbUpdates.full_name = updates.name;
-      if (updates.email) dbUpdates.email = updates.email;
-      if (updates.phone) dbUpdates.phone = updates.phone;
-      if (updates.role) dbUpdates.role = updates.role;
-      if (updates.status !== undefined) dbUpdates.is_active = updates.status === 'active';
-      
-      dbUpdates.updated_at = new Date().toISOString();
-
-      const { error } = await supabase
-        .from('users')
-        .update(dbUpdates)
-        .eq('id', userId);
-
-      if (error) throw error;
+      await updateUserProfileInDatabase(userId, updates);
 
       setUsers(prevUsers =>
         prevUsers.map(user =>
@@ -169,12 +94,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteUser = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId);
-
-      if (error) throw error;
+      await deleteUserFromDatabase(userId);
 
       setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
 
@@ -193,28 +113,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const searchUsers = (query: string, role?: UserRole): UserProfile[] => {
-    return users.filter(user => {
-      const matchesQuery = query === '' || 
-        user.name.toLowerCase().includes(query.toLowerCase()) ||
-        user.email.toLowerCase().includes(query.toLowerCase()) ||
-        user.phone.includes(query);
-      
-      const matchesRole = !role || user.role === role;
-      
-      return matchesQuery && matchesRole;
-    });
+    return searchUsersUtil(users, query, role);
   };
 
   const getUserById = (userId: string): UserProfile | undefined => {
-    return users.find(user => user.id === userId);
+    return getUserByIdUtil(users, userId);
   };
 
   const getUsersByRole = (role: UserRole): UserProfile[] => {
-    return users.filter(user => user.role === role);
+    return getUsersByRoleUtil(users, role);
   };
 
   const getActiveProviders = (): UserProfile[] => {
-    return users.filter(user => user.role === 'provider' && user.status === 'active' && user.available);
+    return getActiveProvidersUtil(users);
   };
 
   // Computed values

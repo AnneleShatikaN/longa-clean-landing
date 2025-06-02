@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Clock, MapPin, User, Calendar, Star, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
+import { useSupabaseBookings, BookingWithRelations } from '@/contexts/SupabaseBookingContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 
@@ -26,8 +25,8 @@ export const RealTimeBookingManager = () => {
     markNotificationAsRead
   } = useSupabaseBookings();
 
-  const [availableJobs, setAvailableJobs] = useState<any[]>([]);
-  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [availableJobs, setAvailableJobs] = useState<BookingWithRelations[]>([]);
+  const [selectedBooking, setSelectedBooking] = useState<BookingWithRelations | null>(null);
   const [rating, setRating] = useState(5);
   const [review, setReview] = useState('');
 
@@ -156,8 +155,8 @@ export const RealTimeBookingManager = () => {
                         <CardContent className="pt-4">
                           <div className="flex justify-between items-start mb-4">
                             <div>
-                              <h3 className="font-semibold text-lg">{job.service?.name}</h3>
-                              <p className="text-gray-600">{job.service?.description}</p>
+                              <h3 className="font-semibold text-lg">{job.service?.name || 'Service'}</h3>
+                              <p className="text-gray-600">{job.service?.description || 'No description'}</p>
                             </div>
                             <Badge className="bg-green-100 text-green-800">
                               N${job.total_amount}
@@ -220,7 +219,7 @@ export const RealTimeBookingManager = () => {
                           <span className="text-sm text-gray-600">
                             {user?.role === 'client' 
                               ? `Provider: ${booking.provider?.full_name || 'Unassigned'}`
-                              : `Client: ${booking.client?.full_name}`
+                              : `Client: ${booking.client?.full_name || 'Unknown'}`
                             }
                           </span>
                         </div>

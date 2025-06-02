@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,7 +20,7 @@ export interface BookingData {
 }
 
 interface SupabaseBookingContextType {
-  bookings: BookingRow[];
+  bookings: BookingWithRelations[];
   notifications: NotificationRow[];
   isLoading: boolean;
   error: string | null;
@@ -31,7 +30,7 @@ interface SupabaseBookingContextType {
   startJob: (bookingId: string) => Promise<void>;
   completeJob: (bookingId: string, rating?: number, review?: string) => Promise<void>;
   cancelBooking: (bookingId: string, reason?: string) => Promise<void>;
-  getAvailableJobs: () => Promise<BookingRow[]>;
+  getAvailableJobs: () => Promise<BookingWithRelations[]>;
   checkAvailability: (providerId: string, date: string, time: string, duration: number) => Promise<boolean>;
   markNotificationAsRead: (notificationId: string) => Promise<void>;
 }
@@ -39,7 +38,7 @@ interface SupabaseBookingContextType {
 const SupabaseBookingContext = createContext<SupabaseBookingContextType | undefined>(undefined);
 
 export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) => {
-  const [bookings, setBookings] = useState<BookingRow[]>([]);
+  const [bookings, setBookings] = useState<BookingWithRelations[]>([]);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -338,7 +337,7 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
     await updateBookingStatus(bookingId, 'cancelled');
   };
 
-  const getAvailableJobs = async (): Promise<BookingRow[]> => {
+  const getAvailableJobs = async (): Promise<BookingWithRelations[]> => {
     try {
       const { data, error } = await supabase
         .from('bookings')

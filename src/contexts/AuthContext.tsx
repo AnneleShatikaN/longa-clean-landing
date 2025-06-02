@@ -107,15 +107,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role: data.role as UserRole,
         avatar_url: data.avatar_url,
         is_active: data.is_active,
-        rating: Number(data.rating) || 0,
-        total_jobs: Number(data.total_jobs) || 0,
+        rating: typeof data.rating === 'string' ? parseFloat(data.rating) || 0 : (data.rating || 0),
+        total_jobs: typeof data.total_jobs === 'string' ? parseInt(data.total_jobs) || 0 : (data.total_jobs || 0),
         created_at: data.created_at,
         updated_at: data.updated_at,
         status: data.is_active ? 'active' : 'inactive',
         joinDate: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         lastActive: data.updated_at || new Date().toISOString(),
         isEmailVerified: true, // Assume verified if in database
-        jobsCompleted: Number(data.total_jobs) || 0,
+        jobsCompleted: typeof data.total_jobs === 'string' ? parseInt(data.total_jobs) || 0 : (data.total_jobs || 0),
         totalEarnings: 0,
         available: true
       };

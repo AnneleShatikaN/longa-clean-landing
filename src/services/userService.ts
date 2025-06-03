@@ -23,7 +23,14 @@ export const fetchUsersFromDatabase = async (): Promise<UserProfile[]> => {
     joinDate: user.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
     lastActive: user.updated_at || new Date().toISOString(),
     isEmailVerified: true,
-    available: user.is_active
+    available: user.is_active,
+    // Database compatibility properties
+    full_name: user.full_name,
+    avatar_url: user.avatar_url,
+    is_active: user.is_active,
+    total_jobs: typeof user.total_jobs === 'string' ? parseInt(user.total_jobs, 10) || 0 : (user.total_jobs || 0),
+    created_at: user.created_at,
+    updated_at: user.updated_at
   }));
 
   return formattedUsers;

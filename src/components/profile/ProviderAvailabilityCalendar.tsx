@@ -1,15 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Clock, Plus, X } from 'lucide-react';
 
 interface TimeSlot {
-  id?: string;
+  id: string;
   start_time: string;
   end_time: string;
   is_available: boolean;
@@ -27,100 +26,47 @@ export const ProviderAvailabilityCalendar: React.FC<ProviderAvailabilityCalendar
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  // Mock function for now - would be replaced with actual Supabase call when table exists
   const fetchAvailability = async (date: Date) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('provider_availability')
-        .select('*')
-        .eq('provider_id', providerId)
-        .eq('date', date.toISOString().split('T')[0]);
-
-      if (error) throw error;
-
-      const slots: TimeSlot[] = data.map(slot => ({
-        id: slot.id,
-        start_time: slot.start_time,
-        end_time: slot.end_time,
-        is_available: slot.is_available
-      }));
-
-      setTimeSlots(slots);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch availability",
-        variant: "destructive"
-      });
-    } finally {
+    setLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setTimeSlots([
+        { id: '1', start_time: '09:00', end_time: '10:00', is_available: true },
+        { id: '2', start_time: '14:00', end_time: '15:00', is_available: true }
+      ]);
       setLoading(false);
-    }
+    }, 500);
   };
 
   const addTimeSlot = async () => {
     if (!selectedDate) return;
 
     const newSlot: TimeSlot = {
+      id: Date.now().toString(),
       start_time: "09:00",
       end_time: "10:00",
       is_available: true
     };
 
-    try {
-      const { data, error } = await supabase
-        .from('provider_availability')
-        .insert({
-          provider_id: providerId,
-          date: selectedDate.toISOString().split('T')[0],
-          start_time: newSlot.start_time,
-          end_time: newSlot.end_time,
-          is_available: newSlot.is_available
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setTimeSlots(prev => [...prev, { ...newSlot, id: data.id }]);
-      
-      toast({
-        title: "Time slot added",
-        description: "New availability slot has been created",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add time slot",
-        variant: "destructive"
-      });
-    }
+    setTimeSlots(prev => [...prev, newSlot]);
+    
+    toast({
+      title: "Time slot added",
+      description: "New availability slot has been created",
+    });
   };
 
   const removeTimeSlot = async (slotId: string) => {
-    try {
-      const { error } = await supabase
-        .from('provider_availability')
-        .delete()
-        .eq('id', slotId);
-
-      if (error) throw error;
-
-      setTimeSlots(prev => prev.filter(slot => slot.id !== slotId));
-      
-      toast({
-        title: "Time slot removed",
-        description: "Availability slot has been deleted",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to remove time slot",
-        variant: "destructive"
-      });
-    }
+    setTimeSlots(prev => prev.filter(slot => slot.id !== slotId));
+    
+    toast({
+      title: "Time slot removed",
+      description: "Availability slot has been deleted",
+    });
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (selectedDate) {
       fetchAvailability(selectedDate);
     }
@@ -164,23 +110,21 @@ export const ProviderAvailabilityCalendar: React.FC<ProviderAvailabilityCalendar
                 {timeSlots.length === 0 ? (
                   <p className="text-gray-500">No availability set for this date</p>
                 ) : (
-                  timeSlots.map((slot, index) => (
-                    <div key={slot.id || index} className="flex items-center justify-between p-2 border rounded">
+                  timeSlots.map((slot) => (
+                    <div key={slot.id} className="flex items-center justify-between p-2 border rounded">
                       <div className="flex items-center space-x-2">
                         <span>{slot.start_time} - {slot.end_time}</span>
                         <Badge variant={slot.is_available ? "default" : "secondary"}>
                           {slot.is_available ? "Available" : "Unavailable"}
                         </Badge>
                       </div>
-                      {slot.id && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeTimeSlot(slot.id!)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeTimeSlot(slot.id)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
                     </div>
                   ))
                 )}

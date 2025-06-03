@@ -1,13 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Plus, Edit, Trash2, Home } from 'lucide-react';
+import { MapPin, Plus, Trash2, Home } from 'lucide-react';
 
 interface Address {
   id: string;
@@ -26,7 +25,6 @@ interface SavedAddressesProps {
 export const SavedAddresses: React.FC<SavedAddressesProps> = ({ userId }) => {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [newAddress, setNewAddress] = useState({
     label: '',
     street_address: '',
@@ -36,114 +34,67 @@ export const SavedAddresses: React.FC<SavedAddressesProps> = ({ userId }) => {
   });
   const { toast } = useToast();
 
+  // Mock function for now - would be replaced with actual Supabase call when table exists
   const fetchAddresses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('user_addresses')
-        .select('*')
-        .eq('user_id', userId)
-        .order('is_default', { ascending: false });
-
-      if (error) throw error;
-      setAddresses(data || []);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch addresses",
-        variant: "destructive"
-      });
-    }
+    // Simulate some default addresses
+    setAddresses([
+      {
+        id: '1',
+        label: 'Home',
+        street_address: '123 Main Street',
+        city: 'Windhoek',
+        region: 'Khomas',
+        postal_code: '9000',
+        is_default: true
+      }
+    ]);
   };
 
   const saveAddress = async () => {
-    try {
-      const { error } = await supabase
-        .from('user_addresses')
-        .insert({
-          user_id: userId,
-          ...newAddress,
-          is_default: addresses.length === 0
-        });
+    const address: Address = {
+      id: Date.now().toString(),
+      ...newAddress,
+      is_default: addresses.length === 0
+    };
 
-      if (error) throw error;
-
-      setNewAddress({
-        label: '',
-        street_address: '',
-        city: '',
-        region: '',
-        postal_code: ''
-      });
-      setIsAddingNew(false);
-      fetchAddresses();
-      
-      toast({
-        title: "Address saved",
-        description: "Your address has been saved successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save address",
-        variant: "destructive"
-      });
-    }
+    setAddresses(prev => [...prev, address]);
+    setNewAddress({
+      label: '',
+      street_address: '',
+      city: '',
+      region: '',
+      postal_code: ''
+    });
+    setIsAddingNew(false);
+    
+    toast({
+      title: "Address saved",
+      description: "Your address has been saved successfully",
+    });
   };
 
   const deleteAddress = async (addressId: string) => {
-    try {
-      const { error } = await supabase
-        .from('user_addresses')
-        .delete()
-        .eq('id', addressId);
-
-      if (error) throw error;
-      
-      fetchAddresses();
-      toast({
-        title: "Address deleted",
-        description: "Address has been removed",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete address",
-        variant: "destructive"
-      });
-    }
+    setAddresses(prev => prev.filter(addr => addr.id !== addressId));
+    
+    toast({
+      title: "Address deleted",
+      description: "Address has been removed",
+    });
   };
 
   const setDefaultAddress = async (addressId: string) => {
-    try {
-      // First remove default from all addresses
-      await supabase
-        .from('user_addresses')
-        .update({ is_default: false })
-        .eq('user_id', userId);
-
-      // Then set the selected address as default
-      const { error } = await supabase
-        .from('user_addresses')
-        .update({ is_default: true })
-        .eq('id', addressId);
-
-      if (error) throw error;
-      
-      fetchAddresses();
-      toast({
-        title: "Default address updated",
-        description: "Default address has been changed",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update default address",
-        variant: "destructive"
-      });
-    }
+    setAddresses(prev => prev.map(addr => ({
+      ...addr,
+      is_default: addr.id === addressId
+    })));
+    
+    toast({
+      title: "Default address updated",
+      description: "Default address has been changed",
+    });
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchAddresses();
   }, [userId]);
 

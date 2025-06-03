@@ -25,7 +25,7 @@ export const useSessionManagement = () => {
       if (user.id) {
         logSecurityEvent({
           type: 'logout',
-          userId: user.id,
+          userId: user.id, // Keep as string - will fix the security function instead
           details: { reason: 'session_timeout' }
         });
       }

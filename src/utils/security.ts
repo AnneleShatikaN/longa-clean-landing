@@ -1,3 +1,4 @@
+
 import DOMPurify from 'dompurify';
 
 // Input sanitization utilities
@@ -113,7 +114,7 @@ export const checkRateLimit = (key: string, maxRequests: number, windowMs: numbe
 
 // Fraud detection patterns
 export const detectSuspiciousActivity = (activity: {
-  userId: number;
+  userId: string; // Changed from number to string
   action: string;
   timestamp: number;
   metadata?: Record<string, any>;
@@ -142,7 +143,7 @@ export const detectSuspiciousActivity = (activity: {
   };
 };
 
-const getRecentActivities = (userId: number, action: string, timeWindow: number): any[] => {
+const getRecentActivities = (userId: string, action: string, timeWindow: number): any[] => {
   // In a real app, this would query the database
   const activities = JSON.parse(localStorage.getItem(`longa_activities_${userId}`) || '[]');
   const cutoff = Date.now() - timeWindow;
@@ -155,7 +156,7 @@ const getRecentActivities = (userId: number, action: string, timeWindow: number)
 // Log security events
 export const logSecurityEvent = (event: {
   type: 'login' | 'logout' | 'failed_login' | 'suspicious_activity' | 'admin_action';
-  userId?: number;
+  userId?: string; // Changed from number to string
   details: Record<string, any>;
 }): void => {
   const securityLog = JSON.parse(localStorage.getItem('longa_security_log') || '[]');

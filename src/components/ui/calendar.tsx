@@ -1,7 +1,7 @@
+
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
-
+import { DayPicker, DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -52,13 +52,41 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
+        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
+        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
       }}
       {...props}
     />
   );
 }
+
 Calendar.displayName = "Calendar";
 
-export { Calendar };
+interface DatePickerWithRangeProps {
+  onSelect: (range: DateRange | undefined) => void;
+  className?: string;
+}
+
+function DatePickerWithRange({ onSelect, className }: DatePickerWithRangeProps) {
+  const [date, setDate] = React.useState<DateRange | undefined>();
+
+  const handleSelect = (range: DateRange | undefined) => {
+    setDate(range);
+    onSelect(range);
+  };
+
+  return (
+    <div className={cn("grid gap-2", className)}>
+      <Calendar
+        initialFocus
+        mode="range"
+        defaultMonth={date?.from}
+        selected={date}
+        onSelect={handleSelect}
+        numberOfMonths={2}
+      />
+    </div>
+  );
+}
+
+export { Calendar, DatePickerWithRange };

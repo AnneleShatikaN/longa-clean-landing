@@ -84,6 +84,13 @@ export type Database = {
             foreignKeyName: "bookings_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -91,7 +98,21 @@ export type Database = {
             foreignKeyName: "bookings_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "bookings_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_popularity"
             referencedColumns: ["id"]
           },
           {
@@ -141,6 +162,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
           },
           {
             foreignKeyName: "notifications_user_id_fkey"
@@ -198,6 +226,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payouts_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
           },
           {
             foreignKeyName: "payouts_provider_id_fkey"
@@ -300,7 +335,61 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      analytics_bookings: {
+        Row: {
+          avg_amount: number | null
+          avg_rating: number | null
+          booking_count: number | null
+          booking_date: string | null
+          status: Database["public"]["Enums"]["booking_status"] | null
+        }
+        Relationships: []
+      }
+      analytics_provider_performance: {
+        Row: {
+          avg_rating: number | null
+          cancelled_jobs: number | null
+          completed_jobs: number | null
+          completion_rate: number | null
+          provider_id: string | null
+          provider_name: string | null
+          total_earnings: number | null
+          total_jobs: number | null
+        }
+        Relationships: []
+      }
+      analytics_revenue: {
+        Row: {
+          gross_revenue: number | null
+          month: string | null
+          platform_commission: number | null
+          provider_payouts: number | null
+          service_type: string | null
+          total_bookings: number | null
+        }
+        Relationships: []
+      }
+      analytics_service_popularity: {
+        Row: {
+          avg_rating: number | null
+          bookings_30d: number | null
+          id: string | null
+          name: string | null
+          service_type: string | null
+          total_bookings: number | null
+          total_revenue: number | null
+        }
+        Relationships: []
+      }
+      analytics_user_stats: {
+        Row: {
+          active_users: number | null
+          new_users_30d: number | null
+          role: string | null
+          total_users: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_provider_payout: {
@@ -316,9 +405,36 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_analytics_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_users: number
+          total_providers: number
+          total_bookings: number
+          completed_bookings: number
+          total_revenue: number
+          avg_rating: number
+        }[]
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_geographic_distribution: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          region: string
+          total_bookings: number
+          total_revenue: number
+        }[]
+      }
+      get_mrr: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          month: string
+          mrr: number
+          growth_rate: number
+        }[]
       }
       send_notification: {
         Args: {

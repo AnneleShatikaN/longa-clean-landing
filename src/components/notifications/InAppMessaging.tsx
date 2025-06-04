@@ -12,22 +12,45 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 
+type MessageWithUser = {
+  id: string;
+  booking_id: string | null;
+  sender_id: string;
+  recipient_id: string;
+  message_type: string;
+  content: string;
+  attachments: any;
+  read: boolean;
+  read_at: string | null;
+  created_at: string;
+  sender?: {
+    full_name: string;
+    avatar_url: string | null;
+  };
+  recipient?: {
+    full_name: string;
+    avatar_url: string | null;
+  };
+};
+
 export const InAppMessaging = () => {
   const { messages, sendMessage } = useNotifications();
   const { user } = useAuth();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
-  const [newRecipient, setNewRecipient] = useState('');
+
+  // Type the messages properly
+  const typedMessages = messages as MessageWithUser[];
 
   // Group messages by conversation (booking or direct message)
-  const conversations = messages.reduce((acc, message) => {
+  const conversations = typedMessages.reduce((acc, message) => {
     const key = message.booking_id || `direct-${[message.sender_id, message.recipient_id].sort().join('-')}`;
     if (!acc[key]) {
       acc[key] = [];
     }
     acc[key].push(message);
     return acc;
-  }, {} as Record<string, typeof messages>);
+  }, {} as Record<string, MessageWithUser[]>);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return;
@@ -45,7 +68,7 @@ export const InAppMessaging = () => {
     setNewMessage('');
   };
 
-  const getConversationTitle = (key: string, conversation: typeof messages) => {
+  const getConversationTitle = (key: string, conversation: MessageWithUser[]) => {
     if (key.startsWith('direct-')) {
       const otherUser = conversation.find(m => m.sender_id !== user?.id);
       return otherUser?.sender?.full_name || 'Unknown User';
@@ -53,7 +76,7 @@ export const InAppMessaging = () => {
     return `Booking Conversation`;
   };
 
-  const getLastMessage = (conversation: typeof messages) => {
+  const getLastMessage = (conversation: MessageWithUser[]) => {
     return conversation.sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )[0];

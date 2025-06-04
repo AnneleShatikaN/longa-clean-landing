@@ -26,24 +26,29 @@ import SubscriptionPackages from "./pages/SubscriptionPackages";
 import NotificationCenter from "./pages/NotificationCenter";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <NotificationProvider>
-            <UserProvider>
-              <ServiceProvider>
-                <BookingProvider>
-                  <SupabaseBookingProvider>
-                    <PayoutProvider>
-                      <DataProvider>
-                        <SessionManager />
-                        <ErrorBoundary>
+          <UserProvider>
+            <ServiceProvider>
+              <BookingProvider>
+                <SupabaseBookingProvider>
+                  <PayoutProvider>
+                    <DataProvider>
+                      <NotificationProvider>
+                        <TooltipProvider>
+                          <SessionManager />
                           <Routes>
                             <Route path="/" element={<Index />} />
                             <Route path="/auth" element={<Auth />} />
@@ -98,18 +103,20 @@ const App = () => (
                             />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
-                        </ErrorBoundary>
-                      </DataProvider>
-                    </PayoutProvider>
-                  </SupabaseBookingProvider>
-                </BookingProvider>
-              </ServiceProvider>
-            </UserProvider>
-          </NotificationProvider>
+                          <Toaster />
+                          <Sonner />
+                        </TooltipProvider>
+                      </NotificationProvider>
+                    </DataProvider>
+                  </PayoutProvider>
+                </SupabaseBookingProvider>
+              </BookingProvider>
+            </ServiceProvider>
+          </UserProvider>
         </AuthProvider>
       </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

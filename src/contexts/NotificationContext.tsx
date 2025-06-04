@@ -41,7 +41,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Fetch user notifications
   const fetchNotifications = async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       const { data, error } = await supabase
@@ -51,7 +51,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return;
+      }
       setNotifications(data || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -60,7 +63,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Fetch notification preferences
   const fetchPreferences = async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       const { data, error } = await supabase
@@ -68,7 +71,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         .select('*')
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching preferences:', error);
+        return;
+      }
       setPreferences(data || []);
     } catch (error) {
       console.error('Error fetching preferences:', error);
@@ -77,7 +83,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Fetch messages
   const fetchMessages = async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       const { data, error } = await supabase
@@ -91,7 +97,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching messages:', error);
+        return;
+      }
       setMessages(data || []);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -100,7 +109,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Fetch support tickets
   const fetchSupportTickets = async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       const { data, error } = await supabase
@@ -109,7 +118,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching support tickets:', error);
+        return;
+      }
       setSupportTickets(data || []);
     } catch (error) {
       console.error('Error fetching support tickets:', error);
@@ -124,7 +136,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         .update({ read: true })
         .eq('id', notificationId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        return;
+      }
 
       setNotifications(prev =>
         prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
@@ -136,7 +151,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Mark all notifications as read
   const markAllAsRead = async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       const { error } = await supabase
@@ -145,7 +160,15 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', user.id)
         .eq('read', false);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking all as read:', error);
+        toast({
+          title: "Error",
+          description: "Failed to mark notifications as read.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       
@@ -165,7 +188,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Update notification preferences
   const updatePreferences = async (type: string, newPreferences: Partial<NotificationPreferencesRow>) => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       const { error } = await supabase
@@ -177,7 +200,15 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           updated_at: new Date().toISOString()
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating preferences:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update notification preferences.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       await fetchPreferences();
       
@@ -197,7 +228,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Send message
   const sendMessage = async (recipientId: string, content: string, bookingId?: string) => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       const { error } = await supabase
@@ -210,7 +241,15 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           message_type: 'text'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error sending message:', error);
+        toast({
+          title: "Error",
+          description: "Failed to send message.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       await fetchMessages();
       
@@ -230,7 +269,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Create support ticket
   const createSupportTicket = async (subject: string, description: string, category: string, priority: string = 'normal') => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       const { error } = await supabase
@@ -244,7 +283,15 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           status: 'open'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating support ticket:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create support ticket.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       await fetchSupportTickets();
       
@@ -264,19 +311,29 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Refresh all data
   const refreshNotifications = async () => {
+    if (!user?.id) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
-    await Promise.all([
-      fetchNotifications(),
-      fetchPreferences(),
-      fetchMessages(),
-      fetchSupportTickets()
-    ]);
-    setIsLoading(false);
+    try {
+      await Promise.all([
+        fetchNotifications(),
+        fetchPreferences(),
+        fetchMessages(),
+        fetchSupportTickets()
+      ]);
+    } catch (error) {
+      console.error('Error refreshing notifications:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Set up real-time subscriptions
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
     // Subscribe to notifications
     const notificationChannel = supabase
@@ -352,14 +409,12 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       supabase.removeChannel(messageChannel);
       supabase.removeChannel(supportChannel);
     };
-  }, [user]);
+  }, [user?.id]);
 
   // Initial data fetch
   useEffect(() => {
-    if (user) {
-      refreshNotifications();
-    }
-  }, [user]);
+    refreshNotifications();
+  }, [user?.id]);
 
   const value: NotificationContextType = {
     notifications,

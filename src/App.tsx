@@ -1,4 +1,5 @@
 
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,43 +23,53 @@ import OneOffBooking from "./pages/OneOffBooking";
 import SubscriptionPackages from "./pages/SubscriptionPackages";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Create QueryClient instance outside of component to prevent recreation
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: false,
+    },
+  },
+});
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <DataProvider>
-            <UserProvider>
-              <ServiceProvider>
-                <PayoutProvider>
-                  <BookingProvider>
-                    <SupabaseBookingProvider>
-                      <SessionManager />
-                      <Routes>
-                        <Route path="/" element={<Index />} />
-                        <Route path="/auth" element={<Auth />} />
-                        <Route path="/admin/setup" element={<AdminSetup />} />
-                        <Route path="/dashboard/client" element={<ClientDashboard />} />
-                        <Route path="/dashboard/provider" element={<ProviderDashboard />} />
-                        <Route path="/dashboard/admin" element={<AdminDashboard />} />
-                        <Route path="/book/one-off" element={<OneOffBooking />} />
-                        <Route path="/book/subscription" element={<SubscriptionPackages />} />
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </SupabaseBookingProvider>
-                  </BookingProvider>
-                </PayoutProvider>
-              </ServiceProvider>
-            </UserProvider>
-          </DataProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App: React.FC = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <DataProvider>
+              <UserProvider>
+                <ServiceProvider>
+                  <PayoutProvider>
+                    <BookingProvider>
+                      <SupabaseBookingProvider>
+                        <SessionManager />
+                        <Routes>
+                          <Route path="/" element={<Index />} />
+                          <Route path="/auth" element={<Auth />} />
+                          <Route path="/admin/setup" element={<AdminSetup />} />
+                          <Route path="/dashboard/client" element={<ClientDashboard />} />
+                          <Route path="/dashboard/provider" element={<ProviderDashboard />} />
+                          <Route path="/dashboard/admin" element={<AdminDashboard />} />
+                          <Route path="/book/one-off" element={<OneOffBooking />} />
+                          <Route path="/book/subscription" element={<SubscriptionPackages />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </SupabaseBookingProvider>
+                    </BookingProvider>
+                  </PayoutProvider>
+                </ServiceProvider>
+              </UserProvider>
+            </DataProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

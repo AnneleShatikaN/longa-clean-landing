@@ -3,455 +3,234 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { PlayCircle, PauseCircle, CheckCircle, XCircle, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
-import { formatCurrency } from '@/utils/financialCalculations';
+import { CheckCircle, XCircle, Clock, AlertCircle, Play, Pause, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface PendingPayout {
-  id: string;
-  providerId: number;
-  providerName: string;
-  amount: number;
-  netAmount: number;
-  taxesWithheld: number;
-  paymentMethod: 'bank_transfer' | 'mobile_money';
-  accountDetails: string;
-  jobIds: number[];
-  urgencyLevel: 'normal' | 'urgent' | 'emergency';
-  createdAt: string;
-  approved: boolean;
-}
 
 interface PayoutBatch {
   id: string;
   name: string;
-  payouts: PendingPayout[];
-  totalAmount: number;
   status: 'draft' | 'pending_approval' | 'approved' | 'processing' | 'completed' | 'failed';
-  approvedBy?: string;
+  totalAmount: number;
+  payoutCount: number;
+  createdAt: string;
   processedAt?: string;
   failureReason?: string;
 }
 
-interface ProcessingStatus {
-  isProcessing: boolean;
-  currentPayout: string | null;
-  progress: number;
-  successCount: number;
-  failureCount: number;
-  errors: string[];
-}
-
 export const PayoutProcessor = () => {
   const { toast } = useToast();
-  const [selectedPayouts, setSelectedPayouts] = useState<string[]>([]);
-  const [processingStatus, setProcessingStatus] = useState<ProcessingStatus>({
-    isProcessing: false,
-    currentPayout: null,
-    progress: 0,
-    successCount: 0,
-    failureCount: 0,
-    errors: []
-  });
-  
-  const [batchName, setBatchName] = useState('');
-  const [autoRetry, setAutoRetry] = useState(true);
-  const [maxRetries, setMaxRetries] = useState(3);
-
-  // Mock pending payouts - in real implementation, this would come from API
-  const pendingPayouts: PendingPayout[] = [
-    {
-      id: '1',
-      providerId: 1,
-      providerName: 'John Cleaning Services',
-      amount: 1250,
-      netAmount: 875,
-      taxesWithheld: 375,
-      paymentMethod: 'bank_transfer',
-      accountDetails: 'FNB - ****5678',
-      jobIds: [101, 102, 103],
-      urgencyLevel: 'normal',
-      createdAt: '2024-05-28',
-      approved: true
-    },
-    {
-      id: '2',
-      providerId: 2,
-      providerName: "Maria's Home Care",
-      amount: 980,
-      netAmount: 686,
-      taxesWithheld: 294,
-      paymentMethod: 'mobile_money',
-      accountDetails: 'MTC - +264 81 234 5678',
-      jobIds: [104, 105],
-      urgencyLevel: 'urgent',
-      createdAt: '2024-05-28',
-      approved: false
-    }
-  ];
-
   const [batches, setBatches] = useState<PayoutBatch[]>([
     {
-      id: 'batch-1',
-      name: 'Weekly Payout - May 28, 2024',
-      payouts: pendingPayouts.slice(0, 1),
-      totalAmount: 875,
-      status: 'completed',
-      approvedBy: 'Admin User',
-      processedAt: '2024-05-28T10:30:00Z'
+      id: '1',
+      name: 'Weekly Batch #2024-23',
+      status: 'approved',
+      totalAmount: 25650,
+      payoutCount: 45,
+      createdAt: '2024-06-01'
+    },
+    {
+      id: '2', 
+      name: 'Emergency Payouts',
+      status: 'processing',
+      totalAmount: 1200,
+      payoutCount: 3,
+      createdAt: '2024-06-01'
     }
   ]);
+  
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const togglePayoutSelection = (payoutId: string) => {
-    setSelectedPayouts(prev => 
-      prev.includes(payoutId) 
-        ? prev.filter(id => id !== payoutId)
-        : [...prev, payoutId]
-    );
-  };
-
-  const selectAllPayouts = () => {
-    const approvedPayouts = pendingPayouts.filter(p => p.approved).map(p => p.id);
-    setSelectedPayouts(approvedPayouts);
-  };
-
-  const createBatch = () => {
-    if (selectedPayouts.length === 0) {
-      toast({
-        title: "No Payouts Selected",
-        description: "Please select at least one approved payout to create a batch.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!batchName) {
-      toast({
-        title: "Batch Name Required",
-        description: "Please enter a name for this payout batch.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const selectedPayoutData = pendingPayouts.filter(p => selectedPayouts.includes(p.id));
-    const totalAmount = selectedPayoutData.reduce((sum, p) => sum + p.netAmount, 0);
-
-    const newBatch: PayoutBatch = {
-      id: `batch-${Date.now()}`,
-      name: batchName,
-      payouts: selectedPayoutData,
-      totalAmount,
-      status: 'draft'
-    };
-
-    setBatches(prev => [newBatch, ...prev]);
-    setSelectedPayouts([]);
-    setBatchName('');
-
-    toast({
-      title: "Batch Created",
-      description: `Payout batch "${batchName}" created with ${selectedPayoutData.length} payouts.`
-    });
-  };
-
-  const processBatch = async (batchId: string) => {
-    const batch = batches.find(b => b.id === batchId);
-    if (!batch) return;
-
-    setProcessingStatus({
-      isProcessing: true,
-      currentPayout: null,
-      progress: 0,
-      successCount: 0,
-      failureCount: 0,
-      errors: []
-    });
-
-    // Update batch status
-    setBatches(prev => prev.map(b => 
-      b.id === batchId ? { ...b, status: 'processing' } : b
-    ));
-
-    // Simulate processing each payout
-    for (let i = 0; i < batch.payouts.length; i++) {
-      const payout = batch.payouts[i];
-      
-      setProcessingStatus(prev => ({
-        ...prev,
-        currentPayout: payout.providerName,
-        progress: ((i + 1) / batch.payouts.length) * 100
-      }));
-
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Simulate success/failure (90% success rate)
-      const isSuccess = Math.random() > 0.1;
-      
-      if (isSuccess) {
-        setProcessingStatus(prev => ({
-          ...prev,
-          successCount: prev.successCount + 1
-        }));
-      } else {
-        setProcessingStatus(prev => ({
-          ...prev,
-          failureCount: prev.failureCount + 1,
-          errors: [...prev.errors, `Failed to process payout for ${payout.providerName}: Network timeout`]
-        }));
-      }
-    }
-
-    // Finalize processing
-    const finalStatus = processingStatus.failureCount === 0 ? 'completed' : 'failed';
-    
-    setBatches(prev => prev.map(b => 
-      b.id === batchId ? { 
-        ...b, 
-        status: finalStatus,
-        processedAt: new Date().toISOString(),
-        failureReason: processingStatus.failureCount > 0 ? `${processingStatus.failureCount} payouts failed` : undefined
-      } : b
-    ));
-
-    setProcessingStatus(prev => ({ ...prev, isProcessing: false, currentPayout: null }));
-
-    toast({
-      title: "Batch Processing Complete",
-      description: `${processingStatus.successCount} payouts successful, ${processingStatus.failureCount} failed.`,
-      variant: processingStatus.failureCount > 0 ? "destructive" : "default"
-    });
-  };
-
-  const retryFailedPayouts = async (batchId: string) => {
-    // Implementation for retrying failed payouts
-    toast({
-      title: "Retrying Failed Payouts",
-      description: "Processing failed payouts with retry logic..."
-    });
-  };
-
-  const urgencyColor = (level: string) => {
-    switch (level) {
-      case 'emergency': return 'bg-red-100 text-red-800';
-      case 'urgent': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'failed': return <XCircle className="h-4 w-4 text-red-600" />;
+      case 'processing': return <RefreshCw className="h-4 w-4 text-blue-600 animate-spin" />;
+      case 'approved': return <Play className="h-4 w-4 text-green-600" />;
+      default: return <Clock className="h-4 w-4 text-yellow-600" />;
     }
   };
 
-  const statusColor = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
       case 'failed': return 'bg-red-100 text-red-800';
-      case 'approved': return 'bg-purple-100 text-purple-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'pending_approval': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleProcessBatch = async (batchId: string) => {
+    setIsProcessing(true);
+    setProcessingProgress(0);
+
+    try {
+      // Simulate processing with progress updates
+      for (let i = 0; i <= 100; i += 10) {
+        setProcessingProgress(i);
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      setBatches(prev => prev.map(batch => 
+        batch.id === batchId 
+          ? { ...batch, status: 'completed', processedAt: new Date().toISOString().split('T')[0] }
+          : batch
+      ));
+
+      toast({
+        title: "Batch Processed Successfully",
+        description: "All payouts in the batch have been processed.",
+      });
+    } catch (error) {
+      setBatches(prev => prev.map(batch => 
+        batch.id === batchId 
+          ? { ...batch, status: 'failed', failureReason: 'Network connection failed' }
+          : batch
+      ));
+
+      toast({
+        title: "Processing Failed",
+        description: "Batch processing failed. Please retry.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+      setProcessingProgress(0);
+    }
+  };
+
+  const handleRetryBatch = async (batchId: string) => {
+    setBatches(prev => prev.map(batch => 
+      batch.id === batchId 
+        ? { ...batch, status: 'approved', failureReason: undefined }
+        : batch
+    ));
+    
+    toast({
+      title: "Batch Reset",
+      description: "Batch is ready for retry processing.",
+    });
   };
 
   return (
     <div className="space-y-6">
-      {/* Batch Creation */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Payout Batch</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="batchName">Batch Name</Label>
-                <Input
-                  id="batchName"
-                  value={batchName}
-                  onChange={(e) => setBatchName(e.target.value)}
-                  placeholder="Weekly Payout - May 28, 2024"
-                />
-              </div>
-              
-              <div className="flex items-center space-x-2 pt-6">
-                <Checkbox
-                  id="autoRetry"
-                  checked={autoRetry}
-                  onCheckedChange={(checked) => setAutoRetry(checked === true)}
-                />
-                <Label htmlFor="autoRetry">Auto-retry failed payments</Label>
-              </div>
-              
-              <div>
-                <Label htmlFor="maxRetries">Max Retries</Label>
-                <Select value={maxRetries.toString()} onValueChange={(value) => setMaxRetries(parseInt(value))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 retry</SelectItem>
-                    <SelectItem value="3">3 retries</SelectItem>
-                    <SelectItem value="5">5 retries</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex space-x-2">
-              <Button onClick={selectAllPayouts}>Select All Approved</Button>
-              <Button onClick={createBatch} disabled={selectedPayouts.length === 0}>
-                Create Batch ({selectedPayouts.length})
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Processing Status */}
-      {processingStatus.isProcessing && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-              Processing Payouts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Progress</span>
-                  <span>{Math.round(processingStatus.progress)}%</span>
-                </div>
-                <Progress value={processingStatus.progress} />
-              </div>
-              
-              {processingStatus.currentPayout && (
-                <Alert>
-                  <Clock className="h-4 w-4" />
-                  <AlertDescription>
-                    Currently processing: {processingStatus.currentPayout}
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-green-600">{processingStatus.successCount}</div>
-                  <div className="text-sm text-gray-600">Successful</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-red-600">{processingStatus.failureCount}</div>
-                  <div className="text-sm text-gray-600">Failed</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{processingStatus.successCount + processingStatus.failureCount}</div>
-                  <div className="text-sm text-gray-600">Total Processed</div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Pending Payouts */}
       <Card>
         <CardHeader>
-          <CardTitle>Pending Payouts</CardTitle>
+          <CardTitle>Batch Processing Status</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {pendingPayouts.map((payout) => (
-              <div key={payout.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <Checkbox
-                    checked={selectedPayouts.includes(payout.id)}
-                    onCheckedChange={() => togglePayoutSelection(payout.id)}
-                    disabled={!payout.approved}
-                  />
-                  <div>
-                    <h4 className="font-medium">{payout.providerName}</h4>
-                    <p className="text-sm text-gray-600">
-                      {payout.accountDetails} • {payout.jobIds.length} jobs
-                    </p>
-                    <div className="flex space-x-2 mt-1">
-                      <Badge className={urgencyColor(payout.urgencyLevel)}>
-                        {payout.urgencyLevel}
-                      </Badge>
-                      <Badge variant={payout.approved ? "default" : "secondary"}>
-                        {payout.approved ? "Approved" : "Pending Approval"}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold">{formatCurrency(payout.netAmount)}</div>
-                  <div className="text-sm text-gray-600">
-                    Gross: {formatCurrency(payout.amount)}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    Tax: {formatCurrency(payout.taxesWithheld)}
-                  </div>
-                </div>
+          {isProcessing ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span>Processing payouts...</span>
+                <span>{processingProgress}%</span>
               </div>
-            ))}
-          </div>
+              <Progress value={processingProgress} className="w-full" />
+            </div>
+          ) : (
+            <p className="text-gray-600">No active processing</p>
+          )}
         </CardContent>
       </Card>
 
-      {/* Payout Batches */}
+      {/* Batch Management */}
       <Card>
         <CardHeader>
           <CardTitle>Payout Batches</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {batches.map((batch) => (
-              <div key={batch.id} className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h4 className="font-medium">{batch.name}</h4>
-                    <p className="text-sm text-gray-600">
-                      {batch.payouts.length} payouts • {formatCurrency(batch.totalAmount)} total
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge className={statusColor(batch.status)}>
-                      {batch.status.replace('_', ' ')}
-                    </Badge>
-                    {batch.status === 'draft' && (
-                      <Button size="sm" onClick={() => processBatch(batch.id)}>
-                        <PlayCircle className="h-4 w-4 mr-1" />
-                        Process
-                      </Button>
-                    )}
-                    {batch.status === 'failed' && (
-                      <Button size="sm" variant="outline" onClick={() => retryFailedPayouts(batch.id)}>
-                        <RefreshCw className="h-4 w-4 mr-1" />
-                        Retry
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                
-                {batch.status === 'completed' && batch.processedAt && (
-                  <p className="text-sm text-green-600 flex items-center">
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Completed on {new Date(batch.processedAt).toLocaleString()}
-                  </p>
-                )}
-                
-                {batch.status === 'failed' && batch.failureReason && (
-                  <p className="text-sm text-red-600 flex items-center">
-                    <XCircle className="h-4 w-4 mr-1" />
-                    {batch.failureReason}
-                  </p>
-                )}
-              </div>
-            ))}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Batch Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Payout Count</TableHead>
+                <TableHead>Total Amount</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Processed</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {batches.map((batch) => (
+                <TableRow key={batch.id}>
+                  <TableCell className="font-medium">{batch.name}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(batch.status)}
+                      <Badge className={getStatusColor(batch.status)}>
+                        {batch.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                  </TableCell>
+                  <TableCell>{batch.payoutCount}</TableCell>
+                  <TableCell className="font-medium">N${batch.totalAmount.toLocaleString()}</TableCell>
+                  <TableCell>{batch.createdAt}</TableCell>
+                  <TableCell>{batch.processedAt || '-'}</TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      {batch.status === 'approved' && (
+                        <Button 
+                          size="sm"
+                          onClick={() => handleProcessBatch(batch.id)}
+                          disabled={isProcessing}
+                        >
+                          <Play className="h-3 w-3 mr-1" />
+                          Process
+                        </Button>
+                      )}
+                      {batch.status === 'failed' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleRetryBatch(batch.id)}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Retry
+                        </Button>
+                      )}
+                      {batch.status === 'processing' && (
+                        <Button size="sm" variant="outline" disabled>
+                          <Pause className="h-3 w-3 mr-1" />
+                          Processing...
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button className="h-20 flex-col gap-2">
+              <Play className="h-6 w-6" />
+              Create New Batch
+            </Button>
+            <Button variant="outline" className="h-20 flex-col gap-2">
+              <AlertCircle className="h-6 w-6" />
+              Process Emergency Payouts
+            </Button>
+            <Button variant="outline" className="h-20 flex-col gap-2">
+              <RefreshCw className="h-6 w-6" />
+              Retry Failed Batches
+            </Button>
           </div>
         </CardContent>
       </Card>

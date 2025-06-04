@@ -124,6 +124,72 @@ export type Database = {
           },
         ]
       }
+      financial_reconciliation: {
+        Row: {
+          created_at: string | null
+          discrepancy_amount: number
+          id: string
+          notes: string | null
+          period_end: string
+          period_start: string
+          platform_commission: number
+          reconciled_amount: number
+          reconciled_at: string | null
+          reconciled_by: string | null
+          status: string | null
+          taxes_withheld: number
+          total_payouts: number
+          total_revenue: number
+        }
+        Insert: {
+          created_at?: string | null
+          discrepancy_amount?: number
+          id?: string
+          notes?: string | null
+          period_end: string
+          period_start: string
+          platform_commission?: number
+          reconciled_amount?: number
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          status?: string | null
+          taxes_withheld?: number
+          total_payouts?: number
+          total_revenue?: number
+        }
+        Update: {
+          created_at?: string | null
+          discrepancy_amount?: number
+          id?: string
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          platform_commission?: number
+          reconciled_amount?: number
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          status?: string | null
+          taxes_withheld?: number
+          total_payouts?: number
+          total_revenue?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_reconciliation_reconciled_by_fkey"
+            columns: ["reconciled_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "financial_reconciliation_reconciled_by_fkey"
+            columns: ["reconciled_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           booking_id: string | null
@@ -179,52 +245,270 @@ export type Database = {
           },
         ]
       }
+      payout_analytics: {
+        Row: {
+          average_payout: number | null
+          commission_paid: number | null
+          created_at: string | null
+          id: string
+          jobs_completed: number | null
+          month: string
+          payment_method_used: string | null
+          payout_frequency: string | null
+          provider_id: string | null
+          taxes_withheld: number | null
+          total_earnings: number | null
+          total_payouts: number | null
+        }
+        Insert: {
+          average_payout?: number | null
+          commission_paid?: number | null
+          created_at?: string | null
+          id?: string
+          jobs_completed?: number | null
+          month: string
+          payment_method_used?: string | null
+          payout_frequency?: string | null
+          provider_id?: string | null
+          taxes_withheld?: number | null
+          total_earnings?: number | null
+          total_payouts?: number | null
+        }
+        Update: {
+          average_payout?: number | null
+          commission_paid?: number | null
+          created_at?: string | null
+          id?: string
+          jobs_completed?: number | null
+          month?: string
+          payment_method_used?: string | null
+          payout_frequency?: string | null
+          provider_id?: string | null
+          taxes_withheld?: number | null
+          total_earnings?: number | null
+          total_payouts?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_analytics_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payout_analytics_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payout_batches: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          batch_name: string
+          created_at: string | null
+          created_by: string | null
+          failure_reason: string | null
+          id: string
+          notes: string | null
+          payout_count: number
+          processed_at: string | null
+          processed_by: string | null
+          status: string | null
+          total_amount: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          batch_name: string
+          created_at?: string | null
+          created_by?: string | null
+          failure_reason?: string | null
+          id?: string
+          notes?: string | null
+          payout_count?: number
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string | null
+          total_amount?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          batch_name?: string
+          created_at?: string | null
+          created_by?: string | null
+          failure_reason?: string | null
+          id?: string
+          notes?: string | null
+          payout_count?: number
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string | null
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_batches_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payout_batches_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payout_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_batches_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payout_batches_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payouts: {
         Row: {
           amount: number
+          approved_at: string | null
+          approved_by: string | null
+          batch_id: string | null
           booking_id: string | null
           created_at: string | null
+          external_reference: string | null
+          failure_reason: string | null
+          gross_amount: number | null
           id: string
+          net_amount: number | null
           notes: string | null
           payment_details: string | null
           payment_method: string | null
+          payment_method_id: string | null
           payout_type: string
+          platform_commission: number | null
           processed_at: string | null
           provider_id: string
+          retry_count: number | null
+          scheduled_date: string | null
           status: string | null
+          tax_withheld: number | null
+          urgency_level: string | null
         }
         Insert: {
           amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          batch_id?: string | null
           booking_id?: string | null
           created_at?: string | null
+          external_reference?: string | null
+          failure_reason?: string | null
+          gross_amount?: number | null
           id?: string
+          net_amount?: number | null
           notes?: string | null
           payment_details?: string | null
           payment_method?: string | null
+          payment_method_id?: string | null
           payout_type: string
+          platform_commission?: number | null
           processed_at?: string | null
           provider_id: string
+          retry_count?: number | null
+          scheduled_date?: string | null
           status?: string | null
+          tax_withheld?: number | null
+          urgency_level?: string | null
         }
         Update: {
           amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          batch_id?: string | null
           booking_id?: string | null
           created_at?: string | null
+          external_reference?: string | null
+          failure_reason?: string | null
+          gross_amount?: number | null
           id?: string
+          net_amount?: number | null
           notes?: string | null
           payment_details?: string | null
           payment_method?: string | null
+          payment_method_id?: string | null
           payout_type?: string
+          platform_commission?: number | null
           processed_at?: string | null
           provider_id?: string
+          retry_count?: number | null
+          scheduled_date?: string | null
           status?: string | null
+          tax_withheld?: number | null
+          urgency_level?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payouts_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payouts_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payouts_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "payout_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payouts_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payouts_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "provider_payment_methods"
             referencedColumns: ["id"]
           },
           {
@@ -236,6 +520,126 @@ export type Database = {
           },
           {
             foreignKeyName: "payouts_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_earnings_summaries: {
+        Row: {
+          document_url: string | null
+          generated_at: string | null
+          id: string
+          jobs_completed: number | null
+          provider_id: string | null
+          quarter: number | null
+          total_commission_paid: number | null
+          total_gross_earnings: number | null
+          total_net_earnings: number | null
+          total_taxes_withheld: number | null
+          year: number
+        }
+        Insert: {
+          document_url?: string | null
+          generated_at?: string | null
+          id?: string
+          jobs_completed?: number | null
+          provider_id?: string | null
+          quarter?: number | null
+          total_commission_paid?: number | null
+          total_gross_earnings?: number | null
+          total_net_earnings?: number | null
+          total_taxes_withheld?: number | null
+          year: number
+        }
+        Update: {
+          document_url?: string | null
+          generated_at?: string | null
+          id?: string
+          jobs_completed?: number | null
+          provider_id?: string | null
+          quarter?: number | null
+          total_commission_paid?: number | null
+          total_gross_earnings?: number | null
+          total_net_earnings?: number | null
+          total_taxes_withheld?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_earnings_summaries_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_earnings_summaries_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_payment_methods: {
+        Row: {
+          account_holder_name: string
+          account_number: string | null
+          bank_name: string | null
+          branch_code: string | null
+          created_at: string | null
+          id: string
+          is_primary: boolean | null
+          is_verified: boolean | null
+          method_type: string
+          mobile_number: string | null
+          provider_id: string | null
+          updated_at: string | null
+          verification_date: string | null
+        }
+        Insert: {
+          account_holder_name: string
+          account_number?: string | null
+          bank_name?: string | null
+          branch_code?: string | null
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          method_type: string
+          mobile_number?: string | null
+          provider_id?: string | null
+          updated_at?: string | null
+          verification_date?: string | null
+        }
+        Update: {
+          account_holder_name?: string
+          account_number?: string | null
+          bank_name?: string | null
+          branch_code?: string | null
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          method_type?: string
+          mobile_number?: string | null
+          provider_id?: string | null
+          updated_at?: string | null
+          verification_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_payment_methods_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_payment_methods_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -392,6 +796,19 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_enhanced_payout: {
+        Args: {
+          service_id: string
+          client_price: number
+          is_emergency?: boolean
+        }
+        Returns: {
+          gross_amount: number
+          platform_commission: number
+          tax_withheld: number
+          net_amount: number
+        }[]
+      }
       calculate_provider_payout: {
         Args: { service_id: string; client_price: number }
         Returns: number
@@ -435,6 +852,10 @@ export type Database = {
           mrr: number
           growth_rate: number
         }[]
+      }
+      perform_financial_reconciliation: {
+        Args: { start_date: string; end_date: string }
+        Returns: string
       }
       send_notification: {
         Args: {

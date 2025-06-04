@@ -3,50 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData, ServiceType } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Switch } from '@/components/ui/switch';
-import { Toggle } from '@/components/ui/toggle';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Loading } from '@/components/ui/loading';
-import { PayoutSystemTabs } from '@/components/admin/PayoutSystemTabs';
-import { AnalyticsDashboard } from '@/components/admin/analytics/AnalyticsDashboard';
-import { 
-  Users, 
-  UserCheck, 
-  Calendar, 
-  DollarSign, 
-  TrendingUp, 
-  Activity,
-  Settings,
-  Eye,
-  Edit,
-  Ban,
-  CheckCircle,
-  Clock,
-  XCircle,
-  Plus,
-  Save,
-  Filter,
-  CreditCard,
-  AlertCircle,
-  Trash2,
-  PieChart,
-  BarChart3,
-  Download,
-  Wallet,
-  Target,
-  Briefcase
-} from 'lucide-react';
+import { Users, BarChart3, TrendingUp, DollarSign, Calendar, CheckCircle, XCircle, Clock, RefreshCw, Eye, Edit, Trash2, UserPlus, Wrench, CreditCard, MessageSquare } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart, Line, Pie } from 'recharts';
+import { ServiceManagement } from '@/components/admin/ServiceManagement';
+import { PayoutSystemTabs } from '@/components/admin/PayoutSystemTabs';
+import { FinancialManagement } from '@/components/admin/FinancialManagement';
+import { AnalyticsDashboard } from '@/components/admin/analytics/AnalyticsDashboard';
+import { SupportSystem } from '@/components/admin/support/SupportSystem';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();

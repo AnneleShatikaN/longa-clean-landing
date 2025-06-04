@@ -124,6 +124,45 @@ export type Database = {
           },
         ]
       }
+      email_templates: {
+        Row: {
+          created_at: string | null
+          html_content: string
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string
+          template_type: string
+          text_content: string | null
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          html_content: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject: string
+          template_type: string
+          text_content?: string | null
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          html_content?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string
+          template_type?: string
+          text_content?: string | null
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       financial_reconciliation: {
         Row: {
           created_at: string | null
@@ -190,33 +229,242 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          attachments: Json | null
+          booking_id: string | null
+          content: string
+          created_at: string | null
+          id: string
+          message_type: string | null
+          read: boolean | null
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          booking_id?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          message_type?: string | null
+          read?: boolean | null
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          booking_id?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          message_type?: string | null
+          read?: boolean | null
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_delivery_log: {
+        Row: {
+          attempt_count: number | null
+          channel: string
+          created_at: string | null
+          delivered_at: string | null
+          delivery_details: Json | null
+          delivery_status: string
+          error_message: string | null
+          external_id: string | null
+          failed_at: string | null
+          id: string
+          notification_id: string | null
+        }
+        Insert: {
+          attempt_count?: number | null
+          channel: string
+          created_at?: string | null
+          delivered_at?: string | null
+          delivery_details?: Json | null
+          delivery_status: string
+          error_message?: string | null
+          external_id?: string | null
+          failed_at?: string | null
+          id?: string
+          notification_id?: string | null
+        }
+        Update: {
+          attempt_count?: number | null
+          channel?: string
+          created_at?: string | null
+          delivered_at?: string | null
+          delivery_details?: Json | null
+          delivery_status?: string
+          error_message?: string | null
+          external_id?: string | null
+          failed_at?: string | null
+          id?: string
+          notification_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_delivery_log_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          email_enabled: boolean | null
+          id: string
+          in_app_enabled: boolean | null
+          push_enabled: boolean | null
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          sms_enabled: boolean | null
+          timezone: string | null
+          type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          in_app_enabled?: boolean | null
+          push_enabled?: boolean | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean | null
+          timezone?: string | null
+          type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          in_app_enabled?: boolean | null
+          push_enabled?: boolean | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean | null
+          timezone?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           booking_id: string | null
+          channel: string
           created_at: string | null
+          data: Json | null
+          delivered: boolean | null
+          delivery_attempted_at: string | null
+          delivery_failed_reason: string | null
+          expires_at: string | null
           id: string
           message: string
+          priority: string | null
           read: boolean | null
+          support_ticket_id: string | null
           title: string
           type: string
           user_id: string | null
         }
         Insert: {
           booking_id?: string | null
+          channel: string
           created_at?: string | null
+          data?: Json | null
+          delivered?: boolean | null
+          delivery_attempted_at?: string | null
+          delivery_failed_reason?: string | null
+          expires_at?: string | null
           id?: string
           message: string
+          priority?: string | null
           read?: boolean | null
+          support_ticket_id?: string | null
           title: string
           type: string
           user_id?: string | null
         }
         Update: {
           booking_id?: string | null
+          channel?: string
           created_at?: string | null
+          data?: Json | null
+          delivered?: boolean | null
+          delivery_attempted_at?: string | null
+          delivery_failed_reason?: string | null
+          expires_at?: string | null
           id?: string
           message?: string
+          priority?: string | null
           read?: boolean | null
+          support_ticket_id?: string | null
           title?: string
           type?: string
           user_id?: string | null
@@ -692,6 +940,142 @@ export type Database = {
         }
         Relationships: []
       }
+      support_ticket_responses: {
+        Row: {
+          attachments: Json | null
+          created_at: string | null
+          id: string
+          is_internal: boolean | null
+          message: string
+          ticket_id: string | null
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          created_at?: string | null
+          id?: string
+          is_internal?: boolean | null
+          message: string
+          ticket_id?: string | null
+          user_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          created_at?: string | null
+          id?: string
+          is_internal?: boolean | null
+          message?: string
+          ticket_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_responses_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_responses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "support_ticket_responses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          assigned_to: string | null
+          booking_id: string | null
+          category: string
+          created_at: string | null
+          description: string
+          id: string
+          priority: string | null
+          resolution: string | null
+          resolved_at: string | null
+          status: string | null
+          subject: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          booking_id?: string | null
+          category: string
+          created_at?: string | null
+          description: string
+          id?: string
+          priority?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string | null
+          subject: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          booking_id?: string | null
+          category?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          priority?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string | null
+          subject?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "support_tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "support_tickets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
@@ -858,13 +1242,23 @@ export type Database = {
         Returns: string
       }
       send_notification: {
-        Args: {
-          user_id: string
-          notification_type: string
-          title: string
-          message: string
-          booking_id?: string
-        }
+        Args:
+          | {
+              p_user_id: string
+              p_type: string
+              p_title: string
+              p_message: string
+              p_data?: Json
+              p_booking_id?: string
+              p_priority?: string
+            }
+          | {
+              user_id: string
+              notification_type: string
+              title: string
+              message: string
+              booking_id?: string
+            }
         Returns: string
       }
     }

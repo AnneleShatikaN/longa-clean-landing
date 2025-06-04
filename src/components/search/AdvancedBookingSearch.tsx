@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useBookingSearch, BookingSearchFilters } from '@/hooks/useBookingSearch';
 import { format } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 
 const AdvancedBookingSearch: React.FC = () => {
   const [filters, setFilters] = useState<BookingSearchFilters>({
@@ -23,7 +24,7 @@ const AdvancedBookingSearch: React.FC = () => {
   });
   
   const [showFilters, setShowFilters] = useState(false);
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   
   const { searchBookings, exportBookings, bookings, isLoading } = useBookingSearch();
@@ -36,12 +37,12 @@ const AdvancedBookingSearch: React.FC = () => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleDateRangeChange = (range: { from?: Date; to?: Date }) => {
+  const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
     setFilters(prev => ({
       ...prev,
-      dateFrom: range.from ? format(range.from, 'yyyy-MM-dd') : undefined,
-      dateTo: range.to ? format(range.to, 'yyyy-MM-dd') : undefined
+      dateFrom: range?.from ? format(range.from, 'yyyy-MM-dd') : undefined,
+      dateTo: range?.to ? format(range.to, 'yyyy-MM-dd') : undefined
     }));
   };
 
@@ -53,7 +54,7 @@ const AdvancedBookingSearch: React.FC = () => {
       sortBy: 'created_at',
       sortOrder: 'DESC'
     });
-    setDateRange({});
+    setDateRange(undefined);
   };
 
   const getStatusColor = (status: string) => {
@@ -151,7 +152,7 @@ const AdvancedBookingSearch: React.FC = () => {
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="w-full justify-start text-left font-normal">
                         <Calendar className="mr-2 h-4 w-4" />
-                        {dateRange.from ? (
+                        {dateRange?.from ? (
                           dateRange.to ? (
                             <>
                               {format(dateRange.from, "LLL dd, y")} -{" "}
@@ -169,7 +170,7 @@ const AdvancedBookingSearch: React.FC = () => {
                       <CalendarComponent
                         initialFocus
                         mode="range"
-                        defaultMonth={dateRange.from}
+                        defaultMonth={dateRange?.from}
                         selected={dateRange}
                         onSelect={handleDateRangeChange}
                         numberOfMonths={2}

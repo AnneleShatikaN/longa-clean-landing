@@ -27,7 +27,7 @@ import OneOffBooking from "./pages/OneOffBooking";
 import SubscriptionPackages from "./pages/SubscriptionPackages";
 import NotificationCenter from "./pages/NotificationCenter";
 import NotFound from "./pages/NotFound";
-import SearchPage from "./pages/SearchPage";
+import SearchPage from "./pages/Search";
 
 const queryClient = new QueryClient({
   defaultOptions: {

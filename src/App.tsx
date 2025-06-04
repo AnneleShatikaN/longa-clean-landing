@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -28,6 +27,7 @@ import OneOffBooking from "./pages/OneOffBooking";
 import SubscriptionPackages from "./pages/SubscriptionPackages";
 import NotificationCenter from "./pages/NotificationCenter";
 import NotFound from "./pages/NotFound";
+import SearchPage from "./pages/SearchPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +57,7 @@ const App: React.FC = () => {
                               <Route path="/" element={<Index />} />
                               <Route path="/auth" element={<Auth />} />
                               <Route path="/admin-setup" element={<AdminSetup />} />
+                              <Route path="/search" element={<SearchPage />} />
                               <Route 
                                 path="/client-dashboard" 
                                 element={

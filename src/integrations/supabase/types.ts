@@ -119,6 +119,13 @@ export type Database = {
             foreignKeyName: "bookings_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
+            referencedRelation: "service_search_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
             referencedRelation: "services"
             referencedColumns: ["id"]
           },
@@ -895,6 +902,54 @@ export type Database = {
           },
         ]
       }
+      search_analytics: {
+        Row: {
+          clicked_result_id: string | null
+          id: string
+          results_count: number | null
+          search_filters: Json | null
+          search_query: string
+          search_timestamp: string | null
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          clicked_result_id?: string | null
+          id?: string
+          results_count?: number | null
+          search_filters?: Json | null
+          search_query: string
+          search_timestamp?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          clicked_result_id?: string | null
+          id?: string
+          results_count?: number | null
+          search_filters?: Json | null
+          search_query?: string
+          search_timestamp?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_analytics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "search_analytics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           client_price: number
@@ -1076,6 +1131,57 @@ export type Database = {
           },
         ]
       }
+      user_behavior_events: {
+        Row: {
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          page_url: string | null
+          session_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          page_url?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          page_url?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_behavior_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "user_behavior_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
@@ -1178,6 +1284,22 @@ export type Database = {
         }
         Relationships: []
       }
+      service_search_analytics: {
+        Row: {
+          avg_rating: number | null
+          bookings_30d: number | null
+          client_price: number | null
+          completed_bookings: number | null
+          duration_minutes: number | null
+          id: string | null
+          name: string | null
+          service_type: string | null
+          tags: string[] | null
+          total_bookings: number | null
+          total_revenue: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_enhanced_payout: {
@@ -1237,9 +1359,116 @@ export type Database = {
           growth_rate: number
         }[]
       }
+      get_search_suggestions: {
+        Args: { partial_query: string; limit_results?: number }
+        Returns: {
+          suggestion: string
+          category: string
+          popularity: number
+        }[]
+      }
+      gtrgm_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: { "": unknown }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       perform_financial_reconciliation: {
         Args: { start_date: string; end_date: string }
         Returns: string
+      }
+      refresh_service_analytics: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      search_bookings: {
+        Args: {
+          user_id_filter?: string
+          user_role?: string
+          status_filter?: string
+          service_type_filter?: string
+          date_from?: string
+          date_to?: string
+          min_amount?: number
+          max_amount?: number
+          search_text?: string
+          sort_by?: string
+          sort_order?: string
+          limit_results?: number
+          offset_results?: number
+        }
+        Returns: {
+          id: string
+          booking_date: string
+          booking_time: string
+          status: string
+          total_amount: number
+          service_name: string
+          client_name: string
+          provider_name: string
+          created_at: string
+          search_rank: number
+        }[]
+      }
+      search_providers_by_location: {
+        Args: {
+          search_lat?: number
+          search_lng?: number
+          max_distance_km?: number
+          service_type_filter?: string
+          min_rating?: number
+          available_date?: string
+          available_time?: string
+          limit_results?: number
+        }
+        Returns: {
+          id: string
+          full_name: string
+          rating: number
+          total_jobs: number
+          distance_km: number
+          available: boolean
+        }[]
+      }
+      search_services: {
+        Args: {
+          search_query: string
+          service_type_filter?: string
+          min_price?: number
+          max_price?: number
+          min_duration?: number
+          max_duration?: number
+          min_rating?: number
+          tags_filter?: string[]
+          limit_results?: number
+          offset_results?: number
+        }
+        Returns: {
+          id: string
+          name: string
+          description: string
+          service_type: string
+          client_price: number
+          duration_minutes: number
+          tags: string[]
+          avg_rating: number
+          total_bookings: number
+          search_rank: number
+        }[]
       }
       send_notification: {
         Args:
@@ -1260,6 +1489,26 @@ export type Database = {
               booking_id?: string
             }
         Returns: string
+      }
+      set_limit: {
+        Args: { "": number }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: { "": string }
+        Returns: string[]
+      }
+      unaccent: {
+        Args: { "": string }
+        Returns: string
+      }
+      unaccent_init: {
+        Args: { "": unknown }
+        Returns: unknown
       }
     }
     Enums: {

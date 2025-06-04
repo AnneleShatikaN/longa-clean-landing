@@ -1,1 +1,28 @@
+
 project_id = "icibllzmaqaniepouehl"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+port = 54324
+site_url = "https://0b9fb7c6-4c3e-4638-a215-b48338c4ca28.lovableproject.com"
+additional_redirect_urls = ["https://lovable.dev", "http://localhost:3000"]
+jwt_expiry = 3600
+enable_signup = true
+enable_confirmations = false
+
+[db]
+port = 54322
+
+[functions.refresh-analytics]
+verify_jwt = false
+
+[studio]
+enabled = true
+port = 54323

@@ -28,7 +28,7 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-export const NotificationProvider = ({ children }: { children: ReactNode }) => {
+export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [preferences, setPreferences] = useState<NotificationPreferencesRow[]>([]);
   const [messages, setMessages] = useState<MessageRow[]>([]);

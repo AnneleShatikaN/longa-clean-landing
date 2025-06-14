@@ -60,7 +60,13 @@ const Auth = () => {
       const hashFragment = window.location.hash;
       const searchParams = new URLSearchParams(window.location.search);
       
-      console.log('Checking for verification params:', { hashFragment, search: window.location.search });
+      // Add detailed debugging
+      console.log('=== EMAIL VERIFICATION DEBUG ===');
+      console.log('Current URL:', window.location.href);
+      console.log('Hash fragment:', hashFragment);
+      console.log('Search params:', window.location.search);
+      console.log('Pathname:', window.location.pathname);
+      console.log('====================================');
       
       // Check both hash fragment and search params for verification tokens
       if (hashFragment.includes('access_token') || hashFragment.includes('type=') || searchParams.has('type')) {
@@ -71,19 +77,43 @@ const Auth = () => {
           let params: URLSearchParams;
           
           if (hashFragment) {
-            params = new URLSearchParams(hashFragment.substring(1));
+            // Remove the # and parse
+            const cleanHash = hashFragment.substring(1);
+            params = new URLSearchParams(cleanHash);
+            console.log('Parsed hash params:', Object.fromEntries(params.entries()));
           } else {
             params = searchParams;
+            console.log('Using search params:', Object.fromEntries(params.entries()));
           }
           
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
           const type = params.get('type');
+          const error = params.get('error');
+          const errorDescription = params.get('error_description');
           
-          console.log('Verification params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+          console.log('Verification details:', { 
+            accessToken: !!accessToken, 
+            refreshToken: !!refreshToken, 
+            type, 
+            error,
+            errorDescription 
+          });
+          
+          if (error) {
+            console.error('Auth error from URL:', error, errorDescription);
+            toast({
+              title: "Verification Failed",
+              description: errorDescription || error,
+              variant: "destructive",
+            });
+            setIsVerifying(false);
+            return;
+          }
           
           if (type === 'signup' || type === 'email_confirmation' || type === 'recovery') {
             if (accessToken && refreshToken) {
+              console.log('Setting session with tokens...');
               // Set the session using the tokens
               const { data, error } = await supabase.auth.setSession({
                 access_token: accessToken,
@@ -114,6 +144,7 @@ const Auth = () => {
                   if (data.user) {
                     // User is now logged in, redirect based on role
                     const userRole = data.user.user_metadata?.role || 'client';
+                    console.log('Redirecting user with role:', userRole);
                     switch (userRole) {
                       case 'admin':
                         navigate('/dashboard/admin');
@@ -131,9 +162,11 @@ const Auth = () => {
                 }, 1500);
               }
             } else {
+              console.log('No tokens found, checking existing session...');
               // Handle verification without direct tokens (let Supabase handle it)
               const { data, error } = await supabase.auth.getSession();
               if (data.session) {
+                console.log('Found existing session after verification');
                 setEmailVerified(true);
                 toast({
                   title: "Email Verified!",
@@ -142,6 +175,7 @@ const Auth = () => {
                 
                 setTimeout(() => {
                   const userRole = data.session?.user?.user_metadata?.role || 'client';
+                  console.log('Redirecting user with role:', userRole);
                   switch (userRole) {
                     case 'admin':
                       navigate('/dashboard/admin');
@@ -176,6 +210,8 @@ const Auth = () => {
         } finally {
           setIsVerifying(false);
         }
+      } else {
+        console.log('No verification parameters found in URL');
       }
     };
 

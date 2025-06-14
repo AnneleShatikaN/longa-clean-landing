@@ -278,7 +278,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         toast({
           title: "Admin account created!",
-          description: "Your Longa platform is now ready to use. Please check your email to verify your account.",
+          description: "Your Longa platform is now ready to use. Please check your email to verify your account before signing in.",
         });
       }
 

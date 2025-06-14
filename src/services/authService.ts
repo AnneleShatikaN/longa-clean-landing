@@ -189,12 +189,17 @@ export const setupAdminService = async (data: AdminSetup) => {
   try {
     console.log('Starting admin setup with data:', { email: data.email, name: data.name });
     
-    // First create the admin user account with auto-confirm
+    // First create the admin user account with proper metadata
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
         emailRedirectTo: getRedirectUrl(),
+        data: {
+          full_name: data.name,
+          phone: data.phone,
+          role: 'admin'
+        }
       }
     });
 
@@ -209,38 +214,42 @@ export const setupAdminService = async (data: AdminSetup) => {
 
     console.log('Auth user created:', authData.user.id);
 
-    // Wait a moment for auth to be fully set up
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // The trigger should automatically create the user profile
+    // Let's wait a moment and then verify it was created
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Create admin profile using the service role (bypassing RLS)
-    const { error: profileError } = await supabase
+    // Verify the user profile was created
+    const { data: userProfile, error: profileCheckError } = await supabase
       .from('users')
-      .insert({
-        id: authData.user.id,
-        email: data.email,
-        password_hash: 'managed_by_supabase_auth',
-        full_name: data.name,
-        phone: data.phone,
-        role: 'admin',
-        is_active: true,
-        rating: 0,
-        total_jobs: 0,
-      });
+      .select('*')
+      .eq('id', authData.user.id)
+      .single();
 
-    if (profileError) {
-      console.error('Profile creation error:', profileError);
+    if (profileCheckError || !userProfile) {
+      console.error('Profile not found after creation, creating manually:', profileCheckError);
       
-      // Try to clean up the auth user if profile creation fails
-      try {
-        await supabase.auth.admin.deleteUser(authData.user.id);
-      } catch (cleanupError) {
-        console.error('Failed to cleanup auth user:', cleanupError);
+      // Create profile manually if trigger didn't work
+      const { error: manualProfileError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: data.email,
+          password_hash: 'managed_by_supabase_auth',
+          full_name: data.name,
+          phone: data.phone,
+          role: 'admin',
+          is_active: true,
+          rating: 0,
+          total_jobs: 0,
+        });
+
+      if (manualProfileError) {
+        console.error('Manual profile creation failed:', manualProfileError);
+        throw new Error(`Profile creation failed: ${manualProfileError.message}. Please check your database permissions.`);
       }
-      
-      throw new Error(`Profile creation failed: ${profileError.message}. Please check your database permissions.`);
     }
 
-    console.log('Admin profile created successfully');
+    console.log('Admin profile verified/created successfully');
 
     // Store company information in localStorage for now
     const companyData = {

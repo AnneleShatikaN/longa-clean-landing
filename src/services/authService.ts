@@ -3,6 +3,19 @@ import { logSecurityEvent, detectSuspiciousActivity, checkRateLimit } from '@/ut
 import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
 import { fetchUserProfile } from '@/utils/userProfile';
 
+// Get the correct redirect URL based on environment
+const getRedirectUrl = () => {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return `${window.location.origin}/auth`;
+    }
+    // For deployed versions, use the actual domain
+    return `${window.location.origin}/auth`;
+  }
+  return 'https://longa.vercel.app/auth';
+};
+
 export const loginUser = async (loginData: LoginData) => {
   // Check rate limiting
   const rateLimitKey = `login_${loginData.email}`;
@@ -83,11 +96,14 @@ export const signupUser = async (userData: UserRegistration) => {
     email: userData.email,
     password: userData.password,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth`,
+      emailRedirectTo: getRedirectUrl(),
     }
   });
 
-  if (error) throw error;
+  if (error) {
+    console.error('Signup error:', error);
+    throw error;
+  }
 
   if (data.user) {
     // Insert user profile into our users table
@@ -169,18 +185,29 @@ export const changePasswordService = async (data: ChangePassword) => {
 };
 
 export const setupAdminService = async (data: AdminSetup) => {
-  // First create the admin user account
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email: data.email,
-    password: data.password,
-    options: {
-      emailRedirectTo: `${window.location.origin}/dashboard/admin`,
+  try {
+    console.log('Starting admin setup with data:', { email: data.email, name: data.name });
+    
+    // First create the admin user account
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        emailRedirectTo: getRedirectUrl(),
+      }
+    });
+
+    if (authError) {
+      console.error('Auth signup error:', authError);
+      throw new Error(`Authentication error: ${authError.message}`);
     }
-  });
 
-  if (authError) throw authError;
+    if (!authData.user) {
+      throw new Error('Failed to create user account');
+    }
 
-  if (authData.user) {
+    console.log('Auth user created:', authData.user.id);
+
     // Insert admin profile
     const { error: profileError } = await supabase
       .from('users')
@@ -196,9 +223,29 @@ export const setupAdminService = async (data: AdminSetup) => {
         total_jobs: 0,
       });
 
-    if (profileError) throw profileError;
-    return true;
-  }
+    if (profileError) {
+      console.error('Profile creation error:', profileError);
+      throw new Error(`Profile creation failed: ${profileError.message}`);
+    }
 
-  return false;
+    console.log('Admin profile created successfully');
+
+    // Store company information in localStorage for now
+    // In a real app, you'd want to create a company/organization table
+    const companyData = {
+      name: data.companyName,
+      phone: data.companyPhone,
+      adminId: authData.user.id,
+      setupAt: new Date().toISOString()
+    };
+    
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('company_setup', JSON.stringify(companyData));
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Admin setup failed:', error);
+    throw error;
+  }
 };

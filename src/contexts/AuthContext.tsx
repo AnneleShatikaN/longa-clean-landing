@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,6 +35,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           async (event, session) => {
             if (!mounted) return;
 
+            console.log('Auth state change:', event, session?.user?.id);
             setSession(session);
             setError(null);
 
@@ -59,7 +59,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         );
 
         const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        if (error) {
+          console.error('Session error:', error);
+          throw error;
+        }
 
         if (session?.user && mounted) {
           const profile = await fetchUserProfile(session.user.id);
@@ -267,6 +270,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
 
     try {
+      console.log('Setting up admin account...');
       const success = await setupAdminService(data);
 
       if (success) {
@@ -274,12 +278,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         toast({
           title: "Admin account created!",
-          description: "Your Longa platform is now ready to use.",
+          description: "Your Longa platform is now ready to use. Please check your email to verify your account.",
         });
       }
 
       return success;
     } catch (error) {
+      console.error('Admin setup error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Admin setup failed';
       setError(errorMessage);
       

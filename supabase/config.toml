@@ -11,8 +11,8 @@ max_rows = 1000
 [auth]
 enabled = true
 port = 54324
-site_url = "https://0b9fb7c6-4c3e-4638-a215-b48338c4ca28.lovableproject.com"
-additional_redirect_urls = ["https://lovable.dev", "http://localhost:3000"]
+site_url = "https://longa.vercel.app"
+additional_redirect_urls = ["https://lovable.dev", "http://localhost:3000", "https://longa.vercel.app/auth", "https://0b9fb7c6-4c3e-4638-a215-b48338c4ca28.lovableproject.com"]
 jwt_expiry = 3600
 enable_signup = true
 enable_confirmations = false

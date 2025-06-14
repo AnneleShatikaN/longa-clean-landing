@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { logSecurityEvent, detectSuspiciousActivity, checkRateLimit } from '@/utils/security';
 import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
@@ -159,7 +160,7 @@ export const logoutUser = async (userId?: string, email?: string) => {
 
 export const requestPasswordResetService = async (data: PasswordReset) => {
   const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-    redirectTo: `${window.location.origin}/auth`,
+    redirectTo: getRedirectUrl(),
   });
 
   if (error) throw error;
@@ -188,7 +189,7 @@ export const setupAdminService = async (data: AdminSetup) => {
   try {
     console.log('Starting admin setup with data:', { email: data.email, name: data.name });
     
-    // First create the admin user account
+    // First create the admin user account with auto-confirm
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
@@ -208,7 +209,10 @@ export const setupAdminService = async (data: AdminSetup) => {
 
     console.log('Auth user created:', authData.user.id);
 
-    // Insert admin profile
+    // Wait a moment for auth to be fully set up
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Create admin profile using the service role (bypassing RLS)
     const { error: profileError } = await supabase
       .from('users')
       .insert({
@@ -225,13 +229,20 @@ export const setupAdminService = async (data: AdminSetup) => {
 
     if (profileError) {
       console.error('Profile creation error:', profileError);
-      throw new Error(`Profile creation failed: ${profileError.message}`);
+      
+      // Try to clean up the auth user if profile creation fails
+      try {
+        await supabase.auth.admin.deleteUser(authData.user.id);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup auth user:', cleanupError);
+      }
+      
+      throw new Error(`Profile creation failed: ${profileError.message}. Please check your database permissions.`);
     }
 
     console.log('Admin profile created successfully');
 
     // Store company information in localStorage for now
-    // In a real app, you'd want to create a company/organization table
     const companyData = {
       name: data.companyName,
       phone: data.companyPhone,

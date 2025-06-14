@@ -57,33 +57,31 @@ const Auth = () => {
   // Handle email verification and auth callbacks
   useEffect(() => {
     const handleEmailVerification = async () => {
-      const hashFragment = window.location.hash;
-      const searchParams = new URLSearchParams(window.location.search);
-      
-      // Add detailed debugging
+      const currentUrl = window.location.href;
       console.log('=== EMAIL VERIFICATION DEBUG ===');
-      console.log('Current URL:', window.location.href);
-      console.log('Hash fragment:', hashFragment);
-      console.log('Search params:', window.location.search);
+      console.log('Full URL:', currentUrl);
       console.log('Pathname:', window.location.pathname);
+      console.log('Hash:', window.location.hash);
+      console.log('Search:', window.location.search);
       console.log('====================================');
       
-      // Check both hash fragment and search params for verification tokens
-      if (hashFragment.includes('access_token') || hashFragment.includes('type=') || searchParams.has('type')) {
+      // Check if we're on the callback route and have verification data
+      if (window.location.pathname === '/auth/callback' || window.location.hash || window.location.search.includes('access_token')) {
         setIsVerifying(true);
         
         try {
-          // Parse the hash fragment or search params to get the tokens
-          let params: URLSearchParams;
+          let params = new URLSearchParams();
           
-          if (hashFragment) {
-            // Remove the # and parse
-            const cleanHash = hashFragment.substring(1);
-            params = new URLSearchParams(cleanHash);
-            console.log('Parsed hash params:', Object.fromEntries(params.entries()));
-          } else {
-            params = searchParams;
-            console.log('Using search params:', Object.fromEntries(params.entries()));
+          // Parse hash fragment if present (most common case for Supabase)
+          if (window.location.hash) {
+            const hashParams = window.location.hash.substring(1); // Remove the #
+            params = new URLSearchParams(hashParams);
+            console.log('Hash params found:', Object.fromEntries(params.entries()));
+          } 
+          // Fallback to query parameters
+          else if (window.location.search) {
+            params = new URLSearchParams(window.location.search);
+            console.log('Query params found:', Object.fromEntries(params.entries()));
           }
           
           const accessToken = params.get('access_token');
@@ -92,90 +90,61 @@ const Auth = () => {
           const error = params.get('error');
           const errorDescription = params.get('error_description');
           
-          console.log('Verification details:', { 
-            accessToken: !!accessToken, 
-            refreshToken: !!refreshToken, 
+          console.log('Parsed tokens:', { 
+            hasAccessToken: !!accessToken, 
+            hasRefreshToken: !!refreshToken, 
             type, 
-            error,
-            errorDescription 
+            error 
           });
           
           if (error) {
-            console.error('Auth error from URL:', error, errorDescription);
+            console.error('Auth error:', error, errorDescription);
             toast({
               title: "Verification Failed",
               description: errorDescription || error,
               variant: "destructive",
             });
             setIsVerifying(false);
+            navigate('/auth');
             return;
           }
           
-          if (type === 'signup' || type === 'email_confirmation' || type === 'recovery') {
-            if (accessToken && refreshToken) {
-              console.log('Setting session with tokens...');
-              // Set the session using the tokens
-              const { data, error } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken
+          // Handle email verification or password reset
+          if (accessToken && refreshToken && (type === 'signup' || type === 'email_confirmation' || type === 'recovery')) {
+            console.log('Setting session with tokens...');
+            
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            
+            if (sessionError) {
+              console.error('Session error:', sessionError);
+              toast({
+                title: "Verification Failed",
+                description: "There was an error verifying your email. Please try again.",
+                variant: "destructive",
+              });
+              setIsVerifying(false);
+              navigate('/auth');
+            } else {
+              console.log('Email verified successfully:', data);
+              setEmailVerified(true);
+              
+              // Clear the URL
+              window.history.replaceState(null, '', '/auth');
+              
+              toast({
+                title: "Email Verified!",
+                description: "Your email has been verified successfully. You are now logged in.",
               });
               
-              if (error) {
-                console.error('Email verification error:', error);
-                toast({
-                  title: "Verification Failed",
-                  description: "There was an error verifying your email. Please try again.",
-                  variant: "destructive",
-                });
-              } else {
-                console.log('Email verified successfully:', data);
-                setEmailVerified(true);
-                
-                // Clear the URL parameters
-                window.history.replaceState(null, '', window.location.pathname);
-                
-                toast({
-                  title: "Email Verified!",
-                  description: "Your email has been verified successfully. You are now logged in.",
-                });
-                
-                // Redirect after a short delay
-                setTimeout(() => {
-                  if (data.user) {
-                    // User is now logged in, redirect based on role
-                    const userRole = data.user.user_metadata?.role || 'client';
-                    console.log('Redirecting user with role:', userRole);
-                    switch (userRole) {
-                      case 'admin':
-                        navigate('/dashboard/admin');
-                        break;
-                      case 'provider':
-                        navigate('/dashboard/provider');
-                        break;
-                      case 'client':
-                        navigate('/dashboard/client');
-                        break;
-                      default:
-                        navigate('/');
-                    }
-                  }
-                }, 1500);
-              }
-            } else {
-              console.log('No tokens found, checking existing session...');
-              // Handle verification without direct tokens (let Supabase handle it)
-              const { data, error } = await supabase.auth.getSession();
-              if (data.session) {
-                console.log('Found existing session after verification');
-                setEmailVerified(true);
-                toast({
-                  title: "Email Verified!",
-                  description: "Your email has been verified successfully.",
-                });
-                
-                setTimeout(() => {
-                  const userRole = data.session?.user?.user_metadata?.role || 'client';
-                  console.log('Redirecting user with role:', userRole);
+              // Redirect after verification
+              setTimeout(() => {
+                if (data.user) {
+                  const userRole = data.user.user_metadata?.role || 'client';
+                  console.log('Redirecting verified user with role:', userRole);
+                  
                   switch (userRole) {
                     case 'admin':
                       navigate('/dashboard/admin');
@@ -189,29 +158,24 @@ const Auth = () => {
                     default:
                       navigate('/');
                   }
-                }, 1500);
-              } else if (error) {
-                console.error('Session error:', error);
-                toast({
-                  title: "Verification Error",
-                  description: "Please try clicking the verification link again.",
-                  variant: "destructive",
-                });
-              }
+                }
+              }, 2000);
             }
+          } else {
+            console.log('No valid verification tokens found');
+            setIsVerifying(false);
+            navigate('/auth');
           }
         } catch (error) {
-          console.error('Error handling email verification:', error);
+          console.error('Error handling verification:', error);
           toast({
             title: "Verification Error",
             description: "There was an error processing your email verification.",
             variant: "destructive",
           });
-        } finally {
           setIsVerifying(false);
+          navigate('/auth');
         }
-      } else {
-        console.log('No verification parameters found in URL');
       }
     };
 

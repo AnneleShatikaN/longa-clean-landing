@@ -6,15 +6,14 @@ import { fetchUserProfile } from '@/utils/userProfile';
 // Get the correct redirect URL based on environment
 const getRedirectUrl = () => {
   if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
     const origin = window.location.origin;
     
-    // Always redirect to /auth page for verification
-    return `${origin}/auth`;
+    // Use the auth callback route for verification
+    return `${origin}/auth/callback`;
   }
   
   // Fallback for server-side or when window is not available
-  return 'https://longa.vercel.app/auth';
+  return 'https://longa.vercel.app/auth/callback';
 };
 
 export const loginUser = async (loginData: LoginData) => {

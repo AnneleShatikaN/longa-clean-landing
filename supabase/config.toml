@@ -1,5 +1,4 @@
 
-
 project_id = "icibllzmaqaniepouehl"
 
 [api]
@@ -27,4 +26,3 @@ verify_jwt = false
 [studio]
 enabled = true
 port = 54323
-

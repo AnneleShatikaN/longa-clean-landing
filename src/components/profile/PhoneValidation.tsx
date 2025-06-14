@@ -8,46 +8,78 @@ interface PhoneValidationProps {
   onChange: (value: string) => void;
   error?: string;
   disabled?: boolean;
+  label?: string;
+  placeholder?: string;
 }
 
 export const PhoneValidation: React.FC<PhoneValidationProps> = ({
   value,
   onChange,
   error,
-  disabled = false
+  disabled = false,
+  label = "Phone Number",
+  placeholder = "+264 81 234 5678"
 }) => {
   const validateNamibianPhone = (phone: string): string | undefined => {
     // Remove all non-digit characters for validation
     const cleanPhone = phone.replace(/\D/g, '');
     
-    // Check if it matches Namibian format
-    if (!phone.match(/^\+264\s\d{2}\s\d{3}\s\d{4}$/)) {
-      return 'Phone must be in format +264 XX XXX XXXX';
+    // Check if it matches Namibian format after cleaning
+    if (cleanPhone.length === 0) {
+      return 'Phone number is required';
+    }
+    
+    // Should be 264 + 9 digits (total 12) or just 9 digits
+    if (cleanPhone.startsWith('264')) {
+      if (cleanPhone.length !== 12) {
+        return 'Namibian phone numbers should be 9 digits after +264';
+      }
+    } else {
+      if (cleanPhone.length !== 9) {
+        return 'Please enter a valid 9-digit Namibian phone number';
+      }
     }
     
     return undefined;
   };
 
   const formatPhone = (input: string): string => {
-    // Remove all non-digit characters
-    const digits = input.replace(/\D/g, '');
+    // Remove all non-digit characters except +
+    let digits = input.replace(/[^\d+]/g, '');
     
-    // If starts with 264, add +
-    let formatted = digits;
-    if (digits.startsWith('264')) {
-      formatted = '+' + digits;
-    } else if (!digits.startsWith('+264')) {
-      formatted = '+264' + digits;
+    // Handle if user types just digits (assume Namibian number)
+    if (!digits.startsWith('+') && !digits.startsWith('264')) {
+      digits = '264' + digits;
+    }
+    
+    // Remove + for processing
+    if (digits.startsWith('+')) {
+      digits = digits.substring(1);
+    }
+    
+    // Ensure it starts with 264
+    if (!digits.startsWith('264')) {
+      digits = '264' + digits.replace(/^264/, ''); // Avoid double 264
+    }
+    
+    // Limit to country code + 9 digits
+    if (digits.length > 12) {
+      digits = digits.substring(0, 12);
     }
     
     // Format as +264 XX XXX XXXX
-    const match = formatted.match(/^\+264(\d{0,2})(\d{0,3})(\d{0,4})/);
-    if (match) {
-      let result = '+264';
-      if (match[1]) result += ` ${match[1]}`;
-      if (match[2]) result += ` ${match[2]}`;
-      if (match[3]) result += ` ${match[3]}`;
-      return result;
+    let formatted = '+264';
+    if (digits.length > 3) {
+      const remaining = digits.substring(3);
+      if (remaining.length >= 1) {
+        formatted += ` ${remaining.substring(0, 2)}`;
+      }
+      if (remaining.length >= 3) {
+        formatted += ` ${remaining.substring(2, 5)}`;
+      }
+      if (remaining.length >= 6) {
+        formatted += ` ${remaining.substring(5, 9)}`;
+      }
     }
     
     return formatted;
@@ -59,22 +91,26 @@ export const PhoneValidation: React.FC<PhoneValidationProps> = ({
   };
 
   const validationError = validateNamibianPhone(value);
+  const displayError = validationError || error;
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="phone">Phone Number</Label>
+      <Label htmlFor="phone">{label}</Label>
       <Input
         id="phone"
         value={value}
         onChange={handleChange}
         disabled={disabled}
-        placeholder="+264 81 234 5678"
-        className={validationError || error ? 'border-red-500' : ''}
+        placeholder={placeholder}
+        className={displayError ? 'border-red-500' : ''}
         maxLength={17} // +264 XX XXX XXXX
       />
-      {(validationError || error) && (
-        <p className="text-sm text-red-500">{validationError || error}</p>
+      {displayError && (
+        <p className="text-sm text-red-500">{displayError}</p>
       )}
+      <p className="text-xs text-gray-500">
+        Format: +264 XX XXX XXXX (Namibian numbers only)
+      </p>
     </div>
   );
 };

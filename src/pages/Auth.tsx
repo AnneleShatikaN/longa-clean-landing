@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircl
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
+import { PhoneValidation } from "@/components/profile/PhoneValidation";
 
 type AuthMode = 'login' | 'signup' | 'forgot-password' | 'admin-setup';
 
@@ -114,8 +116,6 @@ const Auth = () => {
       }
       if (!formData.phone) {
         errors.phone = 'Phone is required';
-      } else if (!/^\+264\s\d{2}\s\d{3}\s\d{4}$/.test(formData.phone)) {
-        errors.phone = 'Phone must be in format +264 XX XXX XXXX';
       }
     }
 
@@ -125,8 +125,6 @@ const Auth = () => {
       }
       if (!formData.companyPhone) {
         errors.companyPhone = 'Company phone is required';
-      } else if (!/^\+264\s\d{2}\s\d{3}\s\d{4}$/.test(formData.companyPhone)) {
-        errors.companyPhone = 'Company phone must be in format +264 XX XXX XXXX';
       }
     }
 
@@ -312,18 +310,11 @@ const Auth = () => {
               </div>
 
               {(mode === 'signup' || mode === 'admin-setup') && (
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-gray-700">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    className={`${formErrors.phone ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500`}
-                    placeholder="+264 81 234 5678"
-                  />
-                  {formErrors.phone && <p className="text-sm text-red-500">{formErrors.phone}</p>}
-                </div>
+                <PhoneValidation
+                  value={formData.phone}
+                  onChange={(value) => handleInputChange('phone', value)}
+                  error={formErrors.phone}
+                />
               )}
 
               {mode === 'admin-setup' && (
@@ -341,18 +332,13 @@ const Auth = () => {
                     {formErrors.companyName && <p className="text-sm text-red-500">{formErrors.companyName}</p>}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="companyPhone" className="text-gray-700">Company Phone</Label>
-                    <Input
-                      id="companyPhone"
-                      type="tel"
-                      value={formData.companyPhone}
-                      onChange={(e) => handleInputChange('companyPhone', e.target.value)}
-                      className={`${formErrors.companyPhone ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500`}
-                      placeholder="+264 61 234 5678"
-                    />
-                    {formErrors.companyPhone && <p className="text-sm text-red-500">{formErrors.companyPhone}</p>}
-                  </div>
+                  <PhoneValidation
+                    value={formData.companyPhone}
+                    onChange={(value) => handleInputChange('companyPhone', value)}
+                    error={formErrors.companyPhone}
+                    label="Company Phone"
+                    placeholder="+264 61 234 5678"
+                  />
                 </>
               )}
 

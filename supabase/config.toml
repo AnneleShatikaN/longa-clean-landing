@@ -1,4 +1,5 @@
 
+
 project_id = "icibllzmaqaniepouehl"
 
 [api]
@@ -12,7 +13,7 @@ max_rows = 1000
 enabled = true
 port = 54324
 site_url = "https://longa.vercel.app"
-additional_redirect_urls = ["https://lovable.dev", "http://localhost:3000", "https://longa.vercel.app/auth", "https://0b9fb7c6-4c3e-4638-a215-b48338c4ca28.lovableproject.com", "https://longa.vercel.app/", "http://localhost:3000/auth", "https://longa.vercel.app/auth/callback", "http://localhost:3000/auth/callback"]
+additional_redirect_urls = ["https://lovable.dev", "http://localhost:3000", "https://longa.vercel.app/auth", "https://0b9fb7c6-4c3e-4638-a215-b48338c4ca28.lovableproject.com", "https://longa.vercel.app/", "http://localhost:3000/auth", "https://longa.vercel.app/auth/callback", "http://localhost:3000/auth/callback", "https://0b9fb7c6-4c3e-4638-a215-b48338c4ca28.lovableproject.com/auth", "https://0b9fb7c6-4c3e-4638-a215-b48338c4ca28.lovableproject.com/auth/callback"]
 jwt_expiry = 3600
 enable_signup = true
 enable_confirmations = true
@@ -26,3 +27,4 @@ verify_jwt = false
 [studio]
 enabled = true
 port = 54323
+

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -45,21 +46,22 @@ const App: React.FC = () => {
         <BrowserRouter>
           <AuthProvider>
             <UserProvider>
-              <NotificationProvider>
-                <ServiceProvider>
-                  <BookingProvider>
-                    <SupabaseBookingProvider>
-                      <PayoutProvider>
-                        <DataProvider>
+              <ServiceProvider>
+                <BookingProvider>
+                  <SupabaseBookingProvider>
+                    <PayoutProvider>
+                      <DataProvider>
+                        <NotificationProvider>
                           <TooltipProvider>
                             <SessionManager />
                             <Routes>
                               <Route path="/" element={<Index />} />
                               <Route path="/auth" element={<Auth />} />
+                              <Route path="/auth/callback" element={<Auth />} />
                               <Route path="/admin-setup" element={<AdminSetup />} />
                               <Route path="/search" element={<SearchPage />} />
                               <Route 
-                                path="/client-dashboard" 
+                                path="/dashboard/client" 
                                 element={
                                   <ProtectedRoute allowedRoles={['client']}>
                                     <ClientDashboard />
@@ -67,7 +69,7 @@ const App: React.FC = () => {
                                 } 
                               />
                               <Route 
-                                path="/provider-dashboard" 
+                                path="/dashboard/provider" 
                                 element={
                                   <ProtectedRoute allowedRoles={['provider']}>
                                     <ProviderDashboard />
@@ -75,7 +77,7 @@ const App: React.FC = () => {
                                 } 
                               />
                               <Route 
-                                path="/admin-dashboard" 
+                                path="/dashboard/admin" 
                                 element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <AdminDashboard />
@@ -106,17 +108,23 @@ const App: React.FC = () => {
                                   </ProtectedRoute>
                                 } 
                               />
+                              
+                              {/* Legacy routes for backward compatibility */}
+                              <Route path="/client-dashboard" element={<ProtectedRoute allowedRoles={['client']}><ClientDashboard /></ProtectedRoute>} />
+                              <Route path="/provider-dashboard" element={<ProtectedRoute allowedRoles={['provider']}><ProviderDashboard /></ProtectedRoute>} />
+                              <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+                              
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                             <Toaster />
                             <Sonner />
                           </TooltipProvider>
-                        </DataProvider>
-                      </PayoutProvider>
-                    </SupabaseBookingProvider>
-                  </BookingProvider>
-                </ServiceProvider>
-              </NotificationProvider>
+                        </NotificationProvider>
+                      </DataProvider>
+                    </PayoutProvider>
+                  </SupabaseBookingProvider>
+                </BookingProvider>
+              </ServiceProvider>
             </UserProvider>
           </AuthProvider>
         </BrowserRouter>

@@ -33,6 +33,7 @@ const Auth = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [emailSent, setEmailSent] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const { 
     user,
@@ -53,49 +54,94 @@ const Auth = () => {
   // Get the intended destination from location state
   const from = location.state?.from?.pathname || '/';
 
-  // Handle email verification on page load
+  // Handle email verification and auth callbacks
   useEffect(() => {
     const handleEmailVerification = async () => {
       const hashFragment = window.location.hash;
+      const searchParams = new URLSearchParams(window.location.search);
       
-      if (hashFragment.includes('access_token') || hashFragment.includes('type=email_confirmation')) {
+      console.log('Checking for verification params:', { hashFragment, search: window.location.search });
+      
+      // Check both hash fragment and search params for verification tokens
+      if (hashFragment.includes('access_token') || hashFragment.includes('type=') || searchParams.has('type')) {
+        setIsVerifying(true);
+        
         try {
-          // Parse the hash fragment to get the tokens
-          const params = new URLSearchParams(hashFragment.substring(1));
+          // Parse the hash fragment or search params to get the tokens
+          let params: URLSearchParams;
+          
+          if (hashFragment) {
+            params = new URLSearchParams(hashFragment.substring(1));
+          } else {
+            params = searchParams;
+          }
+          
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
+          const type = params.get('type');
           
-          if (accessToken && refreshToken) {
-            // Set the session using the tokens
-            const { data, error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            });
-            
-            if (error) {
-              console.error('Email verification error:', error);
-              toast({
-                title: "Verification Failed",
-                description: "There was an error verifying your email. Please try again.",
-                variant: "destructive",
+          console.log('Verification params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+          
+          if (type === 'signup' || type === 'email_confirmation' || type === 'recovery') {
+            if (accessToken && refreshToken) {
+              // Set the session using the tokens
+              const { data, error } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
               });
+              
+              if (error) {
+                console.error('Email verification error:', error);
+                toast({
+                  title: "Verification Failed",
+                  description: "There was an error verifying your email. Please try again.",
+                  variant: "destructive",
+                });
+              } else {
+                console.log('Email verified successfully:', data);
+                setEmailVerified(true);
+                
+                // Clear the URL parameters
+                window.history.replaceState(null, '', window.location.pathname);
+                
+                toast({
+                  title: "Email Verified!",
+                  description: "Your email has been verified successfully. You are now logged in.",
+                });
+                
+                // Redirect after a short delay
+                setTimeout(() => {
+                  if (data.user) {
+                    // User is now logged in, redirect based on role
+                    const userRole = data.user.user_metadata?.role || 'client';
+                    switch (userRole) {
+                      case 'admin':
+                        navigate('/dashboard/admin');
+                        break;
+                      case 'provider':
+                        navigate('/dashboard/provider');
+                        break;
+                      case 'client':
+                        navigate('/dashboard/client');
+                        break;
+                      default:
+                        navigate('/');
+                    }
+                  }
+                }, 1500);
+              }
             } else {
-              console.log('Email verified successfully:', data);
-              setEmailVerified(true);
-              
-              // Clear the hash from URL
-              window.history.replaceState(null, '', window.location.pathname);
-              
-              toast({
-                title: "Email Verified!",
-                description: "Your email has been verified successfully. You can now sign in.",
-              });
-              
-              // Redirect after a short delay
-              setTimeout(() => {
-                if (data.user) {
-                  // User is now logged in, redirect based on role
-                  const userRole = data.user.user_metadata?.role || 'client';
+              // Handle verification without direct tokens (let Supabase handle it)
+              const { data, error } = await supabase.auth.getSession();
+              if (data.session) {
+                setEmailVerified(true);
+                toast({
+                  title: "Email Verified!",
+                  description: "Your email has been verified successfully.",
+                });
+                
+                setTimeout(() => {
+                  const userRole = data.session?.user?.user_metadata?.role || 'client';
                   switch (userRole) {
                     case 'admin':
                       navigate('/dashboard/admin');
@@ -109,10 +155,15 @@ const Auth = () => {
                     default:
                       navigate('/');
                   }
-                } else {
-                  setMode('login');
-                }
-              }, 2000);
+                }, 1500);
+              } else if (error) {
+                console.error('Session error:', error);
+                toast({
+                  title: "Verification Error",
+                  description: "Please try clicking the verification link again.",
+                  variant: "destructive",
+                });
+              }
             }
           }
         } catch (error) {
@@ -122,6 +173,8 @@ const Auth = () => {
             description: "There was an error processing your email verification.",
             variant: "destructive",
           });
+        } finally {
+          setIsVerifying(false);
         }
       }
     };
@@ -131,7 +184,7 @@ const Auth = () => {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (user && isInitialized && !emailVerified) {
+    if (user && isInitialized && !emailVerified && !isVerifying) {
       // Redirect based on user role
       switch (user.role) {
         case 'admin':
@@ -147,14 +200,14 @@ const Auth = () => {
           navigate(from);
       }
     }
-  }, [user, isInitialized, navigate, from, emailVerified]);
+  }, [user, isInitialized, navigate, from, emailVerified, isVerifying]);
 
   // Check if admin setup is needed
   useEffect(() => {
-    if (isInitialized && needsAdminSetup && !emailVerified) {
+    if (isInitialized && needsAdminSetup && !emailVerified && !isVerifying) {
       setMode('admin-setup');
     }
-  }, [isInitialized, needsAdminSetup, emailVerified]);
+  }, [isInitialized, needsAdminSetup, emailVerified, isVerifying]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -258,7 +311,9 @@ const Auth = () => {
           companyPhone: formData.companyPhone
         });
 
-        // Navigation is handled by the useEffect hook after successful setup
+        if (success) {
+          setEmailSent(true);
+        }
       }
     } catch (err) {
       console.error('Auth error:', err);
@@ -297,6 +352,24 @@ const Auth = () => {
       case 'admin-setup': return 'Create the first admin account for your Longa platform';
     }
   };
+
+  if (isVerifying) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <CardTitle className="text-xl font-bold text-gray-800">Verifying Email...</CardTitle>
+            <p className="text-gray-600">
+              Please wait while we verify your email address.
+            </p>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   if (emailVerified) {
     return (

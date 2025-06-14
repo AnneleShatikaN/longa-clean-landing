@@ -296,10 +296,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         toast({
           title: "Admin account created!",
-          description: "You are now logged in and will be redirected to the admin dashboard.",
+          description: "Please check your email and click the verification link to complete setup. You'll then be able to sign in.",
         });
 
-        // The auth state change handler will handle the redirect
         return true;
       }
 

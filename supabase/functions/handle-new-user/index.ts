@@ -20,7 +20,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { record } = await req.json();
     
-    console.log('Creating user profile for:', record.id);
+    console.log('Creating user profile for:', record.id, record.email);
+    console.log('User metadata:', record.raw_user_meta_data);
 
     // Create user profile in the users table
     const { error } = await supabaseAdmin
@@ -42,7 +43,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw error;
     }
 
-    console.log('User profile created successfully');
+    console.log('User profile created successfully for:', record.email);
 
     return new Response(
       JSON.stringify({ success: true }),

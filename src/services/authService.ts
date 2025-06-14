@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { logSecurityEvent, detectSuspiciousActivity, checkRateLimit } from '@/utils/security';
 import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
@@ -8,12 +7,22 @@ import { fetchUserProfile } from '@/utils/userProfile';
 const getRedirectUrl = () => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
+    
+    // For production (Vercel deployment)
+    if (hostname.includes('vercel.app') || hostname === 'longa.vercel.app') {
+      return 'https://longa.vercel.app/auth';
+    }
+    
+    // For local development
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return `${window.location.origin}/auth`;
     }
-    // For deployed versions, use the actual domain
+    
+    // For other deployments
     return `${window.location.origin}/auth`;
   }
+  
+  // Fallback for server-side or when window is not available
   return 'https://longa.vercel.app/auth';
 };
 
@@ -98,6 +107,11 @@ export const signupUser = async (userData: UserRegistration) => {
     password: userData.password,
     options: {
       emailRedirectTo: getRedirectUrl(),
+      data: {
+        full_name: userData.name,
+        phone: userData.phone,
+        role: userData.role
+      }
     }
   });
 
@@ -107,38 +121,6 @@ export const signupUser = async (userData: UserRegistration) => {
   }
 
   if (data.user) {
-    // Insert user profile into our users table
-    const { error: profileError } = await supabase
-      .from('users')
-      .insert({
-        id: data.user.id,
-        email: userData.email,
-        password_hash: 'managed_by_supabase_auth',
-        full_name: userData.name,
-        phone: userData.phone,
-        role: userData.role,
-        is_active: true,
-        rating: 0,
-        total_jobs: 0,
-      });
-
-    if (profileError) {
-      // If profile creation fails, clean up the auth user
-      console.error('Profile creation failed:', profileError);
-      throw new Error('Failed to create user profile');
-    }
-
-    // Log new user registration
-    logSecurityEvent({
-      type: 'login',
-      userId: data.user.id,
-      details: { 
-        action: 'registration',
-        email: userData.email, 
-        role: userData.role 
-      }
-    });
-
     const needsEmailVerification = !data.session;
     return { success: true, needsEmailVerification };
   }
@@ -189,7 +171,7 @@ export const setupAdminService = async (data: AdminSetup) => {
   try {
     console.log('Starting admin setup with data:', { email: data.email, name: data.name });
     
-    // First create the admin user account with proper metadata
+    // Create the admin user account
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
@@ -214,44 +196,7 @@ export const setupAdminService = async (data: AdminSetup) => {
 
     console.log('Auth user created:', authData.user.id);
 
-    // The trigger should automatically create the user profile
-    // Let's wait a moment and then verify it was created
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Verify the user profile was created
-    const { data: userProfile, error: profileCheckError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', authData.user.id)
-      .single();
-
-    if (profileCheckError || !userProfile) {
-      console.error('Profile not found after creation, creating manually:', profileCheckError);
-      
-      // Create profile manually if trigger didn't work
-      const { error: manualProfileError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: data.email,
-          password_hash: 'managed_by_supabase_auth',
-          full_name: data.name,
-          phone: data.phone,
-          role: 'admin',
-          is_active: true,
-          rating: 0,
-          total_jobs: 0,
-        });
-
-      if (manualProfileError) {
-        console.error('Manual profile creation failed:', manualProfileError);
-        throw new Error(`Profile creation failed: ${manualProfileError.message}. Please check your database permissions.`);
-      }
-    }
-
-    console.log('Admin profile verified/created successfully');
-
-    // Store company information in localStorage for now
+    // Store company information in localStorage
     const companyData = {
       name: data.companyName,
       phone: data.companyPhone,
@@ -261,6 +206,11 @@ export const setupAdminService = async (data: AdminSetup) => {
     
     if (typeof window !== 'undefined') {
       localStorage.setItem('company_setup', JSON.stringify(companyData));
+    }
+
+    // Store admin setup status
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('admin_setup_completed', 'true');
     }
 
     return true;

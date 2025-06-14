@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,8 +70,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser(profile);
         }
 
-        const adminSetupNeeded = await checkAdminSetup();
-        setNeedsAdminSetup(adminSetupNeeded);
+        // Check if admin setup was completed but user needs verification
+        const adminSetupCompleted = localStorage.getItem('admin_setup_completed');
+        
+        if (adminSetupCompleted && !session) {
+          // Admin was created but not verified yet
+          setNeedsAdminSetup(false);
+        } else {
+          const adminSetupNeeded = await checkAdminSetup();
+          setNeedsAdminSetup(adminSetupNeeded);
+        }
+        
         setIsInitialized(true);
         setIsLoading(false);
 
@@ -278,7 +288,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         toast({
           title: "Admin account created!",
-          description: "Your Longa platform is now ready to use. Please check your email to verify your account before signing in.",
+          description: "Please check your email and click the verification link to complete setup. You'll then be able to sign in.",
         });
       }
 

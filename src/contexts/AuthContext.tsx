@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +44,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 const profile = await fetchUserProfile(session.user.id);
                 if (mounted) {
                   setUser(profile);
+                  
+                  // Handle automatic redirect after admin setup
+                  if (event === 'SIGNED_IN' && profile?.role === 'admin') {
+                    const adminSetupCompleted = localStorage.getItem('admin_setup_completed');
+                    if (adminSetupCompleted && window.location.pathname === '/') {
+                      // Redirect to admin dashboard
+                      window.location.href = '/dashboard/admin';
+                    }
+                  }
                 }
               }, 0);
             } else {
@@ -288,11 +296,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         toast({
           title: "Admin account created!",
-          description: "Please check your email and click the verification link to complete setup. You'll then be able to sign in.",
+          description: "You are now logged in and will be redirected to the admin dashboard.",
         });
+
+        // The auth state change handler will handle the redirect
+        return true;
       }
 
-      return success;
+      return false;
     } catch (error) {
       console.error('Admin setup error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Admin setup failed';

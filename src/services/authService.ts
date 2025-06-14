@@ -180,13 +180,11 @@ export const setupAdminService = async (data: AdminSetup) => {
     
     if (typeof window !== 'undefined') {
       localStorage.setItem('company_setup', JSON.stringify(companyData));
-    }
-
-    // Store admin setup status
-    if (typeof window !== 'undefined') {
       localStorage.setItem('admin_setup_completed', 'true');
     }
 
+    // Since email confirmation is disabled, user should be logged in automatically
+    // Return success immediately - the auth context will handle the redirect
     return true;
   } catch (error) {
     console.error('Admin setup failed:', error);

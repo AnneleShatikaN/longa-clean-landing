@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -7,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, Mail } from "lucide-react";
+import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, Mail, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PhoneValidation } from "@/components/profile/PhoneValidation";
+import { supabase } from "@/integrations/supabase/client";
 
 type AuthMode = 'login' | 'signup' | 'forgot-password' | 'admin-setup';
 
@@ -32,6 +32,7 @@ const Auth = () => {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [emailSent, setEmailSent] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
 
   const { 
     user,
@@ -52,9 +53,85 @@ const Auth = () => {
   // Get the intended destination from location state
   const from = location.state?.from?.pathname || '/';
 
+  // Handle email verification on page load
+  useEffect(() => {
+    const handleEmailVerification = async () => {
+      const hashFragment = window.location.hash;
+      
+      if (hashFragment.includes('access_token') || hashFragment.includes('type=email_confirmation')) {
+        try {
+          // Parse the hash fragment to get the tokens
+          const params = new URLSearchParams(hashFragment.substring(1));
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          
+          if (accessToken && refreshToken) {
+            // Set the session using the tokens
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            
+            if (error) {
+              console.error('Email verification error:', error);
+              toast({
+                title: "Verification Failed",
+                description: "There was an error verifying your email. Please try again.",
+                variant: "destructive",
+              });
+            } else {
+              console.log('Email verified successfully:', data);
+              setEmailVerified(true);
+              
+              // Clear the hash from URL
+              window.history.replaceState(null, '', window.location.pathname);
+              
+              toast({
+                title: "Email Verified!",
+                description: "Your email has been verified successfully. You can now sign in.",
+              });
+              
+              // Redirect after a short delay
+              setTimeout(() => {
+                if (data.user) {
+                  // User is now logged in, redirect based on role
+                  const userRole = data.user.user_metadata?.role || 'client';
+                  switch (userRole) {
+                    case 'admin':
+                      navigate('/dashboard/admin');
+                      break;
+                    case 'provider':
+                      navigate('/dashboard/provider');
+                      break;
+                    case 'client':
+                      navigate('/dashboard/client');
+                      break;
+                    default:
+                      navigate('/');
+                  }
+                } else {
+                  setMode('login');
+                }
+              }, 2000);
+            }
+          }
+        } catch (error) {
+          console.error('Error handling email verification:', error);
+          toast({
+            title: "Verification Error",
+            description: "There was an error processing your email verification.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    handleEmailVerification();
+  }, [navigate, toast]);
+
   // Redirect if already authenticated
   useEffect(() => {
-    if (user && isInitialized) {
+    if (user && isInitialized && !emailVerified) {
       // Redirect based on user role
       switch (user.role) {
         case 'admin':
@@ -70,14 +147,14 @@ const Auth = () => {
           navigate(from);
       }
     }
-  }, [user, isInitialized, navigate, from]);
+  }, [user, isInitialized, navigate, from, emailVerified]);
 
   // Check if admin setup is needed
   useEffect(() => {
-    if (isInitialized && needsAdminSetup) {
+    if (isInitialized && needsAdminSetup && !emailVerified) {
       setMode('admin-setup');
     }
-  }, [isInitialized, needsAdminSetup]);
+  }, [isInitialized, needsAdminSetup, emailVerified]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -221,6 +298,24 @@ const Auth = () => {
     }
   };
 
+  if (emailVerified) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+            </div>
+            <CardTitle className="text-xl font-bold text-gray-800">Email Verified!</CardTitle>
+            <p className="text-gray-600">
+              Your email has been successfully verified. You will be redirected shortly.
+            </p>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   if (emailSent) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
@@ -231,7 +326,7 @@ const Auth = () => {
             </div>
             <CardTitle className="text-xl font-bold text-gray-800">Check Your Email</CardTitle>
             <p className="text-gray-600">
-              {mode === 'signup' 
+              {mode === 'signup' || mode === 'admin-setup'
                 ? 'We sent you a verification link to complete your registration.'
                 : 'We sent you a link to reset your password.'
               }

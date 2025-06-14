@@ -7,19 +7,10 @@ import { fetchUserProfile } from '@/utils/userProfile';
 const getRedirectUrl = () => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
+    const origin = window.location.origin;
     
-    // For production (Vercel deployment)
-    if (hostname.includes('vercel.app') || hostname === 'longa.vercel.app') {
-      return 'https://longa.vercel.app/auth';
-    }
-    
-    // For local development
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${window.location.origin}/auth`;
-    }
-    
-    // For other deployments
-    return `${window.location.origin}/auth`;
+    // Always redirect to /auth page for verification
+    return `${origin}/auth`;
   }
   
   // Fallback for server-side or when window is not available

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -6,12 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, Mail, CheckCircle } from "lucide-react";
+import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PhoneValidation } from "@/components/profile/PhoneValidation";
-import { supabase } from "@/integrations/supabase/client";
 
 type AuthMode = 'login' | 'signup' | 'forgot-password' | 'admin-setup';
 
@@ -31,9 +31,6 @@ const Auth = () => {
     companyPhone: ''
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [emailSent, setEmailSent] = useState(false);
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
 
   const { 
     user,
@@ -54,137 +51,9 @@ const Auth = () => {
   // Get the intended destination from location state
   const from = location.state?.from?.pathname || '/';
 
-  // Handle email verification and auth callbacks
-  useEffect(() => {
-    const handleEmailVerification = async () => {
-      const currentUrl = window.location.href;
-      console.log('=== EMAIL VERIFICATION DEBUG ===');
-      console.log('Full URL:', currentUrl);
-      console.log('Pathname:', window.location.pathname);
-      console.log('Hash:', window.location.hash);
-      console.log('Search:', window.location.search);
-      console.log('====================================');
-      
-      // Check if we're on the callback route and have verification data
-      if (window.location.pathname === '/auth/callback' || window.location.hash || window.location.search.includes('access_token')) {
-        setIsVerifying(true);
-        
-        try {
-          let params = new URLSearchParams();
-          
-          // Parse hash fragment if present (most common case for Supabase)
-          if (window.location.hash) {
-            const hashParams = window.location.hash.substring(1); // Remove the #
-            params = new URLSearchParams(hashParams);
-            console.log('Hash params found:', Object.fromEntries(params.entries()));
-          } 
-          // Fallback to query parameters
-          else if (window.location.search) {
-            params = new URLSearchParams(window.location.search);
-            console.log('Query params found:', Object.fromEntries(params.entries()));
-          }
-          
-          const accessToken = params.get('access_token');
-          const refreshToken = params.get('refresh_token');
-          const type = params.get('type');
-          const error = params.get('error');
-          const errorDescription = params.get('error_description');
-          
-          console.log('Parsed tokens:', { 
-            hasAccessToken: !!accessToken, 
-            hasRefreshToken: !!refreshToken, 
-            type, 
-            error 
-          });
-          
-          if (error) {
-            console.error('Auth error:', error, errorDescription);
-            toast({
-              title: "Verification Failed",
-              description: errorDescription || error,
-              variant: "destructive",
-            });
-            setIsVerifying(false);
-            navigate('/auth');
-            return;
-          }
-          
-          // Handle email verification or password reset
-          if (accessToken && refreshToken && (type === 'signup' || type === 'email_confirmation' || type === 'recovery')) {
-            console.log('Setting session with tokens...');
-            
-            const { data, error: sessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            });
-            
-            if (sessionError) {
-              console.error('Session error:', sessionError);
-              toast({
-                title: "Verification Failed",
-                description: "There was an error verifying your email. Please try again.",
-                variant: "destructive",
-              });
-              setIsVerifying(false);
-              navigate('/auth');
-            } else {
-              console.log('Email verified successfully:', data);
-              setEmailVerified(true);
-              
-              // Clear the URL
-              window.history.replaceState(null, '', '/auth');
-              
-              toast({
-                title: "Email Verified!",
-                description: "Your email has been verified successfully. You are now logged in.",
-              });
-              
-              // Redirect after verification
-              setTimeout(() => {
-                if (data.user) {
-                  const userRole = data.user.user_metadata?.role || 'client';
-                  console.log('Redirecting verified user with role:', userRole);
-                  
-                  switch (userRole) {
-                    case 'admin':
-                      navigate('/dashboard/admin');
-                      break;
-                    case 'provider':
-                      navigate('/dashboard/provider');
-                      break;
-                    case 'client':
-                      navigate('/dashboard/client');
-                      break;
-                    default:
-                      navigate('/');
-                  }
-                }
-              }, 2000);
-            }
-          } else {
-            console.log('No valid verification tokens found');
-            setIsVerifying(false);
-            navigate('/auth');
-          }
-        } catch (error) {
-          console.error('Error handling verification:', error);
-          toast({
-            title: "Verification Error",
-            description: "There was an error processing your email verification.",
-            variant: "destructive",
-          });
-          setIsVerifying(false);
-          navigate('/auth');
-        }
-      }
-    };
-
-    handleEmailVerification();
-  }, [navigate, toast]);
-
   // Redirect if already authenticated
   useEffect(() => {
-    if (user && isInitialized && !emailVerified && !isVerifying) {
+    if (user && isInitialized) {
       // Redirect based on user role
       switch (user.role) {
         case 'admin':
@@ -200,14 +69,14 @@ const Auth = () => {
           navigate(from);
       }
     }
-  }, [user, isInitialized, navigate, from, emailVerified, isVerifying]);
+  }, [user, isInitialized, navigate, from]);
 
   // Check if admin setup is needed
   useEffect(() => {
-    if (isInitialized && needsAdminSetup && !emailVerified && !isVerifying) {
+    if (isInitialized && needsAdminSetup) {
       setMode('admin-setup');
     }
-  }, [isInitialized, needsAdminSetup, emailVerified, isVerifying]);
+  }, [isInitialized, needsAdminSetup]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -269,14 +138,12 @@ const Auth = () => {
 
     try {
       if (mode === 'login') {
-        const success = await login({
+        await login({
           email: formData.email,
           password: formData.password,
           role: formData.role,
           rememberMe: formData.rememberMe
         });
-
-        // Navigation is handled by the useEffect hook after successful login
       } else if (mode === 'signup') {
         const result = await signup({
           name: formData.name,
@@ -288,20 +155,16 @@ const Auth = () => {
         });
 
         if (result.success) {
-          if (result.needsEmailVerification) {
-            setEmailSent(true);
-          } else {
-            setMode('login');
-          }
+          toast({
+            title: "Account created!",
+            description: "You can now sign in with your credentials.",
+          });
+          setMode('login');
         }
       } else if (mode === 'forgot-password') {
-        const success = await requestPasswordReset({ email: formData.email });
-        
-        if (success) {
-          setEmailSent(true);
-        }
+        await requestPasswordReset({ email: formData.email });
       } else if (mode === 'admin-setup') {
-        const success = await setupAdmin({
+        await setupAdmin({
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
@@ -310,10 +173,6 @@ const Auth = () => {
           companyName: formData.companyName,
           companyPhone: formData.companyPhone
         });
-
-        if (success) {
-          setEmailSent(true);
-        }
       }
     } catch (err) {
       console.error('Auth error:', err);
@@ -352,75 +211,6 @@ const Auth = () => {
       case 'admin-setup': return 'Create the first admin account for your Longa platform';
     }
   };
-
-  if (isVerifying) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-            <CardTitle className="text-xl font-bold text-gray-800">Verifying Email...</CardTitle>
-            <p className="text-gray-600">
-              Please wait while we verify your email address.
-            </p>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
-
-  if (emailVerified) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-            <CardTitle className="text-xl font-bold text-gray-800">Email Verified!</CardTitle>
-            <p className="text-gray-600">
-              Your email has been successfully verified. You will be redirected shortly.
-            </p>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
-
-  if (emailSent) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-              <Mail className="w-6 h-6 text-green-600" />
-            </div>
-            <CardTitle className="text-xl font-bold text-gray-800">Check Your Email</CardTitle>
-            <p className="text-gray-600">
-              {mode === 'signup' || mode === 'admin-setup'
-                ? 'We sent you a verification link to complete your registration.'
-                : 'We sent you a link to reset your password.'
-              }
-            </p>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={() => {
-                setEmailSent(false);
-                setMode('login');
-              }}
-              className="w-full"
-              variant="outline"
-            >
-              Back to Login
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
@@ -627,7 +417,7 @@ const Auth = () => {
                   <div className="flex items-center space-x-2">
                     {mode === 'login' && <><LogIn className="w-4 h-4" /><span>Sign In</span></>}
                     {mode === 'signup' && <><UserPlus className="w-4 h-4" /><span>Create Account</span></>}
-                    {mode === 'forgot-password' && <><Mail className="w-4 h-4" /><span>Send Reset Link</span></>}
+                    {mode === 'forgot-password' && <><span>Send Reset Link</span></>}
                     {mode === 'admin-setup' && <><Shield className="w-4 h-4" /><span>Setup Platform</span></>}
                   </div>
                 )}

@@ -1,20 +1,8 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { logSecurityEvent, detectSuspiciousActivity, checkRateLimit } from '@/utils/security';
 import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
 import { fetchUserProfile } from '@/utils/userProfile';
-
-// Get the correct redirect URL based on environment
-const getRedirectUrl = () => {
-  if (typeof window !== 'undefined') {
-    const origin = window.location.origin;
-    
-    // Use the auth callback route for verification
-    return `${origin}/auth/callback`;
-  }
-  
-  // Fallback for server-side or when window is not available
-  return 'https://longa.vercel.app/auth/callback';
-};
 
 export const loginUser = async (loginData: LoginData) => {
   // Check rate limiting
@@ -91,12 +79,11 @@ export const signupUser = async (userData: UserRegistration) => {
     throw new Error('An account with this email already exists');
   }
 
-  // Sign up with Supabase Auth
+  // Sign up with Supabase Auth - no email confirmation needed
   const { data, error } = await supabase.auth.signUp({
     email: userData.email,
     password: userData.password,
     options: {
-      emailRedirectTo: getRedirectUrl(),
       data: {
         full_name: userData.name,
         phone: userData.phone,
@@ -111,8 +98,8 @@ export const signupUser = async (userData: UserRegistration) => {
   }
 
   if (data.user) {
-    const needsEmailVerification = !data.session;
-    return { success: true, needsEmailVerification };
+    // Since email confirmation is disabled, the user will be automatically logged in
+    return { success: true, needsEmailVerification: false };
   }
 
   return { success: false, needsEmailVerification: false };
@@ -131,9 +118,7 @@ export const logoutUser = async (userId?: string, email?: string) => {
 };
 
 export const requestPasswordResetService = async (data: PasswordReset) => {
-  const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-    redirectTo: getRedirectUrl(),
-  });
+  const { error } = await supabase.auth.resetPasswordForEmail(data.email);
 
   if (error) throw error;
   return true;
@@ -161,12 +146,11 @@ export const setupAdminService = async (data: AdminSetup) => {
   try {
     console.log('Starting admin setup with data:', { email: data.email, name: data.name });
     
-    // Create the admin user account
+    // Create the admin user account - no email confirmation needed
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
-        emailRedirectTo: getRedirectUrl(),
         data: {
           full_name: data.name,
           phone: data.phone,

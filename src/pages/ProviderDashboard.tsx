@@ -16,6 +16,7 @@ import ProviderProfileTab from '@/components/provider/ProviderProfileTab';
 import AvailabilityToggle from '@/components/AvailabilityToggle';
 import NotificationSystem from '@/components/NotificationSystem';
 import WorkLocationSelector from '@/components/provider/WorkLocationSelector';
+import FirstTimeLocationSetup from '@/components/provider/FirstTimeLocationSetup';
 import { 
   LogOut, Bell, AlertCircle, Database, MapPin,
   Home, Briefcase, Wallet, User
@@ -27,8 +28,16 @@ const ProviderDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [showFirstTimeSetup, setShowFirstTimeSetup] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Check if this is the first time the user is logging in (no work location set)
+  useEffect(() => {
+    if (user && user.role === 'provider' && !user.current_work_location) {
+      setShowFirstTimeSetup(true);
+    }
+  }, [user]);
 
   // Check email verification status
   useEffect(() => {
@@ -106,6 +115,12 @@ const ProviderDashboard = () => {
       title: "Location updated successfully 🌍",
       description: "You'll now see jobs relevant to your selected location.",
     });
+  };
+
+  const handleFirstTimeSetupComplete = (location: string) => {
+    setShowFirstTimeSetup(false);
+    // Refetch data to get location-filtered jobs
+    refetch();
   };
 
   if (isLoading) {
@@ -260,6 +275,11 @@ const ProviderDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <FirstTimeLocationSetup
+        isOpen={showFirstTimeSetup}
+        onComplete={handleFirstTimeSetupComplete}
+      />
+
       <EmailVerificationPrompt
         isOpen={showEmailVerification}
         onClose={() => setShowEmailVerification(false)}
@@ -292,26 +312,8 @@ const ProviderDashboard = () => {
 
       <div className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Work Location Prompt/Selector */}
-          {!hasWorkLocation ? (
-            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <div className="flex items-start space-x-3">
-                <MapPin className="h-5 w-5 text-amber-600 mt-0.5" />
-                <div className="flex-1">
-                  <h3 className="text-amber-800 font-medium">Set Your Work Location</h3>
-                  <p className="text-amber-700 text-sm mt-1">
-                    Please set your location to start receiving jobs in your area.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 max-w-md">
-                <WorkLocationSelector 
-                  currentLocation={user?.current_work_location}
-                  onLocationUpdate={handleLocationUpdate}
-                />
-              </div>
-            </div>
-          ) : (
+          {/* Show work location selector only if user has already set location */}
+          {hasWorkLocation && (
             <div className="mb-6">
               <WorkLocationSelector 
                 currentLocation={user?.current_work_location}

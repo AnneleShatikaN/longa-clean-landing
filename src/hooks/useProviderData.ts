@@ -129,9 +129,27 @@ export const useProviderData = () => {
       } else if (dataMode === 'live') {
         await loadLiveData();
       } else {
-        // No data mode
-        setData(null);
-        console.log('[useProviderData] No data mode - null data returned');
+        // No data mode - return empty but valid structure
+        console.log('[useProviderData] No data mode - returning empty data structure');
+        setData({
+          jobs: [],
+          notifications: [],
+          ratings: [],
+          monthlyEarnings: [],
+          profile: {
+            id: user.id,
+            name: user.name || user.full_name || 'Provider',
+            email: user.email || '',
+            phone: user.phone || '',
+            rating: 0,
+            totalJobs: 0,
+            specialties: [],
+            available: true,
+            location: 'windhoek',
+            joinDate: user.created_at || new Date().toISOString(),
+            lastActive: new Date().toISOString()
+          }
+        });
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load provider data';
@@ -148,12 +166,37 @@ export const useProviderData = () => {
     // Map the real user ID to a mock provider ID
     const mockProviderId = mapUserIdToMockProvider(user.id);
 
+    console.log(`[useProviderData] Looking for mock provider data for ${mockProviderId}`);
+
     // Use mockData from context if available, otherwise fetch
     if (mockData?.provider) {
       const providerData = mockData.provider[mockProviderId];
       
+      console.log(`[useProviderData] Mock data from context:`, providerData);
+      
       if (!providerData) {
-        throw new Error(`No mock data found for mapped provider ${mockProviderId}`);
+        console.warn(`[useProviderData] No mock data found for mapped provider ${mockProviderId}, using fallback`);
+        // Create fallback data instead of throwing error
+        setData({
+          jobs: [],
+          notifications: [],
+          ratings: [],
+          monthlyEarnings: [],
+          profile: {
+            id: user.id,
+            name: user.name || user.full_name || 'Provider',
+            email: user.email || '',
+            phone: user.phone || '',
+            rating: 0,
+            totalJobs: 0,
+            specialties: [],
+            available: true,
+            location: 'windhoek',
+            joinDate: user.created_at || new Date().toISOString(),
+            lastActive: new Date().toISOString()
+          }
+        });
+        return;
       }
 
       setData({
@@ -161,33 +204,104 @@ export const useProviderData = () => {
         notifications: providerData.notifications || [],
         ratings: providerData.ratings || [],
         monthlyEarnings: providerData.monthlyEarnings || [],
-        profile: providerData.profile
+        profile: providerData.profile || {
+          id: user.id,
+          name: user.name || user.full_name || 'Provider',
+          email: user.email || '',
+          phone: user.phone || '',
+          rating: 0,
+          totalJobs: 0,
+          specialties: [],
+          available: true,
+          location: 'windhoek',
+          joinDate: user.created_at || new Date().toISOString(),
+          lastActive: new Date().toISOString()
+        }
       });
       
       console.log(`[useProviderData] Loaded mock data for user ${user.id} mapped to ${mockProviderId} from context`);
     } else {
       // Fallback to direct fetch
-      const response = await fetch('/data/provider_mock_data.json');
-      if (!response.ok) {
-        throw new Error('Failed to load provider mock data');
-      }
-      
-      const providerMockData = await response.json();
-      const providerData = providerMockData[mockProviderId];
-      
-      if (!providerData) {
-        throw new Error(`No mock data found for mapped provider ${mockProviderId}`);
-      }
+      try {
+        const response = await fetch('/data/provider_mock_data.json');
+        if (!response.ok) {
+          throw new Error('Failed to load provider mock data');
+        }
+        
+        const providerMockData = await response.json();
+        const providerData = providerMockData[mockProviderId];
+        
+        console.log(`[useProviderData] Mock data from fetch:`, providerData);
+        
+        if (!providerData) {
+          console.warn(`[useProviderData] No mock data found for mapped provider ${mockProviderId}, using fallback`);
+          // Create fallback data instead of throwing error
+          setData({
+            jobs: [],
+            notifications: [],
+            ratings: [],
+            monthlyEarnings: [],
+            profile: {
+              id: user.id,
+              name: user.name || user.full_name || 'Provider',
+              email: user.email || '',
+              phone: user.phone || '',
+              rating: 0,
+              totalJobs: 0,
+              specialties: [],
+              available: true,
+              location: 'windhoek',
+              joinDate: user.created_at || new Date().toISOString(),
+              lastActive: new Date().toISOString()
+            }
+          });
+          return;
+        }
 
-      setData({
-        jobs: providerData.jobs || [],
-        notifications: providerData.notifications || [],
-        ratings: providerData.ratings || [],
-        monthlyEarnings: providerData.monthlyEarnings || [],
-        profile: providerData.profile
-      });
-      
-      console.log(`[useProviderData] Loaded mock data for user ${user.id} mapped to ${mockProviderId} via fetch`);
+        setData({
+          jobs: providerData.jobs || [],
+          notifications: providerData.notifications || [],
+          ratings: providerData.ratings || [],
+          monthlyEarnings: providerData.monthlyEarnings || [],
+          profile: providerData.profile || {
+            id: user.id,
+            name: user.name || user.full_name || 'Provider',
+            email: user.email || '',
+            phone: user.phone || '',
+            rating: 0,
+            totalJobs: 0,
+            specialties: [],
+            available: true,
+            location: 'windhoek',
+            joinDate: user.created_at || new Date().toISOString(),
+            lastActive: new Date().toISOString()
+          }
+        });
+        
+        console.log(`[useProviderData] Loaded mock data for user ${user.id} mapped to ${mockProviderId} via fetch`);
+      } catch (fetchError) {
+        console.error('[useProviderData] Failed to fetch mock data:', fetchError);
+        // Set fallback data
+        setData({
+          jobs: [],
+          notifications: [],
+          ratings: [],
+          monthlyEarnings: [],
+          profile: {
+            id: user.id,
+            name: user.name || user.full_name || 'Provider',
+            email: user.email || '',
+            phone: user.phone || '',
+            rating: 0,
+            totalJobs: 0,
+            specialties: [],
+            available: true,
+            location: 'windhoek',
+            joinDate: user.created_at || new Date().toISOString(),
+            lastActive: new Date().toISOString()
+          }
+        });
+      }
     }
   };
 

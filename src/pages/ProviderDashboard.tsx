@@ -28,6 +28,7 @@ const ProviderDashboard = () => {
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showDebug, setShowDebug] = useState(false);
 
   // Check email verification status
   useEffect(() => {
@@ -47,6 +48,25 @@ const ProviderDashboard = () => {
       navigate('/');
     }
   }, [user, isValidProvider, isLoading, navigate, toast]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[ProviderDashboard] Current state:', {
+      user: user ? { id: user.id, role: user.role, name: user.name } : null,
+      isLoading,
+      error,
+      isValidProvider,
+      data: data ? {
+        hasJobs: data.jobs?.length > 0,
+        hasNotifications: data.notifications?.length > 0,
+        hasEarnings: data.monthlyEarnings?.length > 0,
+        hasProfile: !!data.profile,
+        jobsCount: data.jobs?.length || 0,
+        notificationsCount: data.notifications?.length || 0,
+        earningsCount: data.monthlyEarnings?.length || 0
+      } : null
+    });
+  }, [user, isLoading, error, isValidProvider, data]);
 
   const handleLogout = async () => {
     try {
@@ -125,7 +145,8 @@ const ProviderDashboard = () => {
     );
   }
 
-  if (!data || !isValidProvider || (data.jobs.length === 0 && data.notifications.length === 0 && data.monthlyEarnings.length === 0)) {
+  // Handle case where user is not a valid provider
+  if (!isValidProvider) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <EmailVerificationPrompt
@@ -148,17 +169,14 @@ const ProviderDashboard = () => {
 
         <div className="flex-1 flex items-center justify-center p-4">
           <EmptyState
-            icon={!isValidProvider ? AlertCircle : Database}
-            title={!isValidProvider ? "Access Denied" : "No Data Loaded"}
-            description={!isValidProvider 
-              ? "You don't have provider access. Please contact your administrator."
-              : "The admin has not configured a data source yet. Please contact your administrator or check back later."
-            }
+            icon={AlertCircle}
+            title="Access Denied"
+            description="You don't have provider access. Please contact your administrator."
             className="max-w-md"
-            action={!isValidProvider ? {
+            action={{
               label: "Go to Home",
               onClick: () => navigate('/')
-            } : undefined}
+            }}
           />
         </div>
         
@@ -167,7 +185,44 @@ const ProviderDashboard = () => {
     );
   }
 
-  const providerProfile = data?.profile || {
+  // Handle case where no data is available from admin configuration
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <EmailVerificationPrompt
+          isOpen={showEmailVerification}
+          onClose={() => setShowEmailVerification(false)}
+          email={user?.email || ''}
+        />
+
+        <header className="bg-white shadow-sm border-b sticky top-0 z-30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <h1 className="text-xl sm:text-2xl font-bold text-purple-600">Longa Provider</h1>
+              <Button variant="ghost" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex-1 flex items-center justify-center p-4">
+          <EmptyState
+            icon={Database}
+            title="No Data Configured"
+            description="The admin has not configured a data source yet. Please contact your administrator or check back later."
+            className="max-w-md"
+          />
+        </div>
+        
+        <Footer />
+      </div>
+    );
+  }
+
+  // At this point, we have valid data (even if arrays are empty)
+  const providerProfile = data.profile || {
     name: user?.name || user?.full_name || 'Provider',
     email: user?.email || '',
     phone: user?.phone || '',
@@ -178,9 +233,9 @@ const ProviderDashboard = () => {
     lastActive: ''
   };
 
-  const jobs = data?.jobs || [];
-  const notifications = data?.notifications || [];
-  const monthlyEarnings = data?.monthlyEarnings || [];
+  const jobs = data.jobs || [];
+  const notifications = data.notifications || [];
+  const monthlyEarnings = data.monthlyEarnings || [];
 
   const availableJobs = jobs.filter(job => job.status === 'requested');
   const myJobs = jobs.filter(job => job.status === 'accepted' || job.status === 'completed');
@@ -197,7 +252,7 @@ const ProviderDashboard = () => {
   });
   const thisWeekEarnings = thisWeekCompleted.reduce((sum, job) => sum + job.expectedPayout, 0);
   const totalEarnings = completedJobs.reduce((sum, job) => sum + job.expectedPayout, 0);
-  const averageRating = data?.ratings?.length > 0 
+  const averageRating = data.ratings?.length > 0 
     ? data.ratings.reduce((sum, rating) => sum + rating.rating, 0) / data.ratings.length 
     : 0;
 
@@ -234,6 +289,15 @@ const ProviderDashboard = () => {
                   </span>
                 )}
               </div>
+              {process.env.NODE_ENV === 'development' && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowDebug(!showDebug)}
+                >
+                  Debug
+                </Button>
+              )}
               <Button variant="ghost" onClick={handleLogout} size="sm">
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -244,6 +308,25 @@ const ProviderDashboard = () => {
 
       <div className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Debug Panel */}
+          {showDebug && process.env.NODE_ENV === 'development' && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h3 className="font-semibold text-yellow-800 mb-2">Debug Information</h3>
+              <pre className="text-xs text-yellow-700 overflow-auto">
+                {JSON.stringify({
+                  userId: user?.id,
+                  userRole: user?.role,
+                  isValidProvider,
+                  dataLoaded: !!data,
+                  jobsCount: jobs.length,
+                  notificationsCount: notifications.length,
+                  earningsCount: monthlyEarnings.length,
+                  hasProfile: !!data.profile
+                }, null, 2)}
+              </pre>
+            </div>
+          )}
+
           {/* Availability Toggle */}
           <div className="mb-6">
             <AvailabilityToggle 

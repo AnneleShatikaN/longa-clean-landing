@@ -108,6 +108,38 @@ const mapSupabaseService = (supabaseService: any): Service => {
   };
 };
 
+// Helper function to convert mock service data to our Service interface
+const mapMockService = (mockService: any): Service => {
+  const durationHours = Math.floor((mockService.duration_minutes || 0) / 60);
+  const durationMinutes = (mockService.duration_minutes || 0) % 60;
+
+  return {
+    id: String(mockService.id),
+    name: mockService.name || '',
+    type: mockService.service_type as 'one-off' | 'subscription',
+    clientPrice: mockService.client_price || 0,
+    providerFee: mockService.provider_fee || 0,
+    commissionPercentage: mockService.commission_percentage || 15,
+    duration: {
+      hours: durationHours,
+      minutes: durationMinutes
+    },
+    status: mockService.is_active ? 'active' : 'inactive',
+    tags: mockService.tags || [],
+    description: mockService.description || '',
+    requirements: [],
+    popularity: mockService.popularity || 0,
+    averageRating: mockService.averageRating || 0,
+    totalBookings: mockService.totalBookings || 0,
+    totalRevenue: mockService.totalRevenue || 0,
+    createdAt: mockService.created_at || new Date().toISOString(),
+    updatedAt: mockService.updated_at || new Date().toISOString(),
+    category: mockService.category,
+    icon: mockService.icon,
+    coverageAreas: mockService.coverageAreas
+  };
+};
+
 interface ServiceContextType extends ServiceState {
   createService: (serviceData: ServiceData) => Promise<Service>;
   updateService: (id: string, updates: Partial<ServiceData>) => Promise<void>;
@@ -136,15 +168,10 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       if (dataMode === 'mock') {
-        // Load from mockData.admin.services if available, or fallback to empty
-        const mockServices = (mockData?.admin?.services || []).map((service: any) => ({
-          ...service,
-          id: String(service.id),
-          duration: {
-            hours: typeof service.duration?.hours === 'number' ? service.duration.hours : 0,
-            minutes: typeof service.duration?.minutes === 'number' ? service.duration.minutes : 0,
-          },
-        }));
+        console.log('[ServiceContext] Loading mock services from:', mockData?.admin?.services);
+        // Load from mockData.admin.services if available
+        const mockServices = (mockData?.admin?.services || []).map((service: any) => mapMockService(service));
+        console.log('[ServiceContext] Mapped mock services:', mockServices);
         dispatch({ type: 'SET_SERVICES', payload: mockServices });
         dispatch({ type: 'SET_LOADING', payload: false });
       } else if (dataMode === 'none') {
@@ -172,7 +199,7 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
         variant: "destructive",
       });
     }
-  }, [dataMode, mockData]);
+  }, [dataMode, mockData, toast]);
 
   // --- CRUD Operations, all will branch on dataMode ---
   const createService = async (serviceData: ServiceData): Promise<Service> => {
@@ -401,8 +428,11 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
 
   // Load (or reload) services whenever dataMode or mockData changes
   useEffect(() => {
-    loadServices();
-  }, [loadServices]);
+    // Wait for mockData to be loaded before attempting to load services
+    if (!dataModeLoading) {
+      loadServices();
+    }
+  }, [loadServices, dataModeLoading]);
 
   const value: ServiceContextType = {
     ...state,

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Filter, Edit, Trash2, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Database, Wifi, WifiOff } from 'lucide-react';
 import { useServices } from '@/contexts/ServiceContext';
 import ServiceForm from './ServiceForm';
 import ServiceViewModal from './ServiceViewModal';
@@ -70,6 +70,36 @@ const ServiceManagement: React.FC = () => {
     setSelectedServiceId(null);
   };
 
+  const getDataModeInfo = () => {
+    switch (dataMode) {
+      case 'mock':
+        return {
+          icon: <Database className="h-4 w-4" />,
+          text: "MOCK DATA MODE",
+          description: "Showing sample data for demonstration",
+          color: "bg-yellow-100 border-yellow-300 text-yellow-800"
+        };
+      case 'live':
+        return {
+          icon: <Wifi className="h-4 w-4" />,
+          text: "LIVE DATA MODE",
+          description: "Connected to live database",
+          color: "bg-green-100 border-green-300 text-green-800"
+        };
+      case 'none':
+        return {
+          icon: <WifiOff className="h-4 w-4" />,
+          text: "NO DATA MODE",
+          description: "No data source active",
+          color: "bg-gray-100 border-gray-300 text-gray-800"
+        };
+      default:
+        return null;
+    }
+  };
+
+  const dataModeInfo = getDataModeInfo();
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -107,10 +137,14 @@ const ServiceManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Show a warning banner if MOCK mode is active */}
-      {dataMode === 'mock' && (
-        <div className="p-2 rounded bg-yellow-100 text-yellow-700 text-center font-semibold">
-          MOCK DATA MODE ACTIVE – Changes made here will NOT affect your live database.
+      {/* Data Mode Indicator */}
+      {dataModeInfo && (
+        <div className={`p-3 rounded-lg border-2 ${dataModeInfo.color} flex items-center gap-3`}>
+          {dataModeInfo.icon}
+          <div>
+            <div className="font-semibold">{dataModeInfo.text}</div>
+            <div className="text-sm opacity-80">{dataModeInfo.description}</div>
+          </div>
         </div>
       )}
 
@@ -118,13 +152,23 @@ const ServiceManagement: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Service Management</h2>
-          <p className="text-gray-600">Manage your marketplace services and packages</p>
+          <p className="text-gray-600">
+            Manage your marketplace services and packages
+            {dataMode === 'mock' && ' (Mock Data)'}
+          </p>
         </div>
         <Button onClick={() => setIsCreateModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add New Service
         </Button>
       </div>
+
+      {/* Show services count */}
+      {services.length > 0 && (
+        <div className="text-sm text-gray-600">
+          Showing {filteredServices.length} of {services.length} services
+        </div>
+      )}
 
       {/* Filters */}
       {services.length > 0 && (
@@ -183,6 +227,11 @@ const ServiceManagement: React.FC = () => {
                       <Badge variant={service.status === 'active' ? 'default' : 'destructive'}>
                         {service.status}
                       </Badge>
+                      {dataMode === 'mock' && (
+                        <Badge variant="outline" className="text-xs">
+                          Mock
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <Button
@@ -217,7 +266,7 @@ const ServiceManagement: React.FC = () => {
                     <span>{service.commissionPercentage}%</span>
                   </div>
 
-                  {service.tags.length > 0 && (
+                  {service.tags && service.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {service.tags.slice(0, 3).map((tag) => (
                         <Badge key={tag} variant="outline" className="text-xs">

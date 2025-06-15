@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -12,6 +11,7 @@ import { BookingProvider } from "@/contexts/BookingContext";
 import { SupabaseBookingProvider } from "@/contexts/SupabaseBookingContext";
 import { PayoutProvider } from "@/contexts/PayoutContext";
 import { DataProvider } from "@/contexts/DataContext";
+import { DataModeProvider } from "@/contexts/DataModeContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { SessionManager } from "@/components/SessionManager";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -51,80 +51,82 @@ const App: React.FC = () => {
                   <SupabaseBookingProvider>
                     <PayoutProvider>
                       <DataProvider>
-                        <NotificationProvider>
-                          <TooltipProvider>
-                            <SessionManager />
-                            <Routes>
-                              <Route path="/" element={<Index />} />
-                              <Route path="/auth" element={<Auth />} />
-                              <Route path="/auth/callback" element={<Auth />} />
-                              <Route path="/admin-setup" element={<AdminSetup />} />
-                              <Route path="/search" element={<SearchPage />} />
-                              
-                              {/* Dashboard routes */}
-                              <Route 
-                                path="/dashboard/admin" 
-                                element={
-                                  <ProtectedRoute allowedRoles={['admin']}>
-                                    <AdminDashboard />
-                                  </ProtectedRoute>
-                                } 
-                              />
-                              <Route 
-                                path="/dashboard/client" 
-                                element={
-                                  <ProtectedRoute allowedRoles={['client']}>
-                                    <ClientDashboard />
-                                  </ProtectedRoute>
-                                } 
-                              />
-                              <Route 
-                                path="/dashboard/provider" 
-                                element={
-                                  <ProtectedRoute allowedRoles={['provider']}>
-                                    <ProviderDashboard />
-                                  </ProtectedRoute>
-                                } 
-                              />
-                              
-                              {/* Other protected routes */}
-                              <Route 
-                                path="/notifications" 
-                                element={
-                                  <ProtectedRoute allowedRoles={['client', 'provider', 'admin']}>
-                                    <NotificationCenter />
-                                  </ProtectedRoute>
-                                } 
-                              />
-                              <Route 
-                                path="/book-service" 
-                                element={
-                                  <ProtectedRoute allowedRoles={['client']}>
-                                    <OneOffBooking />
-                                  </ProtectedRoute>
-                                } 
-                              />
-                              <Route 
-                                path="/subscriptions" 
-                                element={
-                                  <ProtectedRoute allowedRoles={['client']}>
-                                    <SubscriptionPackages />
-                                  </ProtectedRoute>
-                                } 
-                              />
-                              
-                              {/* Legacy routes for backward compatibility */}
-                              <Route path="/client-dashboard" element={<ProtectedRoute allowedRoles={['client']}><ClientDashboard /></ProtectedRoute>} />
-                              <Route path="/provider-dashboard" element={<ProtectedRoute allowedRoles={['provider']}><ProviderDashboard /></ProtectedRoute>} />
-                              <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-                              
-                              {/* Catch all route - MUST be last */}
-                              <Route path="*" element={<NotFound />} />
-                            </Routes>
-                            <Toaster />
-                            <Sonner />
-                          </TooltipProvider>
-                        </NotificationProvider>
+                        <DataModeProvider>
+                          <NotificationProvider>
+                            <TooltipProvider>
+                              <SessionManager />
+                              <Routes>
+                                <Route path="/" element={<Index />} />
+                                <Route path="/auth" element={<Auth />} />
+                                <Route path="/auth/callback" element={<Auth />} />
+                                <Route path="/admin-setup" element={<AdminSetup />} />
+                                <Route path="/search" element={<SearchPage />} />
+                                
+                                {/* Dashboard routes */}
+                                <Route 
+                                  path="/dashboard/admin" 
+                                  element={
+                                    <ProtectedRoute allowedRoles={['admin']}>
+                                      <AdminDashboard />
+                                    </ProtectedRoute>
+                                  } 
+                                />
+                                <Route 
+                                  path="/dashboard/client" 
+                                  element={
+                                    <ProtectedRoute allowedRoles={['client']}>
+                                      <ClientDashboard />
+                                    </ProtectedRoute>
+                                  } 
+                                />
+                                <Route 
+                                  path="/dashboard/provider" 
+                                  element={
+                                    <ProtectedRoute allowedRoles={['provider']}>
+                                      <ProviderDashboard />
+                                    </ProtectedRoute>
+                                  } 
+                                />
+                                
+                                {/* Other protected routes */}
+                                <Route 
+                                  path="/notifications" 
+                                  element={
+                                    <ProtectedRoute allowedRoles={['client', 'provider', 'admin']}>
+                                      <NotificationCenter />
+                                    </ProtectedRoute>
+                                  } 
+                                />
+                                <Route 
+                                  path="/book-service" 
+                                  element={
+                                    <ProtectedRoute allowedRoles={['client']}>
+                                      <OneOffBooking />
+                                    </ProtectedRoute>
+                                  } 
+                                />
+                                <Route 
+                                  path="/subscriptions" 
+                                  element={
+                                    <ProtectedRoute allowedRoles={['client']}>
+                                      <SubscriptionPackages />
+                                    </ProtectedRoute>
+                                  } 
+                                />
+                                
+                                {/* Legacy routes for backward compatibility */}
+                                <Route path="/client-dashboard" element={<ProtectedRoute allowedRoles={['client']}><ClientDashboard /></ProtectedRoute>} />
+                                <Route path="/provider-dashboard" element={<ProtectedRoute allowedRoles={['provider']}><ProviderDashboard /></ProtectedRoute>} />
+                                <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+                                
+                                {/* Catch all route - MUST be last */}
+                                <Route path="*" element={<NotFound />} />
+                              </Routes>
+                              <Toaster />
+                              <Sonner />
+                            </TooltipProvider>
+                          </NotificationProvider>
+                        </DataModeProvider>
                       </DataProvider>
                     </PayoutProvider>
                   </SupabaseBookingProvider>

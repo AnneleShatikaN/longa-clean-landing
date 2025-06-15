@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceDisplayWithEntitlements } from '@/components/ServiceDisplayWithEntitlements';
 import { PackagePrompt } from '@/components/client/PackagePrompt';
-import { AdvancedServiceSearch } from '@/components/search/AdvancedServiceSearch';
+import AdvancedServiceSearch from '@/components/search/AdvancedServiceSearch';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

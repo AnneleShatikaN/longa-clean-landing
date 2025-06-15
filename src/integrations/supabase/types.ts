@@ -131,6 +131,45 @@ export type Database = {
           },
         ]
       }
+      docs_links: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          file_type: string | null
+          id: string
+          is_active: boolean | null
+          sort_order: number | null
+          title: string
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          file_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          sort_order?: number | null
+          title: string
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          file_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          sort_order?: number | null
+          title?: string
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           created_at: string | null
@@ -1034,6 +1073,42 @@ export type Database = {
           service_type?: string
           tags?: string[] | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      support_faqs: {
+        Row: {
+          answer: string
+          category: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          question: string
+          updated_at: string | null
+          views: number | null
+        }
+        Insert: {
+          answer: string
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          question: string
+          updated_at?: string | null
+          views?: number | null
+        }
+        Update: {
+          answer?: string
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          question?: string
+          updated_at?: string | null
+          views?: number | null
         }
         Relationships: []
       }

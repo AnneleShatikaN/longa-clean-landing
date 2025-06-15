@@ -26,6 +26,11 @@ export interface Job {
   subcategory: string;
   rating?: number;
   clientPhone?: string;
+  // Add missing properties for compatibility
+  service: string;
+  clientName: string;
+  amount: number;
+  date: string;
 }
 
 export interface ProviderProfile {
@@ -61,6 +66,7 @@ export interface Notification {
   message: string;
   timestamp: string;
   read: boolean;
+  time: string; // Add missing time property
   action?: {
     type: 'view_job' | 'accept_job' | 'view_payment';
     id: string;
@@ -97,7 +103,7 @@ export const useProviderData = () => {
 
       // In a real app, this would fetch from your API
       // For now, we'll use mock data but filter by location if set
-      const mockData = await import('/data/provider_mock_data.json');
+      const mockData = await import('/public/data/provider_mock_data.json');
       
       let jobs = mockData.jobs || [];
       
@@ -107,6 +113,42 @@ export const useProviderData = () => {
           job.location?.toLowerCase().includes(user.current_work_location?.toLowerCase() || '')
         );
       }
+
+      // Transform jobs to match our interface
+      const transformedJobs = jobs.map((job: any) => ({
+        id: job.id,
+        title: job.service || job.title || 'Service',
+        description: job.description || job.service || '',
+        location: job.location,
+        price: job.amount || job.price || 0,
+        expectedPayout: job.expectedPayout || job.providerFee || 0,
+        duration: job.duration || '1 hour',
+        client: job.clientName || job.client || 'Client',
+        clientRating: 5,
+        status: job.status,
+        requestedDate: job.date || new Date().toISOString(),
+        acceptedDate: job.acceptedDate,
+        completedDate: job.completedDate,
+        payoutStatus: job.payoutStatus || 'pending',
+        urgency: 'medium' as const,
+        emergencyFee: job.emergencyFee,
+        requirements: [],
+        category: 'general',
+        subcategory: 'general',
+        rating: job.rating,
+        clientPhone: job.clientPhone,
+        // Add missing properties
+        service: job.service || 'Service',
+        clientName: job.clientName || 'Client',
+        amount: job.amount || job.price || 0,
+        date: job.date || new Date().toISOString().split('T')[0]
+      }));
+
+      // Transform notifications to include time property
+      const transformedNotifications = (mockData.notifications || []).map((notification: any) => ({
+        ...notification,
+        time: notification.time || notification.timestamp || 'Just now'
+      }));
 
       const processedData: ProviderData = {
         profile: {
@@ -119,10 +161,10 @@ export const useProviderData = () => {
           joinDate: user.created_at || '',
           lastActive: new Date().toISOString()
         },
-        jobs: jobs,
+        jobs: transformedJobs,
         monthlyEarnings: mockData.monthlyEarnings || [],
         ratings: mockData.ratings || [],
-        notifications: mockData.notifications || []
+        notifications: transformedNotifications
       };
 
       setData(processedData);

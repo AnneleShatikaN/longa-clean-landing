@@ -64,8 +64,8 @@ export const useSupportContacts = () => {
 
       if (error) throw error;
 
-      // Type cast the response to our expected interface
-      const response = data as UpdateContactResponse;
+      // Type cast the response properly through unknown first
+      const response = data as unknown as UpdateContactResponse;
 
       if (response?.success) {
         toast.success('Contact updated successfully');

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,8 +22,9 @@ import RatingSystem from '@/components/RatingSystem';
 import EarningsTracker from '@/components/EarningsTracker';
 import NotificationSystem from '@/components/NotificationSystem';
 
+// Use the same interfaces as in useProviderData to avoid conflicts
 interface Job {
-  id: number;
+  id: string; // Using string to match Supabase UUID
   service: string;
   clientName: string;
   clientPhone: string;
@@ -70,8 +72,8 @@ const ProviderDashboard = () => {
 
   // Check email verification status
   useEffect(() => {
-    // Check if user exists and has email_confirmed property from Supabase auth
-    if (user && user.email && !user.email_confirmed_at) {
+    // Check if user exists and email verification status
+    if (user && user.email && (!user.email_confirmed_at && !user.emailVerified)) {
       setShowEmailVerification(true);
     }
   }, [user]);

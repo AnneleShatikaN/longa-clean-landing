@@ -267,17 +267,24 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
       // Ensure update types match Service interface (id: string and duration always has hours and minutes)
       const safeUpdates: Partial<Service> = { ...updates };
 
-      // TS2322 Fix: id should not be present, so always remove it (even if string/number)
+      // Remove id (if present), as it should never be part of the update object
       if ('id' in safeUpdates) {
         delete (safeUpdates as any).id;
       }
 
+      // Extra safety: Remove id from nested updates as well, if passed in directly from mock data (number or string)
+      if ((updates as any).id !== undefined) {
+        delete (safeUpdates as any).id;
+      }
+
+      // Make sure duration, if present, is always shape {hours, minutes}
       if (updates.duration) {
         safeUpdates.duration = {
           hours: updates.duration.hours ?? 0,
           minutes: updates.duration.minutes ?? 0,
         };
       }
+
       dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates: safeUpdates } });
       dispatch({ type: 'SET_LOADING', payload: false });
       toast({

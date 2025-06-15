@@ -60,13 +60,13 @@ export interface Rating {
 }
 
 export interface Notification {
-  id: string;
+  id: number; // Changed to number
   type: 'job_request' | 'payment' | 'rating' | 'system';
   title: string;
   message: string;
   timestamp: string;
   read: boolean;
-  time: string; // Add missing time property
+  time: string;
   action?: {
     type: 'view_job' | 'accept_job' | 'view_payment';
     id: string;
@@ -103,7 +103,7 @@ export const useProviderData = () => {
 
       // In a real app, this would fetch from your API
       // For now, we'll use mock data but filter by location if set
-      const mockData = await import('/public/data/provider_mock_data.json');
+      const mockData = await import('../../../public/data/provider_mock_data.json');
       
       let jobs = mockData.jobs || [];
       
@@ -144,9 +144,10 @@ export const useProviderData = () => {
         date: job.date || new Date().toISOString().split('T')[0]
       }));
 
-      // Transform notifications to include time property
-      const transformedNotifications = (mockData.notifications || []).map((notification: any) => ({
+      // Transform notifications to include time property and ensure ID is number
+      const transformedNotifications = (mockData.notifications || []).map((notification: any, index: number) => ({
         ...notification,
+        id: typeof notification.id === 'number' ? notification.id : index + 1,
         time: notification.time || notification.timestamp || 'Just now'
       }));
 

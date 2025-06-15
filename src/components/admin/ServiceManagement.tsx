@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,15 +19,17 @@ import {
   DollarSign,
   Users,
   Package,
-  Settings
+  Settings,
+  Ban,
+  CheckCircle
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ServiceForm } from './ServiceForm';
-import { ServiceViewModal } from './ServiceViewModal';
-import { ServiceEditModal } from './ServiceEditModal';
+import ServiceForm from './ServiceForm';
+import ServiceViewModal from './ServiceViewModal';
+import ServiceEditModal from './ServiceEditModal';
 import { PackageEntitlementManager } from './PackageEntitlementManager';
 import { PackageManager } from './PackageManager';
-import { EmptyServicesState } from './EmptyServicesState';
+import EmptyServicesState from './EmptyServicesState';
 import { useServices } from '@/contexts/ServiceContext';
 import { useToast } from '@/hooks/use-toast';
 

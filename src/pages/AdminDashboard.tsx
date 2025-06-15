@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -141,7 +142,7 @@ const AdminDashboardContent: React.FC = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Users</p>
                     <p className="text-2xl font-bold">{dashboardStats.totalUsers.toLocaleString()}</p>
-                    <p className="text-xs text-green-600">+12% from last month</p>
+                    <p className="text-xs text-gray-500">All registered users</p>
                   </div>
                   <UserCheck className="h-8 w-8 text-blue-600" />
                 </div>
@@ -154,7 +155,7 @@ const AdminDashboardContent: React.FC = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Active Providers</p>
                     <p className="text-2xl font-bold">{dashboardStats.activeProviders}</p>
-                    <p className="text-xs text-green-600">+8% from last week</p>
+                    <p className="text-xs text-gray-500">Verified providers</p>
                   </div>
                   <Activity className="h-8 w-8 text-green-600" />
                 </div>
@@ -167,7 +168,7 @@ const AdminDashboardContent: React.FC = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Bookings</p>
                     <p className="text-2xl font-bold">{dashboardStats.totalBookings.toLocaleString()}</p>
-                    <p className="text-xs text-green-600">+15% from last month</p>
+                    <p className="text-xs text-gray-500">All time bookings</p>
                   </div>
                   <Activity className="h-8 w-8 text-purple-600" />
                 </div>
@@ -180,7 +181,7 @@ const AdminDashboardContent: React.FC = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Revenue</p>
                     <p className="text-2xl font-bold">N${dashboardStats.revenue.toLocaleString()}</p>
-                    <p className="text-xs text-green-600">+22% from last month</p>
+                    <p className="text-xs text-gray-500">Total platform revenue</p>
                   </div>
                   <Activity className="h-8 w-8 text-yellow-600" />
                 </div>

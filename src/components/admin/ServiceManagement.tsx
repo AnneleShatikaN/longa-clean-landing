@@ -1,393 +1,376 @@
 import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Filter, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Database, Wifi, WifiOff, Package } from 'lucide-react';
-import { useServices } from '@/contexts/ServiceContext';
-import ServiceForm from './ServiceForm';
-import ServiceViewModal from './ServiceViewModal';
-import ServiceEditModal from './ServiceEditModal';
-import EmptyServicesState from './EmptyServicesState';
-import { toast } from 'sonner';
-import { useDataMode } from '@/contexts/DataModeContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { 
+  Search, 
+  Plus, 
+  Filter, 
+  Eye, 
+  Edit, 
+  Trash2, 
+  MoreVertical,
+  Clock,
+  DollarSign,
+  Users,
+  Package,
+  Settings
+} from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ServiceForm } from './ServiceForm';
+import { ServiceViewModal } from './ServiceViewModal';
+import { ServiceEditModal } from './ServiceEditModal';
 import { PackageEntitlementManager } from './PackageEntitlementManager';
+import { PackageManager } from './PackageManager';
+import { EmptyServicesState } from './EmptyServicesState';
+import { useServices } from '@/contexts/ServiceContext';
+import { useToast } from '@/hooks/use-toast';
 
-const ServiceManagement: React.FC = () => {
-  const { services, deleteService, toggleServiceStatus, isLoading } = useServices();
-  const { dataMode } = useDataMode();
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isEntitlementModalOpen, setIsEntitlementModalOpen] = useState(false);
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'one-off' | 'subscription'>('all');
+const ServiceManagement = () => {
+  const { services, isLoading, error, createService, updateService, deleteService, toggleServiceStatus } = useServices();
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [viewService, setViewService] = useState<string | null>(null);
+  const [editService, setEditService] = useState<string | null>(null);
+  const [deleteConfirmService, setDeleteConfirmService] = useState<string | null>(null);
+  const [manageEntitlements, setManageEntitlements] = useState<{id: string, name: string} | null>(null);
 
+  // Filter services based on search query and filters
   const filteredServices = services.filter(service => {
-    const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         service.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || service.status === statusFilter;
+    const matchesSearch = 
+      service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      service.description.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'active' && service.status === 'active') ||
+      (statusFilter === 'inactive' && service.status === 'inactive');
+    
     const matchesType = typeFilter === 'all' || service.type === typeFilter;
     
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const handleDeleteService = async (serviceId: string, serviceName: string) => {
-    if (window.confirm(`Are you sure you want to delete "${serviceName}"? This action cannot be undone.`)) {
-      try {
-        await deleteService(serviceId);
-        toast.success('Service deleted successfully');
-      } catch (error) {
-        toast.error('Failed to delete service');
-      }
-    }
-  };
-
-  const handleToggleStatus = async (serviceId: string) => {
+  const handleDeleteService = async (id: string) => {
     try {
-      await toggleServiceStatus(serviceId);
-      toast.success('Service status updated');
+      await deleteService(id);
+      setDeleteConfirmService(null);
+      toast({
+        title: "Success",
+        description: "Service deleted successfully",
+      });
     } catch (error) {
-      toast.error('Failed to update service status');
+      toast({
+        title: "Error",
+        description: "Failed to delete service",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleViewService = (serviceId: string) => {
-    setSelectedServiceId(serviceId);
-    setIsViewModalOpen(true);
-  };
-
-  const handleEditService = (serviceId: string) => {
-    setSelectedServiceId(serviceId);
-    setIsEditModalOpen(true);
-  };
-
-  const handleManageEntitlements = (serviceId: string) => {
-    setSelectedServiceId(serviceId);
-    setIsEntitlementModalOpen(true);
-  };
-
-  const handleCloseModals = () => {
-    setIsViewModalOpen(false);
-    setIsEditModalOpen(false);
-    setIsEntitlementModalOpen(false);
-    setSelectedServiceId(null);
-  };
-
-  const getDataModeInfo = () => {
-    switch (dataMode) {
-      case 'mock':
-        return {
-          icon: <Database className="h-4 w-4" />,
-          text: "MOCK DATA MODE",
-          description: "Showing sample data for demonstration",
-          color: "bg-yellow-100 border-yellow-300 text-yellow-800"
-        };
-      case 'live':
-        return {
-          icon: <Wifi className="h-4 w-4" />,
-          text: "LIVE DATA MODE",
-          description: "Connected to live database",
-          color: "bg-green-100 border-green-300 text-green-800"
-        };
-      case 'none':
-        return {
-          icon: <WifiOff className="h-4 w-4" />,
-          text: "NO DATA MODE",
-          description: "No data source active",
-          color: "bg-gray-100 border-gray-300 text-gray-800"
-        };
-      default:
-        return null;
+  const handleToggleStatus = async (id: string) => {
+    try {
+      await toggleServiceStatus(id);
+      toast({
+        title: "Success",
+        description: "Service status updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update service status",
+        variant: "destructive",
+      });
     }
   };
-
-  const dataModeInfo = getDataModeInfo();
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="h-8 bg-gray-200 rounded w-64 mb-2 animate-pulse"></div>
-            <div className="h-4 bg-gray-200 rounded w-80 animate-pulse"></div>
-          </div>
-          <div className="h-10 bg-gray-200 rounded w-40 animate-pulse"></div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-4">
-                <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 rounded"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-10 bg-gray-200 rounded"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (services.length === 0 && !isCreateModalOpen) {
-    return <EmptyServicesState onCreateService={() => setIsCreateModalOpen(true)} />;
-  }
 
   return (
     <div className="space-y-6">
-      {/* Data Mode Indicator */}
-      {dataModeInfo && (
-        <div className={`p-3 rounded-lg border-2 ${dataModeInfo.color} flex items-center gap-3`}>
-          {dataModeInfo.icon}
-          <div>
-            <div className="font-semibold">{dataModeInfo.text}</div>
-            <div className="text-sm opacity-80">{dataModeInfo.description}</div>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Service Management</h2>
-          <p className="text-gray-600">
-            Manage your marketplace services and packages
-            {dataMode === 'mock' && ' (Mock Data)'}
-          </p>
+          <p className="text-gray-600">Manage your services and packages</p>
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Service
-        </Button>
       </div>
 
-      {/* Show services count */}
-      {services.length > 0 && (
-        <div className="text-sm text-gray-600">
-          Showing {filteredServices.length} of {services.length} services
-        </div>
-      )}
+      {/* Main Tabs */}
+      <Tabs defaultValue="services" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="services" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Services
+          </TabsTrigger>
+          <TabsTrigger value="packages" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Packages
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Filters */}
-      {services.length > 0 && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search services..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+        <TabsContent value="services" className="space-y-6">
+          {/* Services Content - keep existing implementation */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search services..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="one-off">One-off</SelectItem>
-                  <SelectItem value="subscription">Subscription</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="one-off">One-off</SelectItem>
+                    <SelectItem value="subscription">Subscription</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <Button onClick={() => setIsFormOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Service
+            </Button>
+          </div>
 
-      {/* Services Grid */}
-      {filteredServices.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredServices.map((service) => (
-            <Card key={service.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-2">{service.name}</CardTitle>
-                    <div className="flex gap-2 mb-2">
-                      <Badge variant={service.type === 'one-off' ? 'default' : 'secondary'}>
-                        {service.type === 'one-off' ? 'One-off' : 'Subscription'}
-                      </Badge>
-                      <Badge variant={service.status === 'active' ? 'default' : 'destructive'}>
-                        {service.status}
-                      </Badge>
-                      {dataMode === 'mock' && (
-                        <Badge variant="outline" className="text-xs">
-                          Mock
-                        </Badge>
-                      )}
+          {/* Services Grid */}
+          {filteredServices.length === 0 ? (
+            <EmptyServicesState 
+              hasServices={services.length > 0} 
+              onCreateService={() => setIsFormOpen(true)} 
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredServices.map((service) => (
+                <Card key={service.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          {service.name}
+                          <Badge variant={service.status === 'active' ? 'default' : 'secondary'}>
+                            {service.status === 'active' ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </CardTitle>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {service.type === 'one-off' ? 'One-off Service' : 'Subscription Service'}
+                        </p>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setViewService(service.id)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setEditService(service.id)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Service
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleStatus(service.id)}>
+                            {service.status === 'active' ? (
+                              <>
+                                <Ban className="h-4 w-4 mr-2" />
+                                Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Activate
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          {service.type === 'subscription' && (
+                            <DropdownMenuItem onClick={() => setManageEntitlements({id: service.id, name: service.name})}>
+                              <Settings className="h-4 w-4 mr-2" />
+                              Manage Entitlements
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem 
+                            onClick={() => setDeleteConfirmService(service.id)}
+                            className="text-red-600 hover:text-red-700 focus:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Service
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleToggleStatus(service.id)}
-                    className="ml-2"
-                  >
-                    {service.status === 'active' ? 
-                      <ToggleRight className="h-4 w-4 text-green-600" /> : 
-                      <ToggleLeft className="h-4 w-4 text-gray-400" />
-                    }
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-600 line-clamp-2">{service.description}</p>
-                  
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Price:</span>
-                    <span className="font-semibold">N${service.clientPrice}</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Duration:</span>
-                    <span>{service.duration.hours}h {service.duration.minutes}m</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Commission:</span>
-                    <span>{service.commissionPercentage}%</span>
-                  </div>
-
-                  {service.tags && service.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {service.tags.slice(0, 3).map((tag) => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {service.tags.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{service.tags.length - 3}
-                        </Badge>
-                      )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-600 line-clamp-2">
+                        {service.description || 'No description provided.'}
+                      </p>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4 text-gray-500" />
+                          <span>
+                            {service.duration.hours}h {service.duration.minutes}m
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-4 w-4 text-gray-500" />
+                          <span>N${service.clientPrice}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-1">
+                        {service.tags?.slice(0, 3).map((tag, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {(service.tags?.length || 0) > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{service.tags!.length - 3} more
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  
-                  <div className="flex gap-2 pt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1"
-                      onClick={() => handleEditService(service.id)}
-                    >
-                      <Edit className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1"
-                      onClick={() => handleViewService(service.id)}
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      View
-                    </Button>
-                    {service.type === 'subscription' && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleManageEntitlements(service.id)}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      >
-                        <Package className="h-3 w-3" />
-                      </Button>
-                    )}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleDeleteService(service.id, service.name)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="pt-8 pb-8 text-center">
-            <Filter className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No services found</h3>
-            <p className="text-gray-600">Try adjusting your search or filter criteria</p>
-          </CardContent>
-        </Card>
-      )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
-      {/* Create Service Modal */}
-      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <TabsContent value="packages" className="space-y-6">
+          <PackageManager />
+        </TabsContent>
+      </Tabs>
+
+      {/* Create Service Dialog */}
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create New Service</DialogTitle>
+            <DialogTitle>Add New Service</DialogTitle>
           </DialogHeader>
           <ServiceForm 
-            onSuccess={() => setIsCreateModalOpen(false)}
-            onCancel={() => setIsCreateModalOpen(false)}
+            onClose={() => setIsFormOpen(false)}
+            onSave={async (data) => {
+              try {
+                await createService(data);
+                setIsFormOpen(false);
+                toast({
+                  title: "Success",
+                  description: "Service created successfully",
+                });
+              } catch (error) {
+                // Error is handled in the context and displayed via toast there
+              }
+            }}
           />
         </DialogContent>
       </Dialog>
 
-      {/* View Service Modal */}
-      {selectedServiceId && (
-        <ServiceViewModal
-          serviceId={selectedServiceId}
-          isOpen={isViewModalOpen}
-          onClose={handleCloseModals}
-        />
-      )}
-
-      {/* Edit Service Modal */}
-      {selectedServiceId && (
-        <ServiceEditModal
-          serviceId={selectedServiceId}
-          isOpen={isEditModalOpen}
-          onClose={handleCloseModals}
-        />
-      )}
-
-      {/* Package Entitlement Management Modal */}
-      <Dialog open={isEntitlementModalOpen} onOpenChange={setIsEntitlementModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Manage Package Entitlements</DialogTitle>
-          </DialogHeader>
-          {selectedServiceId && (
-            <PackageEntitlementManager
-              packageId={selectedServiceId}
-              packageName={services.find(s => s.id === selectedServiceId)?.name || ''}
-              onClose={handleCloseModals}
+      {/* View Service Dialog */}
+      {viewService && (
+        <Dialog open={!!viewService} onOpenChange={() => setViewService(null)}>
+          <DialogContent className="max-w-2xl">
+            <ServiceViewModal 
+              serviceId={viewService} 
+              onClose={() => setViewService(null)}
+              onEdit={() => {
+                setEditService(viewService);
+                setViewService(null);
+              }}
             />
-          )}
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Edit Service Dialog */}
+      {editService && (
+        <Dialog open={!!editService} onOpenChange={() => setEditService(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Service</DialogTitle>
+            </DialogHeader>
+            <ServiceEditModal 
+              serviceId={editService}
+              onClose={() => setEditService(null)}
+              onSave={async (id, data) => {
+                try {
+                  await updateService(id, data);
+                  setEditService(null);
+                  toast({
+                    title: "Success",
+                    description: "Service updated successfully",
+                  });
+                } catch (error) {
+                  // Error is handled in the context
+                }
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmService && (
+        <Dialog open={!!deleteConfirmService} onOpenChange={() => setDeleteConfirmService(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Deletion</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p>Are you sure you want to delete this service? This action cannot be undone.</p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setDeleteConfirmService(null)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => handleDeleteService(deleteConfirmService)}
+              >
+                Delete Service
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Manage Entitlements Dialog */}
+      {manageEntitlements && (
+        <Dialog open={!!manageEntitlements} onOpenChange={() => setManageEntitlements(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <PackageEntitlementManager
+              packageId={manageEntitlements.id}
+              packageName={manageEntitlements.name}
+              onClose={() => setManageEntitlements(null)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

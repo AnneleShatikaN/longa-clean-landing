@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
 import { UserProfile, AuthContextType, UserRole } from '@/types/auth';
-import { fetchUserProfile, checkAdminSetup, createUserProfileIfNeeded } from '@/utils/userProfile';
+import { fetchUserProfile, createUserProfileIfNeeded } from '@/utils/userProfile';
 import {
   loginUser,
   signupUser,
@@ -26,29 +26,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [needsAdminSetup, setNeedsAdminSetup] = useState(false);
   const { toast } = useToast();
 
-  // Clear any stale localStorage flags that might be causing issues
-  const clearStaleFlags = () => {
-    try {
-      const adminSetupFlag = localStorage.getItem('admin_setup_completed');
-      console.log('🧹 Clearing stale flags, admin_setup_completed was:', adminSetupFlag);
-      localStorage.removeItem('admin_setup_completed');
-    } catch (error) {
-      console.error('Error clearing localStorage flags:', error);
-    }
-  };
-
   useEffect(() => {
     let mounted = true;
 
     const initializeAuth = async () => {
       try {
         console.log('🔄 Initializing authentication...');
-        
-        // Clear any stale flags first
-        clearStaleFlags();
 
-        // Get initial session FIRST before setting up listeners
-        console.log('🔍 Checking for existing session...');
+        // Get initial session
         const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -56,8 +41,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           throw sessionError;
         }
 
-        // If we have an initial session, process it immediately
-        if (initialSession?.user?.email_confirmed_at) {
+        // Process initial session if it exists
+        if (initialSession?.user?.email_confirmed_at && mounted) {
           console.log('💾 Found existing verified session for user:', initialSession.user.id);
           
           let profile = await fetchUserProfile(initialSession.user.id);
@@ -72,38 +57,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser(profile);
             setSession(initialSession);
             
-            // If we have an admin user, setup is definitely not needed
-            if (profile.role === 'admin') {
-              console.log('✅ Admin user detected, no setup needed');
-              setNeedsAdminSetup(false);
-            }
-            
-            // Handle redirect for existing admin session
+            // Handle redirect for existing session
             const currentPath = window.location.pathname;
-            if (currentPath === '/auth' && profile.role === 'admin') {
-              console.log('🚀 Redirecting existing admin session to dashboard');
+            if (currentPath === '/auth' && profile.role) {
+              console.log('🚀 Redirecting existing session to dashboard');
               setTimeout(() => {
-                window.location.href = '/dashboard/admin';
+                const redirectPath = profile.role === 'admin' ? '/dashboard/admin' 
+                  : profile.role === 'provider' ? '/dashboard/provider' 
+                  : '/dashboard/client';
+                window.location.href = redirectPath;
               }, 100);
             }
           }
-        } else if (!initialSession) {
-          // Only check for admin setup if no authenticated user exists
-          console.log('🔍 No existing session, checking if admin setup is needed...');
-          const adminSetupNeeded = await checkAdminSetup();
-          console.log('🔧 Admin setup needed:', adminSetupNeeded);
-          if (mounted) {
-            setNeedsAdminSetup(adminSetupNeeded);
-          }
         }
 
-        // Set up auth state listener AFTER initial session processing
+        // Set up auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
             if (!mounted) return;
 
             console.log('🔑 Auth state change:', event, 'User ID:', session?.user?.id);
-            console.log('📧 Email confirmed:', session?.user?.email_confirmed_at ? 'Yes' : 'No');
             
             setSession(session);
             setError(null);
@@ -111,7 +84,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (session?.user && session.user.email_confirmed_at) {
               console.log('✅ User authenticated with confirmed email, fetching profile...');
               
-              // Use setTimeout to prevent deadlocks during auth state changes
               setTimeout(async () => {
                 if (!mounted) return;
 
@@ -126,35 +98,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   console.log('👤 Profile loaded:', profile.role, profile.email);
                   setUser(profile);
                   
-                  // Admin setup is not needed if we have an authenticated admin user
-                  if (profile.role === 'admin') {
-                    console.log('🔧 Admin user detected, setup not needed');
-                    setNeedsAdminSetup(false);
-                  }
-                  
                   // Handle automatic redirect after successful auth
-                  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                  if (event === 'SIGNED_IN') {
                     const currentPath = window.location.pathname;
                     console.log('🔀 Current path:', currentPath, 'User role:', profile.role);
                     
                     // Redirect from auth pages to appropriate dashboard
                     if (currentPath === '/auth' || currentPath === '/admin-setup') {
-                      let redirectPath = '/';
-                      
-                      switch (profile.role) {
-                        case 'admin':
-                          redirectPath = '/dashboard/admin';
-                          break;
-                        case 'provider':
-                          redirectPath = '/dashboard/provider';
-                          break;
-                        case 'client':
-                          redirectPath = '/dashboard/client';
-                          break;
-                      }
+                      const redirectPath = profile.role === 'admin' ? '/dashboard/admin'
+                        : profile.role === 'provider' ? '/dashboard/provider'
+                        : '/dashboard/client';
                       
                       console.log('🚀 Redirecting to:', redirectPath);
-                      // Use setTimeout to ensure state updates complete first
                       setTimeout(() => {
                         window.location.href = redirectPath;
                       }, 100);
@@ -171,21 +126,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } else {
               console.log('🚪 No authenticated user');
               setUser(null);
-              
-              // Only check admin setup if we truly have no user
-              if (event === 'SIGNED_OUT') {
-                console.log('👋 User signed out, checking admin setup');
-                const adminSetupNeeded = await checkAdminSetup();
-                if (mounted) {
-                  setNeedsAdminSetup(adminSetupNeeded);
-                }
-              }
             }
 
             if (event === 'SIGNED_OUT') {
               console.log('👋 User signed out');
               setUser(null);
-              clearStaleFlags();
             }
 
             setIsLoading(false);
@@ -284,8 +229,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await logoutUser(user?.id, user?.email);
       setUser(null);
       setSession(null);
-      
-      clearStaleFlags();
       
       toast({
         title: "Logged out",

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile, UserRole } from '@/types/auth';
 
@@ -42,9 +41,10 @@ export const fetchUserProfile = async (userId: string): Promise<UserProfile | nu
   }
 };
 
+// Keep this function for backward compatibility but make it optional
 export const checkAdminSetup = async (): Promise<boolean> => {
   try {
-    // First check if there are any admin users in the public.users table
+    // Check if there are any admin users in the public.users table
     const { data: adminUsers, error: dbError } = await supabase
       .from('users')
       .select('id')
@@ -60,17 +60,11 @@ export const checkAdminSetup = async (): Promise<boolean> => {
       return false;
     }
 
-    // Also check if admin setup was completed but user verification is pending
-    const adminSetupCompleted = localStorage.getItem('admin_setup_completed');
-    if (adminSetupCompleted === 'true') {
-      return false; // Setup was completed, just waiting for verification
-    }
-
-    // No admin users found and no completed setup, need admin setup
+    // No admin users found, admin setup might be needed but don't block login
     return true;
   } catch (error) {
     console.error('Error checking admin setup:', error);
-    return true; // Default to requiring setup if there's an error
+    return false; // Default to not requiring setup if there's an error
   }
 };
 

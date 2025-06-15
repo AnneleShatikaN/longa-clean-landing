@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -6,15 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
+import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PhoneValidation } from "@/components/profile/PhoneValidation";
 import { supabase } from "@/integrations/supabase/client";
-import { cleanupAuthState } from "@/utils/authStateCleanup";
 
-type AuthMode = 'login' | 'signup' | 'forgot-password' | 'admin-setup';
+type AuthMode = 'login' | 'signup' | 'forgot-password';
 
 const Auth = () => {
   const [mode, setMode] = useState<AuthMode>('login');
@@ -22,7 +22,6 @@ const Auth = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'error' | null>(null);
-  const [authModeDecided, setAuthModeDecided] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -30,9 +29,7 @@ const Auth = () => {
     password: '',
     confirmPassword: '',
     role: 'client' as UserRole,
-    rememberMe: false,
-    companyName: '',
-    companyPhone: ''
+    rememberMe: false
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -41,10 +38,8 @@ const Auth = () => {
     login, 
     signup, 
     requestPasswordReset, 
-    setupAdmin, 
     isLoading, 
     error, 
-    needsAdminSetup, 
     isInitialized 
   } = useAuth();
   
@@ -93,7 +88,6 @@ const Auth = () => {
             // Clear the hash and allow auth context to handle redirect
             window.history.replaceState(null, '', window.location.pathname);
             
-            // Let the auth context handle the redirect based on user role
             setTimeout(() => {
               setIsVerifying(false);
             }, 2000);
@@ -134,29 +128,6 @@ const Auth = () => {
     }
   }, [user, isInitialized, navigate, from, isVerifying]);
 
-  // Determine auth mode based on setup needs - with improved timing
-  useEffect(() => {
-    if (isInitialized && !isVerifying && !user) {
-      console.log('🔧 Deciding auth mode - needsAdminSetup:', needsAdminSetup);
-      
-      // Only show admin setup if:
-      // 1. Admin setup is needed AND
-      // 2. User is not already authenticated
-      if (needsAdminSetup) {
-        console.log('⚙️ Setting mode to admin-setup');
-        setMode('admin-setup');
-      } else {
-        console.log('🔑 Setting mode to login');
-        setMode('login');
-      }
-      
-      setAuthModeDecided(true);
-    } else if (user) {
-      console.log('👤 User already authenticated, will redirect');
-      setAuthModeDecided(true);
-    }
-  }, [isInitialized, needsAdminSetup, user, isVerifying]);
-
   const validateForm = () => {
     const errors: Record<string, string> = {};
 
@@ -169,7 +140,7 @@ const Auth = () => {
     if (mode !== 'forgot-password') {
       if (!formData.password) {
         errors.password = 'Password is required';
-      } else if (mode === 'signup' || mode === 'admin-setup') {
+      } else if (mode === 'signup') {
         if (formData.password.length < 8) {
           errors.password = 'Password must be at least 8 characters';
         } else if (!/[a-z]/.test(formData.password)) {
@@ -183,26 +154,17 @@ const Auth = () => {
         }
       }
 
-      if ((mode === 'signup' || mode === 'admin-setup') && formData.password !== formData.confirmPassword) {
+      if (mode === 'signup' && formData.password !== formData.confirmPassword) {
         errors.confirmPassword = 'Passwords do not match';
       }
     }
 
-    if (mode === 'signup' || mode === 'admin-setup') {
+    if (mode === 'signup') {
       if (!formData.name) {
         errors.name = 'Name is required';
       }
       if (!formData.phone) {
         errors.phone = 'Phone is required';
-      }
-    }
-
-    if (mode === 'admin-setup') {
-      if (!formData.companyName) {
-        errors.companyName = 'Company name is required';
-      }
-      if (!formData.companyPhone) {
-        errors.companyPhone = 'Company phone is required';
       }
     }
 
@@ -253,23 +215,6 @@ const Auth = () => {
           title: "Reset link sent",
           description: "Check your email for password reset instructions.",
         });
-      } else if (mode === 'admin-setup') {
-        const result = await setupAdmin({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password,
-          confirmPassword: formData.confirmPassword,
-          companyName: formData.companyName,
-          companyPhone: formData.companyPhone
-        });
-
-        if (result) {
-          toast({
-            title: "Admin setup complete!",
-            description: "Please check your email and click the verification link to complete setup.",
-          });
-        }
       }
     } catch (err) {
       console.error('Auth error:', err);
@@ -305,7 +250,6 @@ const Auth = () => {
       case 'login': return 'Welcome Back';
       case 'signup': return 'Join Longa';
       case 'forgot-password': return 'Reset Password';
-      case 'admin-setup': return 'Setup Your Platform';
     }
   };
 
@@ -323,19 +267,11 @@ const Auth = () => {
       case 'login': return 'Sign in to your account';
       case 'signup': return 'Create your account to get started';
       case 'forgot-password': return 'Enter your email to receive reset instructions';
-      case 'admin-setup': return 'Create the first admin account for your Longa platform';
     }
   };
 
-  // Function to force refresh auth state
-  const handleForceRefresh = async () => {
-    console.log('🔄 Force refreshing auth state...');
-    cleanupAuthState();
-    window.location.reload();
-  };
-
-  // Show loading screen while determining what to show
-  if (!isInitialized || !authModeDecided) {
+  // Show loading screen while auth is initializing
+  if (!isInitialized) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
@@ -409,31 +345,14 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
       {/* Header */}
-      {mode !== 'admin-setup' && (
-        <div className="absolute top-6 left-6">
-          <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-200">
-              <Home className="w-6 h-6 text-purple-600" />
-            </div>
-            <span className="text-2xl font-bold text-gray-800">Longa</span>
+      <div className="absolute top-6 left-6">
+        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate('/')}>
+          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-200">
+            <Home className="w-6 h-6 text-purple-600" />
           </div>
+          <span className="text-2xl font-bold text-gray-800">Longa</span>
         </div>
-      )}
-
-      {/* Debug info for admin setup issues */}
-      {mode !== 'admin-setup' && needsAdminSetup && (
-        <div className="absolute top-6 right-6">
-          <Button
-            onClick={handleForceRefresh}
-            variant="outline"
-            size="sm"
-            className="flex items-center space-x-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Refresh</span>
-          </Button>
-        </div>
-      )}
+      </div>
 
       <div className="w-full max-w-md">
         <Card className="bg-white border-gray-200 shadow-lg">
@@ -448,7 +367,7 @@ const Auth = () => {
 
           <CardContent className="space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              {(mode === 'signup' || mode === 'admin-setup') && (
+              {mode === 'signup' && (
                 <div className="space-y-2">
                   <Label htmlFor={`name-${mode}`} className="text-gray-700">Full Name</Label>
                   <Input
@@ -478,38 +397,12 @@ const Auth = () => {
                 {formErrors.email && <p className="text-sm text-red-500">{formErrors.email}</p>}
               </div>
 
-              {(mode === 'signup' || mode === 'admin-setup') && (
+              {mode === 'signup' && (
                 <PhoneValidation
                   value={formData.phone}
                   onChange={(value) => handleInputChange('phone', value)}
                   error={formErrors.phone}
                 />
-              )}
-
-              {mode === 'admin-setup' && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName" className="text-gray-700">Company Name</Label>
-                    <Input
-                      id="companyName"
-                      type="text"
-                      value={formData.companyName}
-                      onChange={(e) => handleInputChange('companyName', e.target.value)}
-                      className={`${formErrors.companyName ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500`}
-                      placeholder="Your company name"
-                      autoComplete="organization"
-                    />
-                    {formErrors.companyName && <p className="text-sm text-red-500">{formErrors.companyName}</p>}
-                  </div>
-
-                  <PhoneValidation
-                    value={formData.companyPhone}
-                    onChange={(value) => handleInputChange('companyPhone', value)}
-                    error={formErrors.companyPhone}
-                    label="Company Phone"
-                    placeholder="+264 61 234 5678"
-                  />
-                </>
               )}
 
               {mode !== 'forgot-password' && (
@@ -534,7 +427,7 @@ const Auth = () => {
                     </button>
                   </div>
                   {formErrors.password && <p className="text-sm text-red-500">{formErrors.password}</p>}
-                  {(mode === 'signup' || mode === 'admin-setup') && (
+                  {mode === 'signup' && (
                     <p className="text-xs text-gray-500">
                       Must be 8+ characters with uppercase, lowercase, numbers, and special characters
                     </p>
@@ -542,7 +435,7 @@ const Auth = () => {
                 </div>
               )}
 
-              {(mode === 'signup' || mode === 'admin-setup') && (
+              {mode === 'signup' && (
                 <div className="space-y-2">
                   <Label htmlFor={`confirmPassword-${mode}`} className="text-gray-700">Confirm Password</Label>
                   <div className="relative">
@@ -624,7 +517,6 @@ const Auth = () => {
                       {mode === 'login' && 'Signing In...'}
                       {mode === 'signup' && 'Creating Account...'}
                       {mode === 'forgot-password' && 'Sending Reset Link...'}
-                      {mode === 'admin-setup' && 'Setting Up Platform...'}
                     </span>
                   </div>
                 ) : (
@@ -632,53 +524,50 @@ const Auth = () => {
                     {mode === 'login' && <><LogIn className="w-4 h-4" /><span>Sign In</span></>}
                     {mode === 'signup' && <><UserPlus className="w-4 h-4" /><span>Create Account</span></>}
                     {mode === 'forgot-password' && <><span>Send Reset Link</span></>}
-                    {mode === 'admin-setup' && <><Shield className="w-4 h-4" /><span>Setup Platform</span></>}
                   </div>
                 )}
               </Button>
             </form>
 
-            {mode !== 'admin-setup' && (
-              <div className="space-y-2 text-center">
-                {mode === 'login' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setMode('signup')}
-                      className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 text-sm"
-                    >
-                      Don't have an account? Sign up
-                    </button>
-                    <br />
-                    <button
-                      type="button"
-                      onClick={() => setMode('forgot-password')}
-                      className="text-gray-600 hover:text-gray-700 font-medium transition-colors duration-200 text-sm"
-                    >
-                      Forgot your password?
-                    </button>
-                  </>
-                )}
-                {mode === 'signup' && (
+            <div className="space-y-2 text-center">
+              {mode === 'login' && (
+                <>
                   <button
                     type="button"
-                    onClick={() => setMode('login')}
+                    onClick={() => setMode('signup')}
                     className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 text-sm"
                   >
-                    Already have an account? Sign in
+                    Don't have an account? Sign up
                   </button>
-                )}
-                {mode === 'forgot-password' && (
+                  <br />
                   <button
                     type="button"
-                    onClick={() => setMode('login')}
-                    className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 text-sm"
+                    onClick={() => setMode('forgot-password')}
+                    className="text-gray-600 hover:text-gray-700 font-medium transition-colors duration-200 text-sm"
                   >
-                    Back to Login
+                    Forgot your password?
                   </button>
-                )}
-              </div>
-            )}
+                </>
+              )}
+              {mode === 'signup' && (
+                <button
+                  type="button"
+                  onClick={() => setMode('login')}
+                  className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 text-sm"
+                >
+                  Already have an account? Sign in
+                </button>
+              )}
+              {mode === 'forgot-password' && (
+                <button
+                  type="button"
+                  onClick={() => setMode('login')}
+                  className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 text-sm"
+                >
+                  Back to Login
+                </button>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

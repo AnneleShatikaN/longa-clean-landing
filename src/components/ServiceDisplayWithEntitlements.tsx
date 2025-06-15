@@ -27,6 +27,7 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
   const [sortBy, setSortBy] = useState<'popularity' | 'price' | 'rating'>('popularity');
   const [serviceUsage, setServiceUsage] = useState<ServiceUsage[]>([]);
   const [accessChecks, setAccessChecks] = useState<Record<string, {allowed: boolean, reason?: string}>>({});
+  const [showRestrictedServices, setShowRestrictedServices] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -108,9 +109,22 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
     if (typeFilter !== 'all') {
       filteredServices = filteredServices.filter(service => service.type === typeFilter);
     }
+
+    // Filter based on access unless showing restricted services
+    if (!showRestrictedServices) {
+      filteredServices = filteredServices.filter(service => accessChecks[service.id]?.allowed);
+    }
     
     // Apply sorting
     filteredServices.sort((a, b) => {
+      // Prioritize accessible services
+      const aHasAccess = accessChecks[a.id]?.allowed ? 1 : 0;
+      const bHasAccess = accessChecks[b.id]?.allowed ? 1 : 0;
+      
+      if (aHasAccess !== bHasAccess) {
+        return bHasAccess - aHasAccess;
+      }
+      
       switch (sortBy) {
         case 'price':
           return a.clientPrice - b.clientPrice;
@@ -126,6 +140,12 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
   };
 
   const filteredServices = getFilteredAndSortedServices();
+  const accessibleServicesCount = services.filter(service => 
+    service.status === 'active' && accessChecks[service.id]?.allowed
+  ).length;
+  const restrictedServicesCount = services.filter(service => 
+    service.status === 'active' && !accessChecks[service.id]?.allowed
+  ).length;
 
   if (isLoading) {
     return (
@@ -228,6 +248,32 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
               </SelectContent>
             </Select>
           </div>
+
+          {/* Service Access Summary */}
+          {user && (
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 bg-green-500 rounded-full"></div>
+                <span>{accessibleServicesCount} Available Services</span>
+              </div>
+              {restrictedServicesCount > 0 && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 bg-gray-400 rounded-full"></div>
+                    <span>{restrictedServicesCount} Restricted Services</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowRestrictedServices(!showRestrictedServices)}
+                    className="text-xs"
+                  >
+                    {showRestrictedServices ? 'Hide' : 'Show'} Restricted
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -240,7 +286,7 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
             const hasAccess = accessCheck?.allowed;
             
             return (
-              <Card key={service.id} className={`hover:shadow-lg transition-shadow ${!hasAccess ? 'opacity-75' : ''}`}>
+              <Card key={service.id} className={`hover:shadow-lg transition-shadow ${!hasAccess ? 'opacity-60 border-gray-300' : ''}`}>
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -252,7 +298,7 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
                         <Badge variant={service.type === 'one-off' ? 'default' : 'secondary'}>
                           {service.type === 'one-off' ? 'One-time' : 'Package'}
                         </Badge>
-                        {service.popularity > 50 && (
+                        {service.popularity > 50 && hasAccess && (
                           <Badge variant="outline" className="text-orange-600 border-orange-200">
                             Popular
                           </Badge>
@@ -260,13 +306,13 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
                         {!hasAccess && (
                           <Badge variant="outline" className="text-red-600 border-red-200">
                             <Lock className="h-3 w-3 mr-1" />
-                            Locked
+                            Upgrade Required
                           </Badge>
                         )}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-blue-600">
+                      <div className={`text-2xl font-bold ${hasAccess ? 'text-blue-600' : 'text-gray-400'}`}>
                         N${service.clientPrice}
                       </div>
                       {service.type === 'subscription' && (
@@ -279,8 +325,8 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
                   <div className="space-y-3">
                     <p className="text-sm text-gray-600 line-clamp-3">{service.description}</p>
                     
-                    {/* Usage Information */}
-                    {usage && (
+                    {/* Usage Information - only show for accessible services */}
+                    {usage && hasAccess && (
                       <div className="p-2 bg-blue-50 rounded-lg">
                         <div className="text-sm font-medium text-blue-800">
                           Usage: {usage.used_count}/{usage.allowed_count}
@@ -304,47 +350,52 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
                       </div>
                     )}
                     
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                    {/* Service Details - show for all but style differently */}
+                    <div className={`flex items-center gap-4 text-sm ${hasAccess ? 'text-gray-500' : 'text-gray-400'}`}>
                       <div className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />
                         <span>{service.duration.hours}h {service.duration.minutes}m</span>
                       </div>
                       {service.averageRating > 0 && (
                         <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <Star className={`h-4 w-4 ${hasAccess ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-300 text-gray-300'}`} />
                           <span>{service.averageRating.toFixed(1)}</span>
                         </div>
                       )}
                     </div>
 
+                    {/* Service Stats */}
                     {service.totalBookings > 0 && (
-                      <div className="text-sm text-gray-500">
+                      <div className={`text-sm ${hasAccess ? 'text-gray-500' : 'text-gray-400'}`}>
                         {service.totalBookings} bookings completed
                       </div>
                     )}
 
+                    {/* Tags */}
                     {service.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {service.tags.slice(0, 3).map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-xs">
+                          <Badge key={tag} variant="outline" className={`text-xs ${!hasAccess ? 'opacity-50' : ''}`}>
                             {tag}
                           </Badge>
                         ))}
                         {service.tags.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className={`text-xs ${!hasAccess ? 'opacity-50' : ''}`}>
                             +{service.tags.length - 3}
                           </Badge>
                         )}
                       </div>
                     )}
 
+                    {/* Coverage Areas */}
                     {service.coverageAreas && service.coverageAreas.length > 0 && (
-                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                      <div className={`flex items-center gap-1 text-sm ${hasAccess ? 'text-gray-500' : 'text-gray-400'}`}>
                         <MapPin className="h-4 w-4" />
                         <span>Available in {service.coverageAreas.length} areas</span>
                       </div>
                     )}
                     
+                    {/* Action Button */}
                     {showBookingButton && (
                       <Button 
                         className="w-full mt-4"
@@ -352,7 +403,7 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
                         onClick={() => handleBookService(service.id)}
                         variant={hasAccess ? "default" : "outline"}
                       >
-                        {hasAccess ? "Book Now" : "Not Available"}
+                        {hasAccess ? "Book Now" : "Upgrade to Access"}
                       </Button>
                     )}
                   </div>
@@ -366,7 +417,12 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
           <CardContent className="pt-8 pb-8 text-center">
             <Search className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No services found</h3>
-            <p className="text-gray-600">Try adjusting your search or filter criteria</p>
+            <p className="text-gray-600">
+              {accessibleServicesCount === 0 && !showRestrictedServices 
+                ? 'No services are available with your current package. Consider upgrading to access more services.'
+                : 'Try adjusting your search or filter criteria'
+              }
+            </p>
           </CardContent>
         </Card>
       )}

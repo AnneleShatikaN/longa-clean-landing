@@ -1,18 +1,33 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceDisplayWithEntitlements } from '@/components/ServiceDisplayWithEntitlements';
+import { PackagePrompt } from '@/components/client/PackagePrompt';
 import { SupabaseBookingForm } from '@/components/booking/SupabaseBookingForm';
 import { RealTimeBookingManager } from '@/components/booking/RealTimeBookingManager';
+import { useServiceEntitlements } from '@/hooks/useServiceEntitlements';
 
 const OneOffBooking = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+  const { serviceUsage } = useServiceEntitlements();
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [showBookingForm, setShowBookingForm] = useState(false);
+
+  const hasActivePackage = serviceUsage.length > 0;
+
+  // Check if a service was pre-selected from navigation state
+  useEffect(() => {
+    if (location.state?.serviceId) {
+      setSelectedServiceId(location.state.serviceId);
+      setShowBookingForm(true);
+    }
+  }, [location.state]);
 
   const handleServiceSelection = (serviceId: string) => {
     setSelectedServiceId(serviceId);
@@ -22,6 +37,10 @@ const OneOffBooking = () => {
   const handleBookingCreated = () => {
     setShowBookingForm(false);
     setSelectedServiceId(null);
+  };
+
+  const handleUpgradeToPackages = () => {
+    navigate('/subscription-packages');
   };
 
   if (!user) {
@@ -52,33 +71,42 @@ const OneOffBooking = () => {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Book One-Off Services</h1>
-            <p className="text-gray-600 mt-2">Choose from our available one-time services</p>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-gray-900">Book Services</h1>
+            <p className="text-gray-600 mt-2">Choose from your available services</p>
           </div>
+          <Badge variant={hasActivePackage ? "default" : "secondary"}>
+            {hasActivePackage ? "Active Package" : "No Package"}
+          </Badge>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Column - Service Selection or Booking Form */}
-          <div>
-            {showBookingForm && selectedServiceId ? (
-              <SupabaseBookingForm
-                serviceId={selectedServiceId}
-                onBookingCreated={handleBookingCreated}
-              />
-            ) : (
-              <ServiceDisplayWithEntitlements
-                onBookService={handleServiceSelection}
-                showBookingButton={true}
-              />
-            )}
+        {!hasActivePackage ? (
+          <div className="mb-8">
+            <PackagePrompt onUpgrade={handleUpgradeToPackages} />
           </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left Column - Service Selection or Booking Form */}
+            <div>
+              {showBookingForm && selectedServiceId ? (
+                <SupabaseBookingForm
+                  serviceId={selectedServiceId}
+                  onBookingCreated={handleBookingCreated}
+                />
+              ) : (
+                <ServiceDisplayWithEntitlements
+                  onBookService={handleServiceSelection}
+                  showBookingButton={true}
+                />
+              )}
+            </div>
 
-          {/* Right Column - Booking Management */}
-          <div>
-            <RealTimeBookingManager />
+            {/* Right Column - Booking Management */}
+            <div>
+              <RealTimeBookingManager />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

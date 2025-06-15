@@ -263,33 +263,28 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'SET_ERROR', payload: null });
 
     if (dataMode === 'mock') {
-      // Local state update for mock data
-      // Ensure update types match Service interface (id: string and duration always has hours and minutes)
-      const safeUpdates: Partial<Service> = { ...updates };
-
-      // Remove all possible id keys (number or string), defensive programming
-      delete (safeUpdates as any).id;
-      delete (safeUpdates as any)['id'];
-      if ('id' in safeUpdates) {
-        delete (safeUpdates as any).id;
-      }
-      if ((updates as any).id !== undefined) {
-        delete (safeUpdates as any).id;
-      }
-      // Extra: remove id (number) if present in original updates as well, to avoid confusion
-      if ('id' in updates) {
-        delete (updates as any).id;
-      }
-
-      // Make sure duration, if present, is always shape {hours, minutes}
+      // Create a clean updates object without any id properties and with proper Service interface types
+      const cleanUpdates: Partial<Service> = {};
+      
+      // Only copy allowed properties, ensuring proper types
+      if (updates.name !== undefined) cleanUpdates.name = updates.name;
+      if (updates.description !== undefined) cleanUpdates.description = updates.description;
+      if (updates.type !== undefined) cleanUpdates.type = updates.type;
+      if (updates.clientPrice !== undefined) cleanUpdates.clientPrice = updates.clientPrice;
+      if (updates.providerFee !== undefined) cleanUpdates.providerFee = updates.providerFee;
+      if (updates.commissionPercentage !== undefined) cleanUpdates.commissionPercentage = updates.commissionPercentage;
+      if (updates.status !== undefined) cleanUpdates.status = updates.status;
+      if (updates.tags !== undefined) cleanUpdates.tags = updates.tags;
+      
+      // Handle duration with proper shape validation
       if (updates.duration) {
-        safeUpdates.duration = {
+        cleanUpdates.duration = {
           hours: updates.duration.hours ?? 0,
           minutes: updates.duration.minutes ?? 0,
         };
       }
 
-      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates: safeUpdates } });
+      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates: cleanUpdates } });
       dispatch({ type: 'SET_LOADING', payload: false });
       toast({
         title: "Success (Mock)",

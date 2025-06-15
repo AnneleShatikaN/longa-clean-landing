@@ -18,6 +18,7 @@ import { useAdminData } from '@/hooks/useAdminData';
 import { useToast } from '@/hooks/use-toast';
 import { AdminOverview } from '@/components/admin/AdminOverview';
 import { PendingActions } from '@/components/admin/PendingActions';
+import { PendingPaymentApprovalsTab } from "@/components/admin/PendingPaymentApprovalsTab";
 
 const AdminDashboardContent: React.FC = () => {
   const { toast } = useToast();
@@ -206,7 +207,7 @@ const AdminDashboardContent: React.FC = () => {
 
         {/* Main Admin Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
             <TabsTrigger value="payouts">Payouts</TabsTrigger>
@@ -214,6 +215,9 @@ const AdminDashboardContent: React.FC = () => {
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="launch">Go Live</TabsTrigger>
             <TabsTrigger value="support">Support</TabsTrigger>
+            <TabsTrigger value="payment-approvals" className="text-blue-800 font-bold">
+              Pending Payment Approvals
+            </TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -246,6 +250,10 @@ const AdminDashboardContent: React.FC = () => {
 
           <TabsContent value="support" className="space-y-6">
             <SupportSystem />
+          </TabsContent>
+
+          <TabsContent value="payment-approvals" className="space-y-6">
+            <PendingPaymentApprovalsTab />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">

@@ -82,10 +82,10 @@ export const createUserProfileIfNeeded = async (userId: string, userData: any): 
       return existingProfile;
     }
 
-    // Create new user profile
+    // Try to create new user profile using upsert to handle conflicts
     const { data, error } = await supabase
       .from('users')
-      .insert({
+      .upsert({
         id: userId,
         email: userData.email,
         password_hash: 'managed_by_supabase_auth',
@@ -95,18 +95,22 @@ export const createUserProfileIfNeeded = async (userId: string, userData: any): 
         is_active: true,
         rating: 0,
         total_jobs: 0
+      }, {
+        onConflict: 'id'
       })
       .select()
       .single();
 
     if (error) {
       console.error('Error creating user profile:', error);
-      return null;
+      // If upsert failed, try to fetch existing profile one more time
+      return await fetchUserProfile(userId);
     }
 
     return await fetchUserProfile(userId);
   } catch (error) {
     console.error('Error in createUserProfileIfNeeded:', error);
-    return null;
+    // As a last resort, try to fetch existing profile
+    return await fetchUserProfile(userId);
   }
 };

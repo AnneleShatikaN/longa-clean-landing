@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,7 +33,7 @@ const Index = () => {
             <div className="flex items-center space-x-2">
               <h1 className="text-2xl font-bold text-purple-600">Longa</h1>
               <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">
-                Trusted Platform
+                Early Access
               </Badge>
             </div>
             <div className="flex items-center space-x-4">
@@ -115,34 +116,29 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Popular Services */}
+      {/* Services Section */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Popular Services</h2>
-            <p className="text-xl text-gray-600">Discover the most requested services in your area</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Services</h2>
+            <p className="text-xl text-gray-600">Discover the services available on our platform</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { name: "House Cleaning", providers: "50+ providers", icon: "🏠", rating: 4.8 },
-              { name: "Garden Maintenance", providers: "30+ providers", icon: "🌱", rating: 4.9 },
-              { name: "Plumbing", providers: "25+ providers", icon: "🔧", rating: 4.7 },
-              { name: "Electrical Work", providers: "20+ providers", icon: "⚡", rating: 4.8 },
-              { name: "Painting", providers: "15+ providers", icon: "🎨", rating: 4.6 },
-              { name: "Car Wash", providers: "10+ providers", icon: "🚗", rating: 4.9 }
+              { name: "House Cleaning", icon: "🏠" },
+              { name: "Garden Maintenance", icon: "🌱" },
+              { name: "Plumbing", icon: "🔧" },
+              { name: "Electrical Work", icon: "⚡" },
+              { name: "Painting", icon: "🎨" },
+              { name: "Car Wash", icon: "🚗" }
             ].map((service, index) => (
               <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer border-gray-200">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-3xl">{service.icon}</span>
-                    <div className="flex items-center space-x-1">
-                      <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                      <span className="text-sm font-medium text-gray-700">{service.rating}</span>
-                    </div>
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">{service.name}</h3>
-                  <p className="text-sm text-gray-600 mb-3">{service.providers}</p>
                   <Button 
                     size="sm" 
                     variant="outline" 
@@ -184,36 +180,12 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-purple-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-3xl font-bold text-purple-600 mb-2">500+</div>
-              <div className="text-gray-600">Verified Providers</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-purple-600 mb-2">10K+</div>
-              <div className="text-gray-600">Happy Customers</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-purple-600 mb-2">50K+</div>
-              <div className="text-gray-600">Services Completed</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-purple-600 mb-2">4.9</div>
-              <div className="text-gray-600">Average Rating</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="py-16 bg-gradient-to-r from-purple-600 to-purple-700">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-white mb-4">Ready to Get Started?</h2>
           <p className="text-xl text-purple-100 mb-8">
-            Join thousands of satisfied customers who trust Longa for their service needs
+            Be among the first to join a smarter way to book and offer local services
           </p>
           <Button 
             size="lg" 
@@ -231,7 +203,7 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <h3 className="text-lg font-semibold mb-4">Longa</h3>
-              <p className="text-gray-400">Connecting Namibians with trusted service providers since 2024.</p>
+              <p className="text-gray-400">Connecting Namibians with trusted service providers.</p>
             </div>
             <div>
               <h4 className="font-semibold mb-4">For Customers</h4>
@@ -262,7 +234,7 @@ const Index = () => {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Longa. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Longa. All rights reserved.</p>
           </div>
         </div>
       </footer>

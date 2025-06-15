@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -227,8 +228,12 @@ const Auth = () => {
         }
       } else if (mode === 'forgot-password') {
         await requestPasswordReset({ email: formData.email });
+        toast({
+          title: "Reset link sent",
+          description: "Check your email for password reset instructions.",
+        });
       } else if (mode === 'admin-setup') {
-        await setupAdmin({
+        const result = await setupAdmin({
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
@@ -237,6 +242,13 @@ const Auth = () => {
           companyName: formData.companyName,
           companyPhone: formData.companyPhone
         });
+
+        if (result) {
+          toast({
+            title: "Admin setup complete!",
+            description: "Your admin account has been created successfully.",
+          });
+        }
       }
     } catch (err) {
       console.error('Auth error:', err);
@@ -374,31 +386,33 @@ const Auth = () => {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               {(mode === 'signup' || mode === 'admin-setup') && (
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-gray-700">Full Name</Label>
+                  <Label htmlFor={`name-${mode}`} className="text-gray-700">Full Name</Label>
                   <Input
-                    id="name"
+                    id={`name-${mode}`}
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     className={`${formErrors.name ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500`}
                     placeholder="Enter your full name"
+                    autoComplete="name"
                   />
                   {formErrors.name && <p className="text-sm text-red-500">{formErrors.name}</p>}
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700">Email</Label>
+                <Label htmlFor={`email-${mode}`} className="text-gray-700">Email</Label>
                 <Input
-                  id="email"
+                  id={`email-${mode}`}
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   className={`${formErrors.email ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500`}
                   placeholder="Enter your email"
+                  autoComplete="email"
                 />
                 {formErrors.email && <p className="text-sm text-red-500">{formErrors.email}</p>}
               </div>
@@ -422,6 +436,7 @@ const Auth = () => {
                       onChange={(e) => handleInputChange('companyName', e.target.value)}
                       className={`${formErrors.companyName ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500`}
                       placeholder="Your company name"
+                      autoComplete="organization"
                     />
                     {formErrors.companyName && <p className="text-sm text-red-500">{formErrors.companyName}</p>}
                   </div>
@@ -438,15 +453,16 @@ const Auth = () => {
 
               {mode !== 'forgot-password' && (
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-gray-700">Password</Label>
+                  <Label htmlFor={`password-${mode}`} className="text-gray-700">Password</Label>
                   <div className="relative">
                     <Input
-                      id="password"
+                      id={`password-${mode}`}
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
                       className={`${formErrors.password ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 pr-10`}
                       placeholder="Enter your password"
+                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                     />
                     <button
                       type="button"
@@ -467,15 +483,16 @@ const Auth = () => {
 
               {(mode === 'signup' || mode === 'admin-setup') && (
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-gray-700">Confirm Password</Label>
+                  <Label htmlFor={`confirmPassword-${mode}`} className="text-gray-700">Confirm Password</Label>
                   <div className="relative">
                     <Input
-                      id="confirmPassword"
+                      id={`confirmPassword-${mode}`}
                       type={showConfirmPassword ? "text" : "password"}
                       value={formData.confirmPassword}
                       onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                       className={`${formErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 pr-10`}
                       placeholder="Confirm your password"
+                      autoComplete="new-password"
                     />
                     <button
                       type="button"

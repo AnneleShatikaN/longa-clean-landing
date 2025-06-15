@@ -30,6 +30,27 @@ interface EditingState {
   };
 }
 
+interface DatabasePaymentMethodConfig {
+  id: string;
+  name: string;
+  type: string;
+  api_endpoint: string | null;
+  status: string;
+  is_configured: boolean;
+  last_tested_at: string | null;
+  test_result: any;
+  api_key_encrypted: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface FunctionResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  response_time?: number;
+}
+
 export const BankingIntegration = () => {
   const { toast } = useToast();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodConfig[]>([]);
@@ -53,7 +74,19 @@ export const BankingIntegration = () => {
 
       if (error) throw error;
 
-      setPaymentMethods(data || []);
+      // Transform database response to match our interface
+      const transformedData: PaymentMethodConfig[] = (data || []).map((item: DatabasePaymentMethodConfig) => ({
+        id: item.id,
+        name: item.name,
+        type: item.type as 'bank_transfer' | 'mobile_money' | 'cash',
+        api_endpoint: item.api_endpoint || undefined,
+        status: item.status as 'active' | 'inactive' | 'error',
+        is_configured: item.is_configured,
+        last_tested_at: item.last_tested_at || undefined,
+        test_result: item.test_result
+      }));
+
+      setPaymentMethods(transformedData);
     } catch (error) {
       console.error('Error fetching payment methods:', error);
       toast({
@@ -162,7 +195,8 @@ export const BankingIntegration = () => {
 
       if (error) throw error;
 
-      if (result?.success) {
+      const response = result as FunctionResponse;
+      if (response?.success) {
         toast({
           title: "Configuration Saved",
           description: "Payment method configuration has been updated successfully",
@@ -174,7 +208,7 @@ export const BankingIntegration = () => {
         // Stop editing
         cancelEditing(methodId);
       } else {
-        throw new Error(result?.error || 'Failed to save configuration');
+        throw new Error(response?.error || 'Failed to save configuration');
       }
     } catch (error) {
       console.error('Error saving configuration:', error);
@@ -199,7 +233,8 @@ export const BankingIntegration = () => {
 
       if (error) throw error;
 
-      if (result?.success) {
+      const response = result as FunctionResponse;
+      if (response?.success) {
         toast({
           title: "Status Updated",
           description: `Payment method has been ${newStatus === 'active' ? 'activated' : 'deactivated'}`,
@@ -207,7 +242,7 @@ export const BankingIntegration = () => {
         
         await fetchPaymentMethods();
       } else {
-        throw new Error(result?.error || 'Failed to update status');
+        throw new Error(response?.error || 'Failed to update status');
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -229,16 +264,17 @@ export const BankingIntegration = () => {
 
       if (error) throw error;
 
-      if (result?.success) {
+      const response = result as FunctionResponse;
+      if (response?.success) {
         toast({
           title: "Connection Test Successful",
-          description: `API connection test completed successfully (${result.response_time}ms)`,
+          description: `API connection test completed successfully (${response.response_time}ms)`,
           className: "border-green-200 bg-green-50",
         });
       } else {
         toast({
           title: "Connection Test Failed",
-          description: result?.error || "Failed to connect to API endpoint",
+          description: response?.error || "Failed to connect to API endpoint",
           variant: "destructive",
         });
       }

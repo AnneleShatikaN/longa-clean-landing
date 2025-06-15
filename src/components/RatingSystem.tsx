@@ -7,7 +7,7 @@ import { Star, MessageSquare } from 'lucide-react';
 
 interface Rating {
   id: number;
-  jobId: number;
+  jobId: string; // Changed from number to string to match Supabase UUID
   clientName: string;
   rating: number;
   comment: string;

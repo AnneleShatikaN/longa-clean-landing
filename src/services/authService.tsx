@@ -31,11 +31,8 @@ export const loginUser = async (loginData: LoginData) => {
       throw new Error('User profile not found');
     }
 
-    // Verify role matches if specified
-    if (loginData.role && profile.role !== loginData.role) {
-      await supabase.auth.signOut();
-      throw new Error(`Access denied. This account is not registered as a ${loginData.role}.`);
-    }
+    // Role verification removed - we trust the database role
+    // The user will be redirected based on their actual role from the database
 
     // Log successful login
     logSecurityEvent({

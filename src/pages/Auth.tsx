@@ -116,8 +116,8 @@ const Auth = () => {
         const success = await login({
           email: formData.email,
           password: formData.password,
-          role: formData.role,
           rememberMe: formData.rememberMe
+          // Role removed from login
         });
         
         if (success) {
@@ -315,8 +315,8 @@ const Auth = () => {
                 </div>
               )}
 
-              {/* Show role selection for both login and signup */}
-              {(mode === 'login' || mode === 'signup') && (
+              {/* Role selection only for signup */}
+              {mode === 'signup' && (
                 <div className="space-y-2">
                   <Label className="text-gray-700">Role</Label>
                   <div className="grid grid-cols-3 gap-2">

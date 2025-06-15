@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +10,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { useUsers } from "@/contexts/UserContext";
 import { useToast } from "@/hooks/use-toast";
-import LocationSelector from "@/components/provider/LocationSelector";
+import { supabase } from "@/integrations/supabase/client";
 import { User, Camera, Save, X } from "lucide-react";
+
+const NAMIBIAN_TOWNS = [
+  { value: 'windhoek', label: 'Windhoek' },
+  { value: 'walvis-bay', label: 'Walvis Bay' },
+  { value: 'swakopmund', label: 'Swakopmund' },
+  { value: 'oshakati', label: 'Oshakati' },
+  { value: 'rundu', label: 'Rundu' },
+  { value: 'otjiwarongo', label: 'Otjiwarongo' },
+  { value: 'gobabis', label: 'Gobabis' },
+  { value: 'katima-mulilo', label: 'Katima Mulilo' },
+  { value: 'tsumeb', label: 'Tsumeb' },
+  { value: 'keetmanshoop', label: 'Keetmanshoop' },
+  { value: 'rehoboth', label: 'Rehoboth' },
+  { value: 'mariental', label: 'Mariental' }
+];
 
 interface UserProfileProps {
   onClose?: () => void;
@@ -32,7 +46,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     profilePicture: user?.profilePicture || '',
     bankMobileNumber: user?.bankMobileNumber || '',
     paymentMethod: user?.paymentMethod || 'mobile_money',
-    location: (user as any)?.location || 'windhoek', // Type assertion for location
+    location: user?.current_work_location || 'windhoek',
     bankDetails: {
       accountNumber: user?.bankDetails?.accountNumber || '',
       bankName: user?.bankDetails?.bankName || '',
@@ -72,12 +86,36 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     if (!validateForm()) return;
 
     try {
+      // If user is a provider and location changed, update in Supabase users table too
+      if (user.role === 'provider' && formData.location !== user.current_work_location) {
+        const { error } = await supabase
+          .from('users')
+          .update({ 
+            current_work_location: formData.location,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+
+        if (error) {
+          console.error('Error updating work location:', error);
+          throw error;
+        }
+
+        toast({
+          title: "Work location updated 🌍",
+          description: "Your work location has been updated successfully.",
+        });
+      }
+
       await updateUserProfile(user.id, formData);
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
       });
       setIsEditing(false);
+
+      // Reload the page to refresh user data
+      window.location.reload();
     } catch (error) {
       toast({
         title: "Update failed",
@@ -238,14 +276,28 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             {formErrors.phone && <p className="text-sm text-red-500">{formErrors.phone}</p>}
           </div>
 
-          {/* Location Selector for Providers */}
+          {/* Work Location for Providers */}
           {user.role === 'provider' && (
-            <LocationSelector
-              value={formData.location}
-              onChange={(value) => handleInputChange('location', value)}
-              disabled={!isEditing}
-              error={formErrors.location}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="location">Work Location</Label>
+              <Select
+                value={formData.location}
+                onValueChange={(value) => handleInputChange('location', value)}
+                disabled={!isEditing}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your work location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {NAMIBIAN_TOWNS.map((town) => (
+                    <SelectItem key={town.value} value={town.value}>
+                      {town.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formErrors.location && <p className="text-sm text-red-500">{formErrors.location}</p>}
+            </div>
           )}
 
           <div className="space-y-2">

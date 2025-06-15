@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,13 +30,18 @@ const ProviderDashboard = () => {
   const [showFirstTimeSetup, setShowFirstTimeSetup] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [hasCheckedFirstTime, setHasCheckedFirstTime] = useState(false);
 
   // Check if this is the first time the user is logging in (no work location set)
   useEffect(() => {
-    if (user && user.role === 'provider' && !user.current_work_location) {
-      setShowFirstTimeSetup(true);
+    if (user && user.role === 'provider' && !hasCheckedFirstTime) {
+      // Only show if user has never set a location (null or undefined)
+      if (user.current_work_location === null || user.current_work_location === undefined) {
+        setShowFirstTimeSetup(true);
+      }
+      setHasCheckedFirstTime(true);
     }
-  }, [user]);
+  }, [user, hasCheckedFirstTime]);
 
   // Check email verification status
   useEffect(() => {
@@ -270,8 +274,8 @@ const ProviderDashboard = () => {
     averageRating
   };
 
-  // Check if user has set work location
-  const hasWorkLocation = user?.current_work_location;
+  // Check if user has set work location (not null, undefined, or empty string)
+  const hasWorkLocation = user?.current_work_location && user.current_work_location.trim() !== '';
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

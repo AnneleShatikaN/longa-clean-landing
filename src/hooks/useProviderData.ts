@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -358,7 +357,7 @@ export const useProviderData = () => {
       .order('created_at', { ascending: false });
 
     // Filter by provider's accepted jobs OR available jobs in their location
-    if (userLocation) {
+    if (userLocation && userLocation.trim() !== '') {
       bookingsQuery = bookingsQuery.or(`provider_id.eq.${user.id},and(provider_id.is.null,location_town.eq.${userLocation})`);
     } else {
       bookingsQuery = bookingsQuery.eq('provider_id', user.id);

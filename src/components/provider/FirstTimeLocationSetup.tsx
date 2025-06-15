@@ -47,7 +47,10 @@ const FirstTimeLocationSetup: React.FC<FirstTimeLocationSetupProps> = ({
     try {
       const { error } = await supabase
         .from('users')
-        .update({ current_work_location: selectedLocation })
+        .update({ 
+          current_work_location: selectedLocation,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', user.id);
 
       if (error) throw error;
@@ -76,7 +79,7 @@ const FirstTimeLocationSetup: React.FC<FirstTimeLocationSetupProps> = ({
   if (isCompleted) {
     return (
       <Dialog open={isOpen} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md" hideCloseButton>
+        <DialogContent className="sm:max-w-md [&>button]:hidden">
           <div className="text-center py-6">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-green-700 mb-2">
@@ -93,7 +96,7 @@ const FirstTimeLocationSetup: React.FC<FirstTimeLocationSetupProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-lg" hideCloseButton>
+      <DialogContent className="sm:max-w-lg [&>button]:hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <MapPin className="h-6 w-6 text-purple-600" />

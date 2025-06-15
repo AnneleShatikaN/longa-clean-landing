@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,6 +49,15 @@ interface FunctionResponse {
   error?: string;
   response_time?: number;
 }
+
+// Helper function to safely convert Json to FunctionResponse
+const convertToFunctionResponse = (data: any): FunctionResponse => {
+  if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+    return data as FunctionResponse;
+  }
+  // Fallback for unexpected response format
+  return { success: false, error: 'Invalid response format' };
+};
 
 export const BankingIntegration = () => {
   const { toast } = useToast();
@@ -195,7 +203,7 @@ export const BankingIntegration = () => {
 
       if (error) throw error;
 
-      const response = result as FunctionResponse;
+      const response = convertToFunctionResponse(result);
       if (response?.success) {
         toast({
           title: "Configuration Saved",
@@ -233,7 +241,7 @@ export const BankingIntegration = () => {
 
       if (error) throw error;
 
-      const response = result as FunctionResponse;
+      const response = convertToFunctionResponse(result);
       if (response?.success) {
         toast({
           title: "Status Updated",
@@ -264,7 +272,7 @@ export const BankingIntegration = () => {
 
       if (error) throw error;
 
-      const response = result as FunctionResponse;
+      const response = convertToFunctionResponse(result);
       if (response?.success) {
         toast({
           title: "Connection Test Successful",

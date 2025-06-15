@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -43,14 +44,15 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  console.log('Auth component state:', { user, isLoading, isInitialized, error });
+
   // Get the intended destination from location state
   const from = location.state?.from?.pathname || '/';
 
-  // Redirect if already authenticated - simplified logic
+  // Redirect if already authenticated
   useEffect(() => {
     if (user && isInitialized) {
       console.log('🔀 User authenticated, redirecting...', user.role);
-      // Direct redirect without complex logic
       const redirectPath = user.role === 'admin' ? '/dashboard/admin'
         : user.role === 'provider' ? '/dashboard/provider'
         : '/dashboard/client';
@@ -114,7 +116,7 @@ const Auth = () => {
         const success = await login({
           email: formData.email,
           password: formData.password,
-          role: formData.role, // Keep role for compatibility but service will skip validation
+          role: formData.role,
           rememberMe: formData.rememberMe
         });
         
@@ -177,7 +179,7 @@ const Auth = () => {
     }
   };
 
-  // Show loading screen while auth is initializing
+  // Show simple loading while auth is initializing - but with timeout
   if (!isInitialized) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
@@ -186,7 +188,7 @@ const Auth = () => {
             <CardContent className="text-center py-8">
               <div className="flex flex-col items-center space-y-4">
                 <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-gray-600">Loading...</p>
+                <p className="text-gray-600">Initializing...</p>
               </div>
             </CardContent>
           </Card>
@@ -313,7 +315,7 @@ const Auth = () => {
                 </div>
               )}
 
-              {/* Show role selection for signup or allow all roles for login */}
+              {/* Show role selection for both login and signup */}
               {(mode === 'login' || mode === 'signup') && (
                 <div className="space-y-2">
                   <Label className="text-gray-700">Role</Label>

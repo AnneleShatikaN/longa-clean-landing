@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
 import { UserProfile, AuthContextType, UserRole } from '@/types/auth';
-import { fetchUserProfile, checkAdminSetup } from '@/utils/userProfile';
+import { fetchUserProfile, checkAdminSetup, createUserProfileIfNeeded } from '@/utils/userProfile';
 import {
   loginUser,
   signupUser,
@@ -41,18 +41,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             if (session?.user) {
               setTimeout(async () => {
-                const profile = await fetchUserProfile(session.user.id);
-                if (mounted) {
+                if (!mounted) return;
+
+                let profile = await fetchUserProfile(session.user.id);
+                
+                // If no profile exists, try to create one
+                if (!profile) {
+                  console.log('No profile found, creating one...');
+                  profile = await createUserProfileIfNeeded(session.user.id, session.user);
+                }
+
+                if (mounted && profile) {
                   setUser(profile);
                   
-                  // Handle automatic redirect after admin setup
-                  if (event === 'SIGNED_IN' && profile?.role === 'admin') {
+                  // Handle automatic redirect after admin setup or login
+                  if (event === 'SIGNED_IN') {
                     const adminSetupCompleted = localStorage.getItem('admin_setup_completed');
-                    if (adminSetupCompleted && window.location.pathname === '/') {
-                      // Redirect to admin dashboard
-                      window.location.href = '/dashboard/admin';
+                    
+                    if (profile.role === 'admin') {
+                      // Clear the setup flag since we're now logged in
+                      if (adminSetupCompleted) {
+                        localStorage.removeItem('admin_setup_completed');
+                      }
+                      
+                      // Redirect to admin dashboard if not already there
+                      if (window.location.pathname === '/' || window.location.pathname === '/auth') {
+                        setTimeout(() => {
+                          window.location.href = '/dashboard/admin';
+                        }, 100);
+                      }
+                    } else {
+                      // Redirect based on user role
+                      const currentPath = window.location.pathname;
+                      if (currentPath === '/' || currentPath === '/auth') {
+                        switch (profile.role) {
+                          case 'provider':
+                            window.location.href = '/dashboard/provider';
+                            break;
+                          case 'client':
+                            window.location.href = '/dashboard/client';
+                            break;
+                          default:
+                            break;
+                        }
+                      }
                     }
                   }
+                } else if (mounted) {
+                  console.error('Failed to create or fetch user profile');
+                  setUser(null);
                 }
               }, 0);
             } else {
@@ -61,6 +98,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             if (event === 'SIGNED_OUT') {
               setUser(null);
+              // Clear any lingering admin setup flags
+              localStorage.removeItem('admin_setup_completed');
             }
 
             setIsLoading(false);
@@ -74,20 +113,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         if (session?.user && mounted) {
-          const profile = await fetchUserProfile(session.user.id);
-          setUser(profile);
+          let profile = await fetchUserProfile(session.user.id);
+          
+          // If no profile exists, try to create one
+          if (!profile) {
+            console.log('No profile found during initialization, creating one...');
+            profile = await createUserProfileIfNeeded(session.user.id, session.user);
+          }
+          
+          if (profile) {
+            setUser(profile);
+          }
         }
 
-        // Check if admin setup was completed but user needs verification
-        const adminSetupCompleted = localStorage.getItem('admin_setup_completed');
-        
-        if (adminSetupCompleted && !session) {
-          // Admin was created but not verified yet
-          setNeedsAdminSetup(false);
-        } else {
-          const adminSetupNeeded = await checkAdminSetup();
-          setNeedsAdminSetup(adminSetupNeeded);
-        }
+        // Check if admin setup is needed
+        const adminSetupNeeded = await checkAdminSetup();
+        setNeedsAdminSetup(adminSetupNeeded);
         
         setIsInitialized(true);
         setIsLoading(false);
@@ -179,6 +220,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await logoutUser(user?.id, user?.email);
       setUser(null);
       setSession(null);
+      
+      // Clear admin setup flags
+      localStorage.removeItem('admin_setup_completed');
       
       toast({
         title: "Logged out",

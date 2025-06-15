@@ -44,16 +44,69 @@ export const fetchUserProfile = async (userId: string): Promise<UserProfile | nu
 
 export const checkAdminSetup = async (): Promise<boolean> => {
   try {
-    const { data, error } = await supabase
+    // First check if there are any admin users in the public.users table
+    const { data: adminUsers, error: dbError } = await supabase
       .from('users')
       .select('id')
       .eq('role', 'admin')
       .limit(1);
 
-    if (error) throw error;
-    return !data || data.length === 0;
+    if (dbError) {
+      console.error('Error checking admin setup in users table:', dbError);
+    }
+
+    // If we found admin users in the database, no setup needed
+    if (adminUsers && adminUsers.length > 0) {
+      return false;
+    }
+
+    // Also check if admin setup was completed but user verification is pending
+    const adminSetupCompleted = localStorage.getItem('admin_setup_completed');
+    if (adminSetupCompleted === 'true') {
+      return false; // Setup was completed, just waiting for verification
+    }
+
+    // No admin users found and no completed setup, need admin setup
+    return true;
   } catch (error) {
     console.error('Error checking admin setup:', error);
-    return true;
+    return true; // Default to requiring setup if there's an error
+  }
+};
+
+export const createUserProfileIfNeeded = async (userId: string, userData: any): Promise<UserProfile | null> => {
+  try {
+    // Check if user profile already exists
+    const existingProfile = await fetchUserProfile(userId);
+    if (existingProfile) {
+      return existingProfile;
+    }
+
+    // Create new user profile
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        id: userId,
+        email: userData.email,
+        password_hash: 'managed_by_supabase_auth',
+        full_name: userData.user_metadata?.full_name || userData.email,
+        phone: userData.user_metadata?.phone || null,
+        role: userData.user_metadata?.role || 'client',
+        is_active: true,
+        rating: 0,
+        total_jobs: 0
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating user profile:', error);
+      return null;
+    }
+
+    return await fetchUserProfile(userId);
+  } catch (error) {
+    console.error('Error in createUserProfileIfNeeded:', error);
+    return null;
   }
 };

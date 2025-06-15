@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile, UserRole } from '@/types/auth';
 
@@ -38,33 +39,6 @@ export const fetchUserProfile = async (userId: string): Promise<UserProfile | nu
   } catch (error) {
     console.error('Error fetching user profile:', error);
     return null;
-  }
-};
-
-// Keep this function for backward compatibility but make it optional
-export const checkAdminSetup = async (): Promise<boolean> => {
-  try {
-    // Check if there are any admin users in the public.users table
-    const { data: adminUsers, error: dbError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('role', 'admin')
-      .limit(1);
-
-    if (dbError) {
-      console.error('Error checking admin setup in users table:', dbError);
-    }
-
-    // If we found admin users in the database, no setup needed
-    if (adminUsers && adminUsers.length > 0) {
-      return false;
-    }
-
-    // No admin users found, admin setup might be needed but don't block login
-    return true;
-  } catch (error) {
-    console.error('Error checking admin setup:', error);
-    return false; // Default to not requiring setup if there's an error
   }
 };
 

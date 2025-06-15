@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { logSecurityEvent, detectSuspiciousActivity, checkRateLimit } from '@/utils/security';
-import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
+import { LoginData, UserRegistration, PasswordReset, ChangePassword } from '@/schemas/validation';
 import { fetchUserProfile } from '@/utils/userProfile';
 
 export const loginUser = async (loginData: LoginData) => {
@@ -140,54 +140,4 @@ export const changePasswordService = async (data: ChangePassword) => {
 
   if (error) throw error;
   return true;
-};
-
-export const setupAdminService = async (data: AdminSetup) => {
-  try {
-    console.log('Starting admin setup with data:', { email: data.email, name: data.name });
-    
-    // Create the admin user account - no email confirmation needed
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          full_name: data.name,
-          phone: data.phone,
-          role: 'admin'
-        }
-      }
-    });
-
-    if (authError) {
-      console.error('Auth signup error:', authError);
-      throw new Error(`Authentication error: ${authError.message}`);
-    }
-
-    if (!authData.user) {
-      throw new Error('Failed to create user account');
-    }
-
-    console.log('Auth user created:', authData.user.id);
-
-    // Store company information in localStorage
-    const companyData = {
-      name: data.companyName,
-      phone: data.companyPhone,
-      adminId: authData.user.id,
-      setupAt: new Date().toISOString()
-    };
-    
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('company_setup', JSON.stringify(companyData));
-      localStorage.setItem('admin_setup_completed', 'true');
-    }
-
-    // Since email confirmation is disabled, user should be logged in automatically
-    // Return success immediately - the auth context will handle the redirect
-    return true;
-  } catch (error) {
-    console.error('Admin setup failed:', error);
-    throw error;
-  }
 };

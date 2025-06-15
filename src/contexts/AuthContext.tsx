@@ -2,7 +2,7 @@ import React, { createContext, useContext, ReactNode, useEffect, useState } from
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { LoginData, UserRegistration, PasswordReset, ChangePassword, AdminSetup } from '@/schemas/validation';
+import { LoginData, UserRegistration, PasswordReset, ChangePassword } from '@/schemas/validation';
 import { UserProfile, AuthContextType, UserRole } from '@/types/auth';
 import { fetchUserProfile, createUserProfileIfNeeded } from '@/utils/userProfile';
 import {
@@ -11,8 +11,7 @@ import {
   logoutUser,
   requestPasswordResetService,
   resetPasswordService,
-  changePasswordService,
-  setupAdminService
+  changePasswordService
 } from '@/services/authService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,7 +22,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [needsAdminSetup, setNeedsAdminSetup] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -42,8 +40,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         // Process initial session if it exists
-        if (initialSession?.user?.email_confirmed_at && mounted) {
-          console.log('💾 Found existing verified session for user:', initialSession.user.id);
+        if (initialSession?.user && mounted) {
+          console.log('💾 Found existing session for user:', initialSession.user.id);
           
           let profile = await fetchUserProfile(initialSession.user.id);
           
@@ -81,8 +79,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setSession(session);
             setError(null);
 
-            if (session?.user && session.user.email_confirmed_at) {
-              console.log('✅ User authenticated with confirmed email, fetching profile...');
+            if (session?.user && mounted) {
+              console.log('✅ User authenticated, fetching profile...');
               
               setTimeout(async () => {
                 if (!mounted) return;
@@ -104,7 +102,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     console.log('🔀 Current path:', currentPath, 'User role:', profile.role);
                     
                     // Redirect from auth pages to appropriate dashboard
-                    if (currentPath === '/auth' || currentPath === '/admin-setup') {
+                    if (currentPath === '/auth') {
                       const redirectPath = profile.role === 'admin' ? '/dashboard/admin'
                         : profile.role === 'provider' ? '/dashboard/provider'
                         : '/dashboard/client';
@@ -120,9 +118,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   setUser(null);
                 }
               }, 0);
-            } else if (session?.user && !session.user.email_confirmed_at) {
-              console.log('📧 User authenticated but email not confirmed');
-              setUser(null);
             } else {
               console.log('🚪 No authenticated user');
               setUser(null);
@@ -193,17 +188,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const result = await signupUser(userData);
 
-      if (result.needsEmailVerification) {
-        toast({
-          title: "Registration successful!",
-          description: "Please check your email to verify your account before logging in.",
-        });
-      } else {
-        toast({
-          title: "Account created!",
-          description: "Your account has been created successfully.",
-        });
-      }
+      toast({
+        title: "Account created!",
+        description: "Your account has been created successfully.",
+      });
 
       return result;
     } catch (error) {
@@ -332,41 +320,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return true;
   };
 
-  const setupAdmin = async (data: AdminSetup): Promise<boolean> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      console.log('🔧 Setting up admin account...');
-      const success = await setupAdminService(data);
-
-      if (success) {
-        setNeedsAdminSetup(false);
-        
-        toast({
-          title: "Admin account created!",
-          description: "Please check your email and click the verification link to complete setup. You'll then be able to sign in.",
-        });
-
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('💥 Admin setup error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Admin setup failed';
-      setError(errorMessage);
-      
-      toast({
-        title: "Admin Setup Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
+  const setupAdmin = async (): Promise<boolean> => {
+    return true;
   };
 
   return (
@@ -383,7 +338,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setupAdmin,
       isLoading,
       error,
-      needsAdminSetup,
+      needsAdminSetup: false, // Always false now
       isInitialized
     }}>
       {children}

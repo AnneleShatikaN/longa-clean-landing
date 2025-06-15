@@ -7,12 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
+import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PhoneValidation } from "@/components/profile/PhoneValidation";
-import { supabase } from "@/integrations/supabase/client";
 
 type AuthMode = 'login' | 'signup' | 'forgot-password';
 
@@ -20,8 +19,6 @@ const Auth = () => {
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'error' | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -50,66 +47,9 @@ const Auth = () => {
   // Get the intended destination from location state
   const from = location.state?.from?.pathname || '/';
 
-  // Handle email verification callback
-  useEffect(() => {
-    const handleEmailVerification = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      const type = hashParams.get('type');
-
-      if (type === 'email' && accessToken && refreshToken) {
-        console.log('📧 Processing email verification...');
-        setIsVerifying(true);
-        setVerificationStatus('pending');
-
-        try {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
-
-          if (error) {
-            console.error('❌ Verification error:', error);
-            setVerificationStatus('error');
-            toast({
-              title: "Verification Failed",
-              description: error.message,
-              variant: "destructive",
-            });
-          } else if (data.user) {
-            console.log('✅ Email verified successfully');
-            setVerificationStatus('success');
-            toast({
-              title: "Email Verified!",
-              description: "Your account has been verified successfully. Redirecting...",
-            });
-
-            // Clear the hash and allow auth context to handle redirect
-            window.history.replaceState(null, '', window.location.pathname);
-            
-            setTimeout(() => {
-              setIsVerifying(false);
-            }, 2000);
-          }
-        } catch (err) {
-          console.error('💥 Verification error:', err);
-          setVerificationStatus('error');
-          toast({
-            title: "Verification Failed",
-            description: "There was an error verifying your email. Please try again or contact support.",
-            variant: "destructive",
-          });
-        }
-      }
-    };
-
-    handleEmailVerification();
-  }, [toast]);
-
   // Redirect if already authenticated
   useEffect(() => {
-    if (user && isInitialized && !isVerifying) {
+    if (user && isInitialized) {
       console.log('🔀 User authenticated, redirecting...', user.role);
       // Redirect based on user role
       switch (user.role) {
@@ -126,7 +66,7 @@ const Auth = () => {
           navigate(from);
       }
     }
-  }, [user, isInitialized, navigate, from, isVerifying]);
+  }, [user, isInitialized, navigate, from]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -196,18 +136,11 @@ const Auth = () => {
         });
 
         if (result.success) {
-          if (result.needsEmailVerification) {
-            toast({
-              title: "Account created!",
-              description: "Please check your email and click the verification link to complete your registration.",
-            });
-          } else {
-            toast({
-              title: "Account created!",
-              description: "You can now sign in with your credentials.",
-            });
-            setMode('login');
-          }
+          toast({
+            title: "Account created!",
+            description: "You can now sign in with your credentials.",
+          });
+          setMode('login');
         }
       } else if (mode === 'forgot-password') {
         await requestPasswordReset({ email: formData.email });
@@ -237,15 +170,6 @@ const Auth = () => {
   };
 
   const getTitle = () => {
-    if (isVerifying) {
-      switch (verificationStatus) {
-        case 'pending': return 'Verifying Email...';
-        case 'success': return 'Email Verified!';
-        case 'error': return 'Verification Failed';
-        default: return 'Verifying Email...';
-      }
-    }
-
     switch (mode) {
       case 'login': return 'Welcome Back';
       case 'signup': return 'Join Longa';
@@ -254,15 +178,6 @@ const Auth = () => {
   };
 
   const getSubtitle = () => {
-    if (isVerifying) {
-      switch (verificationStatus) {
-        case 'pending': return 'Please wait while we verify your email address...';
-        case 'success': return 'Your account has been verified. Redirecting...';
-        case 'error': return 'There was an error verifying your email address.';
-        default: return 'Please wait while we verify your email address...';
-      }
-    }
-
     switch (mode) {
       case 'login': return 'Sign in to your account';
       case 'signup': return 'Create your account to get started';
@@ -281,60 +196,6 @@ const Auth = () => {
                 <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
                 <p className="text-gray-600">Loading...</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  // Show verification status if currently verifying
-  if (isVerifying) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <Card className="bg-white border-gray-200 shadow-lg">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-gray-800">
-                {getTitle()}
-              </CardTitle>
-              <p className="text-gray-600">
-                {getSubtitle()}
-              </p>
-            </CardHeader>
-
-            <CardContent className="text-center py-8">
-              {verificationStatus === 'pending' && (
-                <div className="flex flex-col items-center space-y-4">
-                  <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-gray-600">Verifying your email address...</p>
-                </div>
-              )}
-
-              {verificationStatus === 'success' && (
-                <div className="flex flex-col items-center space-y-4">
-                  <CheckCircle className="w-12 h-12 text-green-500" />
-                  <p className="text-gray-600">Email verified successfully!</p>
-                  <p className="text-sm text-gray-500">Redirecting you to your dashboard...</p>
-                </div>
-              )}
-
-              {verificationStatus === 'error' && (
-                <div className="flex flex-col items-center space-y-4">
-                  <AlertCircle className="w-12 h-12 text-red-500" />
-                  <p className="text-gray-600">Verification failed. Please try again.</p>
-                  <Button
-                    onClick={() => {
-                      setIsVerifying(false);
-                      setVerificationStatus(null);
-                      setMode('login');
-                    }}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                  >
-                    Go to Login
-                  </Button>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>

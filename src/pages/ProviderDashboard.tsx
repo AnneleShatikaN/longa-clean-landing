@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,7 +27,6 @@ const ProviderDashboard = () => {
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  const [showDebug, setShowDebug] = useState(false);
 
   // Check email verification status
   useEffect(() => {
@@ -48,25 +46,6 @@ const ProviderDashboard = () => {
       navigate('/');
     }
   }, [user, isValidProvider, isLoading, navigate, toast]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('[ProviderDashboard] Current state:', {
-      user: user ? { id: user.id, role: user.role, name: user.name } : null,
-      isLoading,
-      error,
-      isValidProvider,
-      data: data ? {
-        hasJobs: data.jobs?.length > 0,
-        hasNotifications: data.notifications?.length > 0,
-        hasEarnings: data.monthlyEarnings?.length > 0,
-        hasProfile: !!data.profile,
-        jobsCount: data.jobs?.length || 0,
-        notificationsCount: data.notifications?.length || 0,
-        earningsCount: data.monthlyEarnings?.length || 0
-      } : null
-    });
-  }, [user, isLoading, error, isValidProvider, data]);
 
   const handleLogout = async () => {
     try {
@@ -289,15 +268,6 @@ const ProviderDashboard = () => {
                   </span>
                 )}
               </div>
-              {process.env.NODE_ENV === 'development' && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setShowDebug(!showDebug)}
-                >
-                  Debug
-                </Button>
-              )}
               <Button variant="ghost" onClick={handleLogout} size="sm">
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -308,25 +278,6 @@ const ProviderDashboard = () => {
 
       <div className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Debug Panel */}
-          {showDebug && process.env.NODE_ENV === 'development' && (
-            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h3 className="font-semibold text-yellow-800 mb-2">Debug Information</h3>
-              <pre className="text-xs text-yellow-700 overflow-auto">
-                {JSON.stringify({
-                  userId: user?.id,
-                  userRole: user?.role,
-                  isValidProvider,
-                  dataLoaded: !!data,
-                  jobsCount: jobs.length,
-                  notificationsCount: notifications.length,
-                  earningsCount: monthlyEarnings.length,
-                  hasProfile: !!data.profile
-                }, null, 2)}
-              </pre>
-            </div>
-          )}
-
           {/* Availability Toggle */}
           <div className="mb-6">
             <AvailabilityToggle 

@@ -266,6 +266,12 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
       // Local state update for mock data
       // Ensure update types match Service interface (id: string and duration always has hours and minutes)
       const safeUpdates: Partial<Service> = { ...updates };
+
+      // --- fix: id is always string in Partial<Service> ---
+      if ('id' in safeUpdates && typeof safeUpdates.id !== 'string') {
+        (safeUpdates as any).id = String((safeUpdates as any).id);
+      }
+
       if (updates.duration) {
         safeUpdates.duration = {
           hours: updates.duration.hours ?? 0,

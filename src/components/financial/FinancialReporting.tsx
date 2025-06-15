@@ -266,24 +266,23 @@ export const FinancialReporting = () => {
 
       if (reportData.bookings.length === 0 && reportData.payouts.length === 0) {
         toast({
-          title: "No data available",
-          description: "No data found for the selected date range.",
-          variant: "destructive",
+          title: "Empty Report Downloaded",
+          description: `No data found for the selected date range. Empty report saved as ${filename}`,
+          className: "border-yellow-200 bg-yellow-50",
         });
-        return;
+      } else {
+        const timestamp = format(new Date(), 'yyyyMMdd');
+        const filename = `longa-report-${timestamp}.csv`;
+        const csvContent = generateCSV(reportData);
+        
+        downloadFile(csvContent, filename, 'text/csv;charset=utf-8;');
+        
+        toast({
+          title: "Download Successful",
+          description: `Report downloaded as ${filename}`,
+          className: "border-green-200 bg-green-50",
+        });
       }
-
-      const timestamp = format(new Date(), 'yyyyMMdd');
-      const filename = `longa-report-${timestamp}.csv`;
-      const csvContent = generateCSV(reportData);
-      
-      downloadFile(csvContent, filename, 'text/csv;charset=utf-8;');
-      
-      toast({
-        title: "Download Successful",
-        description: `Report downloaded as ${filename}`,
-        className: "border-green-200 bg-green-50",
-      });
     } catch (error) {
       console.error('Error generating report:', error);
       toast({

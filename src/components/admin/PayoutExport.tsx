@@ -191,44 +191,47 @@ export const PayoutExport = () => {
     try {
       const payoutData = await fetchExportablePayouts();
       
-      if (payoutData.length === 0) {
-        toast({
-          title: "No data available",
-          description: "No payouts found for the selected date range.",
-          variant: "destructive"
-        });
-        return;
-      }
-
       const timestamp = format(new Date(), 'yyyyMMdd');
       const filename = `longa-payouts-${timestamp}.csv`;
-      const csvContent = generateCSV(payoutData);
       
-      downloadCSV(csvContent, filename);
+      if (payoutData.length === 0) {
+        // Create empty CSV with headers only
+        const csvContent = generateCSV([]);
+        downloadCSV(csvContent, filename);
+        
+        toast({
+          title: "Empty Report Downloaded",
+          description: `No payouts found for the selected date range. Empty report saved as ${filename}`,
+          className: "border-yellow-200 bg-yellow-50",
+        });
+      } else {
+        const csvContent = generateCSV(payoutData);
+        downloadCSV(csvContent, filename);
 
-      // Mark as processed if checkbox is checked
-      if (markAsProcessed && rawPayoutsData.length > 0) {
-        const payoutIds = rawPayoutsData.map(p => p.id);
-        await markPayoutsAsProcessed(payoutIds);
+        // Mark as processed if checkbox is checked
+        if (markAsProcessed && rawPayoutsData.length > 0) {
+          const payoutIds = rawPayoutsData.map(p => p.id);
+          await markPayoutsAsProcessed(payoutIds);
+        }
+
+        // Add to export history
+        const newExport: ExportRecord = {
+          id: Date.now().toString(),
+          exportDate: format(new Date(), 'yyyy-MM-dd'),
+          filename,
+          recordCount: payoutData.length,
+          totalAmount: payoutData.reduce((sum, p) => sum + p.payoutAmount, 0),
+          exportedBy: 'Admin User'
+        };
+
+        setExportHistory(prev => [newExport, ...prev]);
+
+        toast({
+          title: "Download Successful",
+          description: `${payoutData.length} payout records exported to ${filename}`,
+          className: "border-green-200 bg-green-50",
+        });
       }
-
-      // Add to export history
-      const newExport: ExportRecord = {
-        id: Date.now().toString(),
-        exportDate: format(new Date(), 'yyyy-MM-dd'),
-        filename,
-        recordCount: payoutData.length,
-        totalAmount: payoutData.reduce((sum, p) => sum + p.payoutAmount, 0),
-        exportedBy: 'Admin User'
-      };
-
-      setExportHistory(prev => [newExport, ...prev]);
-
-      toast({
-        title: "Download Successful",
-        description: `${payoutData.length} payout records exported to ${filename}`,
-        className: "border-green-200 bg-green-50",
-      });
 
       // Refresh data after export
       await fetchExportablePayouts();
@@ -343,7 +346,7 @@ export const PayoutExport = () => {
               <Button 
                 onClick={handleExport} 
                 className="w-full"
-                disabled={isExporting || isLoadingData || exportableData.length === 0}
+                disabled={isExporting || isLoadingData}
               >
                 {isExporting ? (
                   <>
@@ -440,7 +443,7 @@ export const PayoutExport = () => {
             <div className="text-center">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500 text-lg">No payouts available for export</p>
-              <p className="text-gray-400 text-sm">Try adjusting the date range or check if there are pending payouts.</p>
+              <p className="text-gray-400 text-sm">You can still download an empty report with headers.</p>
             </div>
           </CardContent>
         </Card>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { useUsers } from "@/contexts/UserContext";
 import { useToast } from "@/hooks/use-toast";
+import LocationSelector from "@/components/provider/LocationSelector";
 import { User, Camera, Save, X } from "lucide-react";
 
 interface UserProfileProps {
@@ -30,6 +32,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     profilePicture: user?.profilePicture || '',
     bankMobileNumber: user?.bankMobileNumber || '',
     paymentMethod: user?.paymentMethod || 'mobile_money',
+    location: user?.location || 'windhoek',
     bankDetails: {
       accountNumber: user?.bankDetails?.accountNumber || '',
       bankName: user?.bankDetails?.bankName || '',
@@ -234,6 +237,16 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             />
             {formErrors.phone && <p className="text-sm text-red-500">{formErrors.phone}</p>}
           </div>
+
+          {/* Location Selector for Providers */}
+          {user.role === 'provider' && (
+            <LocationSelector
+              value={formData.location}
+              onChange={(value) => handleInputChange('location', value)}
+              disabled={!isEditing}
+              error={formErrors.location}
+            />
+          )}
 
           <div className="space-y-2">
             <Label>Role</Label>

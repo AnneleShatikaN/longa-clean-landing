@@ -302,15 +302,6 @@ const ProviderDashboard = () => {
             </div>
           )}
 
-          {/* Show message if no work location is set */}
-          {!hasWorkLocation && (
-            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-yellow-800">
-                <strong>Welcome!</strong> Please set your work location in your profile settings to see relevant job opportunities.
-              </p>
-            </div>
-          )}
-
           {/* Availability Toggle */}
           <div className="mb-6">
             <AvailabilityToggle 

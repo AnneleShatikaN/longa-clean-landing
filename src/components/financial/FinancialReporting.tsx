@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -264,15 +265,20 @@ export const FinancialReporting = () => {
         return;
       }
 
+      const timestamp = format(new Date(), 'yyyyMMdd');
+      const filename = `longa-report-${timestamp}.csv`;
+      
       if (reportData.bookings.length === 0 && reportData.payouts.length === 0) {
+        // Create empty CSV with headers only
+        const csvContent = generateCSV(reportData);
+        downloadFile(csvContent, filename, 'text/csv;charset=utf-8;');
+        
         toast({
           title: "Empty Report Downloaded",
           description: `No data found for the selected date range. Empty report saved as ${filename}`,
           className: "border-yellow-200 bg-yellow-50",
         });
       } else {
-        const timestamp = format(new Date(), 'yyyyMMdd');
-        const filename = `longa-report-${timestamp}.csv`;
         const csvContent = generateCSV(reportData);
         
         downloadFile(csvContent, filename, 'text/csv;charset=utf-8;');

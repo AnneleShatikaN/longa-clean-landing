@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +25,7 @@ export interface BookingData {
   specialInstructions?: string;
   emergencyBooking?: boolean;
   durationMinutes: number;
+  locationTown?: string; // Add location for bookings
 }
 
 interface SupabaseBookingContextType {
@@ -187,6 +189,7 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
         special_instructions: bookingData.specialInstructions,
         emergency_booking: bookingData.emergencyBooking || false,
         acceptance_deadline: acceptanceDeadline.toISOString(),
+        location_town: bookingData.locationTown || 'windhoek', // Set location
         status: 'pending'
       };
 
@@ -198,22 +201,30 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
 
       if (error) throw error;
 
-      // Send notifications to available providers (simplified - in reality you'd query available providers)
-      const { error: notificationError } = await supabase.rpc('send_notification', {
-        user_id: user.id, // This should be provider IDs in real implementation
-        notification_type: 'new_booking',
-        title: 'New Booking Available',
-        message: `New ${service.name} booking for ${bookingData.bookingDate} at ${bookingData.bookingTime}`,
-        booking_id: data.id
-      });
+      // Send notifications to available providers in the same location
+      const { data: availableProviders, error: providersError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('role', 'provider')
+        .eq('is_active', true)
+        .eq('current_work_location', bookingData.locationTown || 'windhoek');
 
-      if (notificationError) {
-        console.warn('Failed to send notifications:', notificationError);
+      if (!providersError && availableProviders) {
+        // Send notification to each available provider
+        for (const provider of availableProviders) {
+          await supabase.rpc('send_notification', {
+            user_id: provider.id,
+            notification_type: 'new_booking',
+            title: 'New Booking Available',
+            message: `New ${service.name} booking for ${bookingData.bookingDate} at ${bookingData.bookingTime} in ${bookingData.locationTown || 'Windhoek'}`,
+            booking_id: data.id
+          });
+        }
       }
 
       toast({
         title: "Booking Created",
-        description: "Your booking has been created and sent to available providers.",
+        description: "Your booking has been created and sent to available providers in your area.",
       });
 
       return data;

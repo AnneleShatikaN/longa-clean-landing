@@ -145,7 +145,7 @@ export const useProviderData = () => {
             totalJobs: 0,
             specialties: [],
             available: true,
-            location: 'windhoek',
+            location: user.current_work_location || 'windhoek',
             joinDate: user.created_at || new Date().toISOString(),
             lastActive: new Date().toISOString()
           }
@@ -191,7 +191,7 @@ export const useProviderData = () => {
             totalJobs: 0,
             specialties: [],
             available: true,
-            location: 'windhoek',
+            location: user.current_work_location || 'windhoek',
             joinDate: user.created_at || new Date().toISOString(),
             lastActive: new Date().toISOString()
           }
@@ -199,12 +199,25 @@ export const useProviderData = () => {
         return;
       }
 
+      // Filter jobs based on current work location
+      const userLocation = user.current_work_location;
+      let filteredJobs = providerData.jobs || [];
+      
+      if (userLocation) {
+        // In mock mode, we'll filter based on a mock location property
+        // For now, we'll just use all jobs since mock data doesn't have location
+        console.log(`[useProviderData] User location: ${userLocation}, showing all mock jobs`);
+      }
+
       setData({
-        jobs: providerData.jobs || [],
+        jobs: filteredJobs,
         notifications: providerData.notifications || [],
         ratings: providerData.ratings || [],
         monthlyEarnings: providerData.monthlyEarnings || [],
-        profile: providerData.profile || {
+        profile: {
+          ...providerData.profile,
+          location: user.current_work_location || providerData.profile?.location || 'windhoek'
+        } || {
           id: user.id,
           name: user.name || user.full_name || 'Provider',
           email: user.email || '',
@@ -213,7 +226,7 @@ export const useProviderData = () => {
           totalJobs: 0,
           specialties: [],
           available: true,
-          location: 'windhoek',
+          location: user.current_work_location || 'windhoek',
           joinDate: user.created_at || new Date().toISOString(),
           lastActive: new Date().toISOString()
         }
@@ -310,8 +323,21 @@ export const useProviderData = () => {
 
     console.log(`[useProviderData] Fetching live data for provider ${user.id}`);
 
-    // Fetch jobs from bookings table
-    const { data: bookingsData, error: bookingsError } = await supabase
+    // Get user's current work location for filtering
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('current_work_location')
+      .eq('id', user.id)
+      .single();
+
+    if (userError) {
+      console.error('[useProviderData] Error fetching user location:', userError);
+    }
+
+    const userLocation = userData?.current_work_location;
+
+    // Fetch jobs from bookings table with location filtering
+    let bookingsQuery = supabase
       .from('bookings')
       .select(`
         id,
@@ -325,11 +351,20 @@ export const useProviderData = () => {
         emergency_booking,
         duration_minutes,
         special_instructions,
+        location_town,
         services!inner(name, service_type, commission_percentage, provider_fee),
         users!bookings_client_id_fkey(full_name, phone, email)
       `)
-      .eq('provider_id', user.id)
       .order('created_at', { ascending: false });
+
+    // Filter by provider's accepted jobs OR available jobs in their location
+    if (userLocation) {
+      bookingsQuery = bookingsQuery.or(`provider_id.eq.${user.id},and(provider_id.is.null,location_town.eq.${userLocation})`);
+    } else {
+      bookingsQuery = bookingsQuery.eq('provider_id', user.id);
+    }
+
+    const { data: bookingsData, error: bookingsError } = await bookingsQuery;
 
     if (bookingsError) {
       console.error('[useProviderData] Error fetching bookings:', bookingsError);
@@ -342,7 +377,7 @@ export const useProviderData = () => {
       clientName: booking.users?.full_name || 'Unknown Client',
       clientPhone: booking.users?.phone || '',
       clientEmail: booking.users?.email || '',
-      location: 'Windhoek', // Default location
+      location: booking.location_town || 'Windhoek',
       amount: booking.total_amount || 0,
       date: booking.booking_date,
       status: booking.status as 'requested' | 'accepted' | 'completed',
@@ -434,14 +469,18 @@ export const useProviderData = () => {
       notifications,
       ratings,
       monthlyEarnings,
-      profile
+      profile: {
+        ...profile,
+        location: userLocation || 'windhoek'
+      }
     });
 
     console.log(`[useProviderData] Loaded live data for provider ${user.id}:`, {
       jobsCount: jobs.length,
       notificationsCount: notifications.length,
       ratingsCount: ratings.length,
-      monthlyEarningsCount: monthlyEarnings.length
+      monthlyEarningsCount: monthlyEarnings.length,
+      userLocation
     });
   };
 

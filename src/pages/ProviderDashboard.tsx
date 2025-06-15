@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,14 +15,15 @@ import ProviderPayoutsTab from '@/components/provider/ProviderPayoutsTab';
 import ProviderProfileTab from '@/components/provider/ProviderProfileTab';
 import AvailabilityToggle from '@/components/AvailabilityToggle';
 import NotificationSystem from '@/components/NotificationSystem';
+import WorkLocationSelector from '@/components/provider/WorkLocationSelector';
 import { 
-  LogOut, Bell, AlertCircle, Database, 
+  LogOut, Bell, AlertCircle, Database, MapPin,
   Home, Briefcase, Wallet, User
 } from 'lucide-react';
 
 const ProviderDashboard = () => {
   const { user, logout } = useAuth();
-  const { data, isLoading, error, updateJobStatus, isValidProvider } = useProviderData();
+  const { data, isLoading, error, updateJobStatus, isValidProvider, refetch } = useProviderData();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showEmailVerification, setShowEmailVerification] = useState(false);
@@ -94,6 +96,15 @@ const ProviderDashboard = () => {
     toast({
       title: "Profile Updated",
       description: "Your profile has been updated successfully.",
+    });
+  };
+
+  const handleLocationUpdate = (location: string) => {
+    // Refetch data to get location-filtered jobs
+    refetch();
+    toast({
+      title: "Location updated successfully 🌍",
+      description: "You'll now see jobs relevant to your selected location.",
     });
   };
 
@@ -207,7 +218,7 @@ const ProviderDashboard = () => {
     phone: user?.phone || '',
     rating: user?.rating || 0,
     totalJobs: user?.total_jobs || 0,
-    location: 'windhoek',
+    location: user?.current_work_location || 'windhoek',
     joinDate: user?.created_at || '',
     lastActive: ''
   };
@@ -244,6 +255,9 @@ const ProviderDashboard = () => {
     averageRating
   };
 
+  // Check if user has set work location
+  const hasWorkLocation = user?.current_work_location;
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <EmailVerificationPrompt
@@ -278,6 +292,34 @@ const ProviderDashboard = () => {
 
       <div className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Work Location Prompt/Selector */}
+          {!hasWorkLocation ? (
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <MapPin className="h-5 w-5 text-amber-600 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="text-amber-800 font-medium">Set Your Work Location</h3>
+                  <p className="text-amber-700 text-sm mt-1">
+                    Please set your location to start receiving jobs in your area.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 max-w-md">
+                <WorkLocationSelector 
+                  currentLocation={user?.current_work_location}
+                  onLocationUpdate={handleLocationUpdate}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="mb-6">
+              <WorkLocationSelector 
+                currentLocation={user?.current_work_location}
+                onLocationUpdate={handleLocationUpdate}
+              />
+            </div>
+          )}
+
           {/* Availability Toggle */}
           <div className="mb-6">
             <AvailabilityToggle 

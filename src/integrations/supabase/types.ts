@@ -20,6 +20,7 @@ export type Database = {
           duration_minutes: number | null
           emergency_booking: boolean | null
           id: string
+          location_town: string | null
           modification_history: Json | null
           progress_photos: string[] | null
           provider_id: string | null
@@ -43,6 +44,7 @@ export type Database = {
           duration_minutes?: number | null
           emergency_booking?: boolean | null
           id?: string
+          location_town?: string | null
           modification_history?: Json | null
           progress_photos?: string[] | null
           provider_id?: string | null
@@ -66,6 +68,7 @@ export type Database = {
           duration_minutes?: number | null
           emergency_booking?: boolean | null
           id?: string
+          location_town?: string | null
           modification_history?: Json | null
           progress_photos?: string[] | null
           provider_id?: string | null
@@ -1390,6 +1393,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
+          current_work_location: string | null
           email: string
           full_name: string
           id: string
@@ -1404,6 +1408,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
+          current_work_location?: string | null
           email: string
           full_name: string
           id?: string
@@ -1418,6 +1423,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string | null
+          current_work_location?: string | null
           email?: string
           full_name?: string
           id?: string

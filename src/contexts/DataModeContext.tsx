@@ -41,7 +41,9 @@ export const DataModeProvider: React.FC<{ children: ReactNode }> = ({ children }
       }
 
       if (data?.value) {
-        const newMode = JSON.parse(data.value) as DataMode;
+        // Safely parse the JSON value
+        const valueStr = typeof data.value === 'string' ? data.value : JSON.stringify(data.value);
+        const newMode = JSON.parse(valueStr) as DataMode;
         if (newMode !== dataMode) {
           setDataModeState(newMode);
           localStorage.setItem('longa-data-mode', newMode);
@@ -66,7 +68,7 @@ export const DataModeProvider: React.FC<{ children: ReactNode }> = ({ children }
 
       if (error) {
         console.log('[DataModeContext] Could not update database, updating locally only:', error.message);
-      } else if (data?.success) {
+      } else if (data && typeof data === 'object' && 'success' in data && data.success) {
         console.log('[DataModeContext] Successfully updated global data mode in database');
       }
     } catch (error) {
@@ -105,8 +107,10 @@ export const DataModeProvider: React.FC<{ children: ReactNode }> = ({ children }
         (payload) => {
           console.log('[DataModeContext] Received real-time global settings update:', payload);
           
-          if (payload.new && payload.new.value) {
-            const newMode = JSON.parse(payload.new.value) as DataMode;
+          if (payload.new && typeof payload.new === 'object' && 'value' in payload.new && payload.new.value) {
+            // Safely parse the JSON value
+            const valueStr = typeof payload.new.value === 'string' ? payload.new.value : JSON.stringify(payload.new.value);
+            const newMode = JSON.parse(valueStr) as DataMode;
             if (newMode !== dataMode) {
               const previousMode = dataMode;
               setDataModeState(newMode);

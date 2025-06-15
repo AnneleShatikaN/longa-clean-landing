@@ -25,7 +25,9 @@ export const useGlobalSettings = () => {
       }
 
       const settingsMap = data.reduce((acc, setting) => {
-        acc[setting.key] = JSON.parse(setting.value);
+        // Safely parse the JSON value
+        const valueStr = typeof setting.value === 'string' ? setting.value : JSON.stringify(setting.value);
+        acc[setting.key] = JSON.parse(valueStr);
         return acc;
       }, {} as Record<string, any>);
 
@@ -50,7 +52,8 @@ export const useGlobalSettings = () => {
         return false;
       }
 
-      if (data?.success) {
+      // Check if the response indicates success
+      if (data && typeof data === 'object' && 'success' in data && data.success) {
         setSettings(prev => ({
           ...prev,
           [key]: value
@@ -83,15 +86,17 @@ export const useGlobalSettings = () => {
         (payload) => {
           console.log('[useGlobalSettings] Real-time update:', payload);
           
-          if (payload.new) {
+          if (payload.new && typeof payload.new === 'object' && 'key' in payload.new && 'value' in payload.new) {
             const { key, value } = payload.new as GlobalSetting;
+            // Safely parse the JSON value
+            const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
             setSettings(prev => ({
               ...prev,
-              [key]: JSON.parse(value)
+              [key]: JSON.parse(valueStr)
             }));
           }
           
-          if (payload.eventType === 'DELETE' && payload.old) {
+          if (payload.eventType === 'DELETE' && payload.old && typeof payload.old === 'object' && 'key' in payload.old) {
             const { key } = payload.old as GlobalSetting;
             setSettings(prev => {
               const newSettings = { ...prev };

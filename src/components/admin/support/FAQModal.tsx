@@ -10,8 +10,8 @@ import { FAQ } from '@/hooks/useSupportData';
 interface FAQModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (question: string, answer: string, category: string) => Promise<void>;
-  onUpdate?: (id: string, updates: Partial<FAQ>) => Promise<void>;
+  onSave: (question: string, answer: string, category: string) => Promise<any>;
+  onUpdate?: (id: string, updates: Partial<FAQ>) => Promise<any>;
   onDelete?: (id: string) => Promise<void>;
   faq?: FAQ | null;
   mode: 'add' | 'edit';

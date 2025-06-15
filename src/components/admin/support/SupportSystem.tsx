@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -93,6 +94,15 @@ export const SupportSystem: React.FC = () => {
     setModalMode('edit');
     setSelectedFAQ(faq);
     setIsModalOpen(true);
+  };
+
+  // Wrapper functions to handle the return values
+  const handleSaveFAQ = async (question: string, answer: string, category: string) => {
+    await addFAQ(question, answer, category);
+  };
+
+  const handleUpdateFAQ = async (id: string, updates: any) => {
+    await updateFAQ(id, updates);
   };
 
   const getStatusColor = (status: string) => {
@@ -475,8 +485,8 @@ export const SupportSystem: React.FC = () => {
         <FAQModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          onSave={addFAQ}
-          onUpdate={updateFAQ}
+          onSave={handleSaveFAQ}
+          onUpdate={handleUpdateFAQ}
           onDelete={deleteFAQ}
           faq={selectedFAQ}
           mode={modalMode}

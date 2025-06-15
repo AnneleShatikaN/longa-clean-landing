@@ -1504,6 +1504,10 @@ export type Database = {
         Args: { "": unknown }
         Returns: unknown
       }
+      increment_faq_views: {
+        Args: { faq_id: string }
+        Returns: undefined
+      }
       perform_financial_reconciliation: {
         Args: { start_date: string; end_date: string }
         Returns: string

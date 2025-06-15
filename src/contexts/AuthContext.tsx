@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const clearStaleFlags = () => {
     try {
       const adminSetupFlag = localStorage.getItem('admin_setup_completed');
-      console.log('Clearing stale flags, admin_setup_completed was:', adminSetupFlag);
+      console.log('🧹 Clearing stale flags, admin_setup_completed was:', adminSetupFlag);
       localStorage.removeItem('admin_setup_completed');
     } catch (error) {
       console.error('Error clearing localStorage flags:', error);
@@ -47,7 +47,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Clear any stale flags first
         clearStaleFlags();
 
-        // Set up auth state listener first
+        // Get initial session FIRST before setting up listeners
+        console.log('🔍 Checking for existing session...');
+        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('❌ Session error:', sessionError);
+          throw sessionError;
+        }
+
+        // If we have an initial session, process it immediately
+        if (initialSession?.user?.email_confirmed_at) {
+          console.log('💾 Found existing verified session for user:', initialSession.user.id);
+          
+          let profile = await fetchUserProfile(initialSession.user.id);
+          
+          if (!profile) {
+            console.log('📝 Creating profile for existing session...');
+            profile = await createUserProfileIfNeeded(initialSession.user.id, initialSession.user);
+          }
+          
+          if (profile && mounted) {
+            console.log('👤 Profile restored from session:', profile.role, profile.email);
+            setUser(profile);
+            setSession(initialSession);
+            
+            // If we have an admin user, setup is definitely not needed
+            if (profile.role === 'admin') {
+              console.log('✅ Admin user detected, no setup needed');
+              setNeedsAdminSetup(false);
+            }
+            
+            // Handle redirect for existing admin session
+            const currentPath = window.location.pathname;
+            if (currentPath === '/auth' && profile.role === 'admin') {
+              console.log('🚀 Redirecting existing admin session to dashboard');
+              setTimeout(() => {
+                window.location.href = '/dashboard/admin';
+              }, 100);
+            }
+          }
+        } else if (!initialSession) {
+          // Only check for admin setup if no authenticated user exists
+          console.log('🔍 No existing session, checking if admin setup is needed...');
+          const adminSetupNeeded = await checkAdminSetup();
+          console.log('🔧 Admin setup needed:', adminSetupNeeded);
+          if (mounted) {
+            setNeedsAdminSetup(adminSetupNeeded);
+          }
+        }
+
+        // Set up auth state listener AFTER initial session processing
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
             if (!mounted) return;
@@ -121,6 +171,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } else {
               console.log('🚪 No authenticated user');
               setUser(null);
+              
+              // Only check admin setup if we truly have no user
+              if (event === 'SIGNED_OUT') {
+                console.log('👋 User signed out, checking admin setup');
+                const adminSetupNeeded = await checkAdminSetup();
+                if (mounted) {
+                  setNeedsAdminSetup(adminSetupNeeded);
+                }
+              }
             }
 
             if (event === 'SIGNED_OUT') {
@@ -132,46 +191,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsLoading(false);
           }
         );
-
-        // Get initial session
-        console.log('🔍 Checking for existing session...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('❌ Session error:', error);
-          throw error;
-        }
-
-        if (session?.user) {
-          console.log('💾 Found existing session for user:', session.user.id);
-          console.log('📧 Email confirmed:', session.user.email_confirmed_at ? 'Yes' : 'No');
-          
-          if (session.user.email_confirmed_at) {
-            let profile = await fetchUserProfile(session.user.id);
-            
-            if (!profile) {
-              console.log('📝 Creating profile for existing session...');
-              profile = await createUserProfileIfNeeded(session.user.id, session.user);
-            }
-            
-            if (profile) {
-              console.log('👤 Profile restored from session:', profile.role);
-              setUser(profile);
-              setSession(session);
-              
-              // If we have an admin user, setup is not needed
-              if (profile.role === 'admin') {
-                setNeedsAdminSetup(false);
-              }
-            }
-          }
-        } else {
-          console.log('🔍 No existing session, checking if admin setup is needed...');
-          // Only check for admin setup if no authenticated user exists
-          const adminSetupNeeded = await checkAdminSetup();
-          console.log('🔧 Admin setup needed:', adminSetupNeeded);
-          setNeedsAdminSetup(adminSetupNeeded);
-        }
         
         setIsInitialized(true);
         setIsLoading(false);
@@ -182,9 +201,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
       } catch (error) {
         console.error('💥 Auth initialization error:', error);
-        setError(error instanceof Error ? error.message : 'Authentication initialization failed');
-        setIsLoading(false);
-        setIsInitialized(true);
+        if (mounted) {
+          setError(error instanceof Error ? error.message : 'Authentication initialization failed');
+          setIsLoading(false);
+          setIsInitialized(true);
+        }
       }
     };
 

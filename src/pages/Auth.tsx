@@ -22,6 +22,7 @@ const Auth = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'error' | null>(null);
+  const [authModeDecided, setAuthModeDecided] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -133,23 +134,26 @@ const Auth = () => {
     }
   }, [user, isInitialized, navigate, from, isVerifying]);
 
-  // Determine auth mode based on setup needs
+  // Determine auth mode based on setup needs - with improved timing
   useEffect(() => {
-    if (isInitialized && !isVerifying) {
-      console.log('🔧 Checking auth mode - needsAdminSetup:', needsAdminSetup, 'user:', user?.email);
+    if (isInitialized && !isVerifying && !user) {
+      console.log('🔧 Deciding auth mode - needsAdminSetup:', needsAdminSetup);
       
       // Only show admin setup if:
       // 1. Admin setup is needed AND
       // 2. User is not already authenticated
-      if (needsAdminSetup && !user) {
+      if (needsAdminSetup) {
         console.log('⚙️ Setting mode to admin-setup');
         setMode('admin-setup');
-      } else if (user) {
-        console.log('👤 User already authenticated, will redirect');
       } else {
         console.log('🔑 Setting mode to login');
         setMode('login');
       }
+      
+      setAuthModeDecided(true);
+    } else if (user) {
+      console.log('👤 User already authenticated, will redirect');
+      setAuthModeDecided(true);
     }
   }, [isInitialized, needsAdminSetup, user, isVerifying]);
 
@@ -329,6 +333,24 @@ const Auth = () => {
     cleanupAuthState();
     window.location.reload();
   };
+
+  // Show loading screen while determining what to show
+  if (!isInitialized || !authModeDecided) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Card className="bg-white border-gray-200 shadow-lg">
+            <CardContent className="text-center py-8">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-gray-600">Loading...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   // Show verification status if currently verifying
   if (isVerifying) {

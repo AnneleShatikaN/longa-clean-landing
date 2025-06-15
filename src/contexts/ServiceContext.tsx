@@ -263,28 +263,8 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'SET_ERROR', payload: null });
 
     if (dataMode === 'mock') {
-      // Create a clean updates object without any id properties and with proper Service interface types
-      const cleanUpdates: Partial<Service> = {};
-      
-      // Only copy allowed properties, ensuring proper types
-      if (updates.name !== undefined) cleanUpdates.name = updates.name;
-      if (updates.description !== undefined) cleanUpdates.description = updates.description;
-      if (updates.type !== undefined) cleanUpdates.type = updates.type;
-      if (updates.clientPrice !== undefined) cleanUpdates.clientPrice = updates.clientPrice;
-      if (updates.providerFee !== undefined) cleanUpdates.providerFee = updates.providerFee;
-      if (updates.commissionPercentage !== undefined) cleanUpdates.commissionPercentage = updates.commissionPercentage;
-      if (updates.status !== undefined) cleanUpdates.status = updates.status;
-      if (updates.tags !== undefined) cleanUpdates.tags = updates.tags;
-      
-      // Handle duration with proper shape validation
-      if (updates.duration) {
-        cleanUpdates.duration = {
-          hours: updates.duration.hours ?? 0,
-          minutes: updates.duration.minutes ?? 0,
-        };
-      }
-
-      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates: cleanUpdates } });
+      // Now that ServiceData and Service have consistent id types, we can safely cast
+      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates: updates as Partial<Service> } });
       dispatch({ type: 'SET_LOADING', payload: false });
       toast({
         title: "Success (Mock)",

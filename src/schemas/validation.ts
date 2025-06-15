@@ -4,7 +4,7 @@ import { validateNamibianPhone } from '@/utils/locationUtils';
 
 // Service schemas
 export const serviceSchema = z.object({
-  id: z.number().optional(),
+  id: z.string().optional(), // Changed from z.number() to z.string() to match Service interface
   name: z.string().min(1, "Service name is required"),
   description: z.string().min(1, "Description is required"),
   clientPrice: z.number().min(50, "Minimum price is NAD 50").max(5000, "Maximum price is NAD 5000"),

@@ -10,7 +10,7 @@ interface Job {
   id: string;
   service: string;
   clientName: string;
-  clientPhone: string;
+  clientPhone?: string; // Made optional to match useProviderData
   location: string;
   amount: number;
   date: string;
@@ -91,10 +91,12 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
                           <Clock className="h-4 w-4 mr-1" />
                           {job.duration}
                         </div>
-                        <div className="flex items-center">
-                          <Phone className="h-4 w-4 mr-1" />
-                          {job.clientPhone}
-                        </div>
+                        {job.clientPhone && (
+                          <div className="flex items-center">
+                            <Phone className="h-4 w-4 mr-1" />
+                            {job.clientPhone}
+                          </div>
+                        )}
                       </div>
                       
                       <div className="bg-purple-50 p-3 rounded-lg">

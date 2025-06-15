@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,8 +15,9 @@ import ProviderProfileTab from '@/components/provider/ProviderProfileTab';
 import AvailabilityToggle from '@/components/AvailabilityToggle';
 import NotificationSystem from '@/components/NotificationSystem';
 import WorkLocationSelector from '@/components/provider/WorkLocationSelector';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { 
-  LogOut, Bell, AlertCircle, Database,
+  LogOut, AlertCircle, Database,
   Home, Briefcase, Wallet, User
 } from 'lucide-react';
 
@@ -274,14 +274,7 @@ const ProviderDashboard = () => {
               <h1 className="text-xl sm:text-2xl font-bold text-purple-600">Longa Provider</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Bell className="h-6 w-6 text-gray-600" />
-                {notifications.filter(n => !n.read).length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {notifications.filter(n => !n.read).length}
-                  </span>
-                )}
-              </div>
+              <NotificationBell />
               <Button variant="ghost" onClick={handleLogout} size="sm">
                 <LogOut className="h-4 w-4" />
               </Button>

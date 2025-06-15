@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,7 +39,13 @@ export const PayoutProcessor = () => {
 
       if (error) throw error;
 
-      setBatches(data || []);
+      // Type-cast the status to match our interface
+      const typedBatches: PayoutBatch[] = (data || []).map(batch => ({
+        ...batch,
+        status: batch.status as PayoutBatch['status']
+      }));
+
+      setBatches(typedBatches);
     } catch (error) {
       console.error('Error fetching payout batches:', error);
       toast({

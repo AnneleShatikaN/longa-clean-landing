@@ -1,96 +1,306 @@
 
 {
-  "jobs": [
-    {
-      "id": "1",
-      "service": "House Cleaning",
-      "clientName": "Sarah Johnson",
-      "clientPhone": "+264 81 234 5678",
-      "clientEmail": "sarah.johnson@email.com",
-      "location": "Klein Windhoek",
-      "amount": 150,
-      "date": "2024-06-20",
-      "status": "requested",
-      "duration": "2h 30m",
-      "jobType": "one-off",
-      "expectedPayout": 127.5,
-      "commissionPercentage": 15,
-      "providerFee": null
-    },
-    {
-      "id": "2",
-      "service": "Garden Maintenance",
-      "clientName": "Michael Brown",
-      "clientPhone": "+264 81 345 6789",
-      "clientEmail": "michael.brown@email.com",
-      "location": "Olympia",
-      "amount": 200,
-      "date": "2024-06-21",
-      "status": "accepted",
-      "duration": "3h 0m",
-      "jobType": "one-off",
-      "expectedPayout": 170,
-      "commissionPercentage": 15,
-      "providerFee": null
-    },
-    {
-      "id": "3",
-      "service": "Laundry Service",
-      "clientName": "Emma Davis",
-      "clientPhone": "+264 81 456 7890",
-      "clientEmail": "emma.davis@email.com",
+  "provider-1": {
+    "profile": {
+      "id": "provider-1",
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "phone": "+264 81 123 4567",
+      "rating": 4.8,
+      "totalJobs": 156,
+      "specialties": ["cleaning", "maintenance", "home-repair"],
+      "available": true,
       "location": "Windhoek Central",
-      "amount": 80,
-      "date": "2024-06-18",
-      "status": "completed",
-      "duration": "1h 30m",
-      "completedDate": "2024-06-18",
-      "jobType": "subscription",
-      "expectedPayout": 68,
-      "actualPayout": 68,
-      "commissionPercentage": null,
-      "providerFee": 68,
-      "payoutStatus": "paid",
-      "payoutDate": "2024-06-19",
-      "rating": 5,
-      "reviewComment": "Excellent service! Very professional and thorough."
-    }
-  ],
-  "notifications": [
-    {
-      "id": 1,
-      "type": "new_job",
-      "title": "New Job Request",
-      "message": "House Cleaning job in Klein Windhoek for N$150",
-      "time": "5 minutes ago",
-      "read": false,
-      "actionable": true
+      "joinDate": "2024-01-15",
+      "lastActive": "2024-06-14T10:30:00Z",
+      "profilePicture": "/placeholder.svg"
     },
-    {
-      "id": 2,
-      "type": "rating_received",
-      "title": "New Rating Received",
-      "message": "Emma Davis rated your service 5 stars",
-      "time": "2 hours ago",
-      "read": false
-    }
-  ],
-  "ratings": [
-    {
-      "id": 1,
-      "jobId": "3",
-      "clientName": "Emma Davis",
-      "rating": 5,
-      "comment": "Excellent service! Very professional and thorough.",
-      "date": "2024-06-18",
-      "service": "Laundry Service"
-    }
-  ],
-  "monthlyEarnings": [
-    { "month": "Jan 2024", "earnings": 2400, "jobsCompleted": 28, "averageRating": 4.8 },
-    { "month": "Feb 2024", "earnings": 2100, "jobsCompleted": 25, "averageRating": 4.7 },
-    { "month": "Mar 2024", "earnings": 2800, "jobsCompleted": 32, "averageRating": 4.9 },
-    { "month": "Apr 2024", "earnings": 2650, "jobsCompleted": 30, "averageRating": 4.8 },
-    { "month": "May 2024", "earnings": 1250, "jobsCompleted": 15, "averageRating": 4.9 }
-  ]
+    "jobs": [
+      {
+        "id": "job-1",
+        "service": "House Cleaning",
+        "clientName": "Jane Smith",
+        "clientPhone": "+264 81 234 5678",
+        "clientEmail": "jane.smith@example.com",
+        "location": "Windhoek Central",
+        "amount": 150,
+        "date": "2024-06-10",
+        "status": "completed",
+        "duration": "2 hours",
+        "completedDate": "2024-06-10",
+        "rating": 5,
+        "reviewComment": "Excellent service, very thorough cleaning",
+        "jobType": "one-off",
+        "expectedPayout": 120,
+        "actualPayout": 120,
+        "commissionPercentage": 20,
+        "payoutStatus": "pending",
+        "providerFee": 120
+      },
+      {
+        "id": "job-2",
+        "service": "Deep Office Cleaning",
+        "clientName": "Corporate Solutions Ltd",
+        "clientPhone": "+264 81 345 6789",
+        "clientEmail": "admin@corpsolutions.na",
+        "location": "Klein Windhoek",
+        "amount": 300,
+        "date": "2024-06-16",
+        "status": "requested",
+        "duration": "3 hours",
+        "jobType": "one-off",
+        "expectedPayout": 240,
+        "commissionPercentage": 20,
+        "providerFee": 240
+      },
+      {
+        "id": "job-3",
+        "service": "House Cleaning",
+        "clientName": "Peter Anderson",
+        "clientPhone": "+264 81 456 7890",
+        "clientEmail": "peter.anderson@example.com",
+        "location": "Olympia",
+        "amount": 150,
+        "date": "2024-06-18",
+        "status": "accepted",
+        "duration": "2 hours",
+        "jobType": "one-off",
+        "expectedPayout": 120,
+        "commissionPercentage": 20,
+        "providerFee": 120
+      }
+    ],
+    "notifications": [
+      {
+        "id": 1,
+        "type": "new_job",
+        "title": "New Job Request",
+        "message": "Deep Office Cleaning requested for June 16th",
+        "time": "2 hours ago",
+        "read": false,
+        "actionable": true
+      },
+      {
+        "id": 2,
+        "type": "rating_received",
+        "title": "Rating Received",
+        "message": "Jane Smith rated your service 5 stars",
+        "time": "1 day ago",
+        "read": false,
+        "actionable": false
+      },
+      {
+        "id": 3,
+        "type": "payment_received",
+        "title": "Payment Processed",
+        "message": "N$120 payout is being processed",
+        "time": "2 days ago",
+        "read": true,
+        "actionable": false
+      }
+    ],
+    "ratings": [
+      { "id": 1, "rating": 5, "comment": "Excellent service, very thorough cleaning", "client": "Jane Smith", "date": "2024-06-10", "service": "House Cleaning" },
+      { "id": 2, "rating": 4, "comment": "Good work, arrived on time", "client": "Maria Rodriguez", "date": "2024-06-05", "service": "House Cleaning" },
+      { "id": 3, "rating": 5, "comment": "Professional and efficient", "client": "Peter Anderson", "date": "2024-06-01", "service": "Deep Office Cleaning" }
+    ],
+    "monthlyEarnings": [
+      { "month": "January", "earnings": 2400, "jobs": 20 },
+      { "month": "February", "earnings": 2700, "jobs": 22 },
+      { "month": "March", "earnings": 3100, "jobs": 26 },
+      { "month": "April", "earnings": 3400, "jobs": 28 },
+      { "month": "May", "earnings": 3800, "jobs": 32 },
+      { "month": "June", "earnings": 2200, "jobs": 18 }
+    ]
+  },
+  "provider-2": {
+    "profile": {
+      "id": "provider-2",
+      "name": "Mike Johnson",
+      "email": "mike.johnson@example.com",
+      "phone": "+264 81 345 6789",
+      "rating": 4.9,
+      "totalJobs": 234,
+      "specialties": ["plumbing", "electrical", "hvac"],
+      "available": true,
+      "location": "Klein Windhoek",
+      "joinDate": "2023-11-10",
+      "lastActive": "2024-06-14T09:15:00Z",
+      "profilePicture": "/placeholder.svg"
+    },
+    "jobs": [
+      {
+        "id": "job-4",
+        "service": "Plumbing Repair",
+        "clientName": "Jane Smith",
+        "clientPhone": "+264 81 234 5678",
+        "clientEmail": "jane.smith@example.com",
+        "location": "Windhoek Central",
+        "amount": 200,
+        "date": "2024-06-12",
+        "status": "completed",
+        "duration": "1 hour",
+        "completedDate": "2024-06-12",
+        "rating": 4,
+        "reviewComment": "Fixed the leak quickly and professionally",
+        "jobType": "one-off",
+        "expectedPayout": 160,
+        "actualPayout": 160,
+        "commissionPercentage": 20,
+        "payoutStatus": "pending",
+        "providerFee": 160
+      },
+      {
+        "id": "job-5",
+        "service": "Electrical Repairs",
+        "clientName": "Peter Anderson",
+        "clientPhone": "+264 81 456 7890",
+        "clientEmail": "peter.anderson@example.com",
+        "location": "Klein Windhoek",
+        "amount": 180,
+        "date": "2024-06-14",
+        "status": "accepted",
+        "duration": "1 hour 30 minutes",
+        "jobType": "one-off",
+        "expectedPayout": 144,
+        "commissionPercentage": 20,
+        "providerFee": 144
+      },
+      {
+        "id": "job-6",
+        "service": "Emergency Plumbing",
+        "clientName": "Maria Rodriguez",
+        "clientPhone": "+264 81 567 8901",
+        "clientEmail": "maria.rodriguez@example.com",
+        "location": "Katutura",
+        "amount": 250,
+        "date": "2024-06-17",
+        "status": "requested",
+        "duration": "2 hours",
+        "jobType": "one-off",
+        "expectedPayout": 200,
+        "commissionPercentage": 20,
+        "providerFee": 200
+      }
+    ],
+    "notifications": [
+      {
+        "id": 4,
+        "type": "new_job",
+        "title": "Emergency Job Request",
+        "message": "Emergency Plumbing needed in Katutura",
+        "time": "30 minutes ago",
+        "read": false,
+        "actionable": true
+      },
+      {
+        "id": 5,
+        "type": "job_completed",
+        "title": "Job Completed",
+        "message": "Electrical Repairs job marked as accepted",
+        "time": "3 hours ago",
+        "read": false,
+        "actionable": false
+      }
+    ],
+    "ratings": [
+      { "id": 4, "rating": 4, "comment": "Fixed the leak quickly and professionally", "client": "Jane Smith", "date": "2024-06-12", "service": "Plumbing Repair" },
+      { "id": 5, "rating": 5, "comment": "Expert electrical work, very satisfied", "client": "Corporate Tech", "date": "2024-06-08", "service": "Electrical Repairs" },
+      { "id": 6, "rating": 5, "comment": "Reliable and skilled technician", "client": "Home Solutions", "date": "2024-06-03", "service": "HVAC Maintenance" }
+    ],
+    "monthlyEarnings": [
+      { "month": "January", "earnings": 4200, "jobs": 28 },
+      { "month": "February", "earnings": 4600, "jobs": 31 },
+      { "month": "March", "earnings": 5100, "jobs": 34 },
+      { "month": "April", "earnings": 5400, "jobs": 36 },
+      { "month": "May", "earnings": 5800, "jobs": 39 },
+      { "month": "June", "earnings": 3400, "jobs": 23 }
+    ]
+  },
+  "provider-3": {
+    "profile": {
+      "id": "provider-3",
+      "name": "Sarah Wilson",
+      "email": "sarah.wilson@example.com",
+      "phone": "+264 81 456 7890",
+      "rating": 4.7,
+      "totalJobs": 89,
+      "specialties": ["beauty", "wellness", "massage"],
+      "available": true,
+      "location": "Katutura",
+      "joinDate": "2024-03-05",
+      "lastActive": "2024-06-14T16:45:00Z",
+      "profilePicture": "/placeholder.svg"
+    },
+    "jobs": [
+      {
+        "id": "job-7",
+        "service": "Manicure & Pedicure",
+        "clientName": "Peter Anderson",
+        "clientPhone": "+264 81 456 7890",
+        "clientEmail": "peter.anderson@example.com",
+        "location": "Klein Windhoek",
+        "amount": 120,
+        "date": "2024-06-08",
+        "status": "completed",
+        "duration": "1 hour 15 minutes",
+        "completedDate": "2024-06-08",
+        "rating": 5,
+        "reviewComment": "Professional nail care, excellent results",
+        "jobType": "one-off",
+        "expectedPayout": 96,
+        "actualPayout": 96,
+        "commissionPercentage": 20,
+        "payoutStatus": "pending",
+        "providerFee": 96
+      },
+      {
+        "id": "job-8",
+        "service": "Wellness Massage",
+        "clientName": "Jane Smith",
+        "clientPhone": "+264 81 234 5678",
+        "clientEmail": "jane.smith@example.com",
+        "location": "Windhoek Central",
+        "amount": 180,
+        "date": "2024-06-19",
+        "status": "requested",
+        "duration": "1 hour",
+        "jobType": "one-off",
+        "expectedPayout": 144,
+        "commissionPercentage": 20,
+        "providerFee": 144
+      }
+    ],
+    "notifications": [
+      {
+        "id": 7,
+        "type": "new_job",
+        "title": "New Wellness Service",
+        "message": "Wellness Massage requested for June 19th",
+        "time": "1 hour ago",
+        "read": false,
+        "actionable": true
+      },
+      {
+        "id": 8,
+        "type": "rating_received",
+        "title": "5-Star Rating!",
+        "message": "Peter Anderson gave you 5 stars for nail care",
+        "time": "6 days ago",
+        "read": true,
+        "actionable": false
+      }
+    ],
+    "ratings": [
+      { "id": 7, "rating": 5, "comment": "Professional nail care, excellent results", "client": "Peter Anderson", "date": "2024-06-08", "service": "Manicure & Pedicure" },
+      { "id": 8, "rating": 4, "comment": "Relaxing massage therapy", "client": "Maria Rodriguez", "date": "2024-06-02", "service": "Wellness Massage" },
+      { "id": 9, "rating": 5, "comment": "Amazing beauty treatment", "client": "Lisa Johnson", "date": "2024-05-28", "service": "Beauty Package" }
+    ],
+    "monthlyEarnings": [
+      { "month": "March", "earnings": 1400, "jobs": 12 },
+      { "month": "April", "earnings": 1800, "jobs": 15 },
+      { "month": "May", "earnings": 2200, "jobs": 18 },
+      { "month": "June", "earnings": 1600, "jobs": 13 }
+    ]
+  }
 }

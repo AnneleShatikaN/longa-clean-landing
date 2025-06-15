@@ -77,6 +77,20 @@ const ProviderDashboard = () => {
     }
   }, [user]);
 
+  // Use mock profile data if available, otherwise fall back to user data
+  const providerProfile = data?.profile || {
+    name: user?.name || 'Provider',
+    email: user?.email || '',
+    phone: '',
+    rating: 0,
+    totalJobs: 0,
+    specialties: [],
+    available: true,
+    location: '',
+    joinDate: '',
+    lastActive: ''
+  };
+
   const jobs: Job[] = data?.jobs || [];
   const notifications: Notification[] = data?.notifications || [];
   const ratings = data?.ratings || [];
@@ -321,14 +335,22 @@ const ProviderDashboard = () => {
         />
       )}
 
-      {/* Header */}
+      {/* Header with enhanced provider info */}
       <header className="bg-white shadow-sm border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto mobile-container">
           <div className="mobile-header h-16">
             <div className="flex items-center space-x-4">
               <h1 className="text-xl sm:text-2xl font-bold text-purple-600">Longa Provider</h1>
               <span className="text-gray-300 mobile-hide">|</span>
-              <h2 className="text-sm sm:text-lg text-gray-700 mobile-hide">Welcome back, {user?.name}</h2>
+              <div className="mobile-hide">
+                <h2 className="text-sm sm:text-lg text-gray-700">Welcome back, {providerProfile.name}</h2>
+                {providerProfile.rating > 0 && (
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
+                    <span>{providerProfile.rating} • {providerProfile.totalJobs} jobs completed</span>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <Button
@@ -367,6 +389,37 @@ const ProviderDashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
             {/* Main Content */}
             <div className="lg:col-span-3 space-y-6 lg:space-y-8">
+              {/* Enhanced Provider Profile Card */}
+              {providerProfile.rating > 0 && (
+                <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
+                        <User className="h-8 w-8 text-purple-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-semibold text-gray-900">{providerProfile.name}</h3>
+                        <div className="flex items-center space-x-4 mt-1">
+                          <div className="flex items-center">
+                            <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
+                            <span className="text-sm font-medium">{providerProfile.rating}</span>
+                          </div>
+                          <span className="text-sm text-gray-600">{providerProfile.totalJobs} jobs completed</span>
+                          <span className="text-sm text-gray-600">{providerProfile.location}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {providerProfile.specialties.map((specialty) => (
+                            <Badge key={specialty} variant="outline" className="text-xs bg-purple-50 text-purple-700">
+                              {specialty}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Earnings Summary Cards */}
               <div className="stats-grid">
                 <Card>
@@ -430,7 +483,7 @@ const ProviderDashboard = () => {
                 onLocationFilterChange={setLocationFilter}
               />
 
-              {/* Available Jobs - Mobile Optimized */}
+              {/* Available Jobs - Enhanced with better data display */}
               {isAvailable && (
                 <div>
                   <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
@@ -445,10 +498,16 @@ const ProviderDashboard = () => {
                               <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">
                                 {job.service}
                               </CardTitle>
-                              <p className="text-sm text-gray-600 flex items-center mt-1">
-                                <User className="h-4 w-4 mr-1 flex-shrink-0" />
-                                {job.clientName}
-                              </p>
+                              <div className="space-y-1 mt-2">
+                                <p className="text-sm text-gray-600 flex items-center">
+                                  <User className="h-4 w-4 mr-1 flex-shrink-0" />
+                                  {job.clientName}
+                                </p>
+                                <p className="text-sm text-gray-600 flex items-center">
+                                  <Phone className="h-4 w-4 mr-1 flex-shrink-0" />
+                                  {job.clientPhone}
+                                </p>
+                              </div>
                             </div>
                             <div className="flex gap-2">
                               <Badge className="text-xs bg-yellow-100 text-yellow-800">
@@ -476,8 +535,8 @@ const ProviderDashboard = () => {
                                 {job.duration}
                               </div>
                               <div className="flex items-center">
-                                <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
-                                {job.clientPhone}
+                                <Mail className="h-4 w-4 mr-2 flex-shrink-0" />
+                                {job.clientEmail}
                               </div>
                             </div>
                             
@@ -530,7 +589,7 @@ const ProviderDashboard = () => {
                 </div>
               )}
 
-              {/* My Jobs - Mobile Optimized */}
+              {/* My Jobs - Enhanced with comprehensive data display */}
               <div>
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
                   My Jobs ({myJobs.length})
@@ -543,7 +602,7 @@ const ProviderDashboard = () => {
                   />
                 ) : (
                   <>
-                    {/* Mobile card view */}
+                    {/* Enhanced mobile card view */}
                     <div className="space-y-4 lg:hidden">
                       {myJobs.map((job) => (
                         <Card key={job.id} className="hover:shadow-md transition-shadow">
@@ -553,6 +612,7 @@ const ProviderDashboard = () => {
                                 <h4 className="font-semibold text-gray-900">{job.service}</h4>
                                 <p className="text-sm text-gray-600">{job.clientName}</p>
                                 <p className="text-sm text-gray-500">{job.date}</p>
+                                <p className="text-sm text-gray-500">{job.location}</p>
                               </div>
                               <div className="flex flex-col space-y-1">
                                 <Badge className={`text-xs ${getStatusColor(job.status)}`}>
@@ -569,12 +629,25 @@ const ProviderDashboard = () => {
                                 <span className="text-gray-600">Expected Payout:</span>
                                 <span className="font-medium text-purple-600">N${job.expectedPayout}</span>
                               </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Duration:</span>
+                                <span className="text-gray-900">{job.duration}</span>
+                              </div>
                               {job.payoutStatus && (
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Payout Status:</span>
                                   <Badge className={`text-xs ${getPayoutStatusColor(job.payoutStatus)}`}>
                                     {job.payoutStatus}
                                   </Badge>
+                                </div>
+                              )}
+                              {job.rating && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Rating:</span>
+                                  <div className="flex items-center">
+                                    <Star className="h-3 w-3 text-yellow-400 fill-current mr-1" />
+                                    <span>{job.rating}/5</span>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -593,18 +666,17 @@ const ProviderDashboard = () => {
                       ))}
                     </div>
 
-                    {/* Desktop table view */}
+                    {/* Enhanced desktop table view */}
                     <Card className="overflow-hidden mobile-hide">
                       <CardContent className="p-0">
                         <div className="overflow-x-auto">
                           <table className="w-full">
                             <thead className="bg-gray-50">
                               <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service & Client</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location & Date</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payout Info</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status & Rating</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                               </tr>
                             </thead>
@@ -619,17 +691,18 @@ const ProviderDashboard = () => {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                       <div>
                                         <div className="text-sm font-medium text-gray-900">{job.service}</div>
+                                        <div className="text-sm text-gray-600">{job.clientName}</div>
+                                        <div className="text-xs text-gray-500">{job.clientPhone}</div>
                                         <Badge className={`${getJobTypeColor(job.jobType)} text-xs mt-1`}>
                                           {job.jobType === 'one-off' ? 'One-Off' : 'Package'}
                                         </Badge>
                                       </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                      {job.clientName}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                       <div className="flex flex-col">
+                                        <span className="font-medium">{job.location}</span>
                                         <span>{job.date}</span>
+                                        <span className="text-xs text-gray-500">{job.duration}</span>
                                         {job.completedDate && (
                                           <span className="text-xs text-green-600">Completed: {job.completedDate}</span>
                                         )}
@@ -675,6 +748,11 @@ const ProviderDashboard = () => {
                                             <span className="text-xs text-gray-600">{job.rating}/5</span>
                                           </div>
                                         )}
+                                        {job.reviewComment && (
+                                          <div className="text-xs text-gray-500 mt-1 max-w-32 truncate">
+                                            "{job.reviewComment}"
+                                          </div>
+                                        )}
                                       </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -704,7 +782,7 @@ const ProviderDashboard = () => {
               </div>
             </div>
 
-            {/* Sidebar */}
+            {/* Enhanced Sidebar with better data display */}
             <div className={`space-y-6 ${isMobileMenuOpen ? 'mobile-sidebar-panel' : 'mobile-sidebar'}`}>
               {/* Mobile sidebar close button */}
               {isMobileMenuOpen && (
@@ -743,9 +821,16 @@ const ProviderDashboard = () => {
                 {/* Enhanced Quick Stats */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Payout Summary</CardTitle>
+                    <CardTitle className="text-lg">Performance Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Overall Rating</span>
+                      <div className="flex items-center">
+                        <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
+                        <span className="font-semibold text-yellow-600">{providerProfile.rating}/5</span>
+                      </div>
+                    </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Pending Payouts</span>
                       <span className="font-semibold text-orange-600">N${totalPendingAmount}</span>
@@ -759,12 +844,14 @@ const ProviderDashboard = () => {
                       <span className="font-semibold text-yellow-600">{availableJobs.length}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Response Rate</span>
-                      <span className="font-semibold text-green-600">95%</span>
+                      <span className="text-sm text-gray-600">Total Reviews</span>
+                      <span className="font-semibold text-blue-600">{ratings.length}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Avg. Completion Time</span>
-                      <span className="font-semibold text-purple-600">2.5 hours</span>
+                      <span className="text-sm text-gray-600">Active Since</span>
+                      <span className="font-semibold text-purple-600">
+                        {providerProfile.joinDate ? new Date(providerProfile.joinDate).toLocaleDateString() : 'N/A'}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>

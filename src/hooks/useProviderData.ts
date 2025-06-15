@@ -1,10 +1,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useDataMode } from '@/contexts/DataModeContext';
-import { supabase } from '@/integrations/supabase/client';
 
+// Enhanced interfaces to match the comprehensive mock data
 interface Job {
-  id: string; // Changed from number to string to match Supabase UUID
+  id: string;
   service: string;
   clientName: string;
   clientPhone: string;
@@ -38,10 +38,9 @@ interface Notification {
 
 interface Rating {
   id: number;
-  jobId: string; // Changed from number to string
-  clientName: string;
   rating: number;
   comment: string;
+  client: string;
   date: string;
   service: string;
 }
@@ -49,8 +48,7 @@ interface Rating {
 interface MonthlyEarning {
   month: string;
   earnings: number;
-  jobsCompleted: number;
-  averageRating: number;
+  jobs: number;
 }
 
 interface ProviderData {
@@ -58,172 +56,113 @@ interface ProviderData {
   notifications: Notification[];
   ratings: Rating[];
   monthlyEarnings: MonthlyEarning[];
+  profile?: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    rating: number;
+    totalJobs: number;
+    specialties: string[];
+    available: boolean;
+    location: string;
+    joinDate: string;
+    lastActive: string;
+    profilePicture?: string;
+  };
 }
 
 export const useProviderData = () => {
-  const { dataMode, mockData, isLoading: dataModeLoading } = useDataMode();
+  const { dataMode } = useDataMode();
   const [data, setData] = useState<ProviderData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchLiveData = async (): Promise<ProviderData> => {
-    // Fetch real data from Supabase with proper joins to get service and client names
-    const { data: bookings, error: bookingsError } = await supabase
-      .from('bookings')
-      .select(`
-        *,
-        services(name),
-        users!bookings_client_id_fkey(full_name)
-      `)
-      .order('created_at', { ascending: false });
+  // Mock current provider ID - in real app this would come from auth context
+  const currentProviderId = 'provider-1';
 
-    if (bookingsError) throw bookingsError;
-
-    // Transform bookings to jobs format with proper property mapping
-    const jobs: Job[] = (bookings || []).map(booking => ({
-      id: booking.id,
-      service: booking.services?.name || 'Service',
-      clientName: booking.users?.full_name || 'Client',
-      clientPhone: '+264 81 123 4567',
-      clientEmail: 'client@email.com',
-      location: 'Windhoek',
-      amount: booking.total_amount || 0,
-      date: new Date(booking.created_at).toISOString().split('T')[0],
-      status: booking.status as 'requested' | 'accepted' | 'completed',
-      duration: `${Math.floor((booking.duration_minutes || 120) / 60)}h ${(booking.duration_minutes || 120) % 60}m`,
-      completedDate: booking.status === 'completed' ? new Date(booking.created_at).toISOString().split('T')[0] : undefined,
-      jobType: 'one-off',
-      expectedPayout: (booking.total_amount || 0) * 0.85,
-      commissionPercentage: 15,
-      payoutStatus: booking.status === 'completed' ? 'paid' : 'pending'
-    }));
-
-    return {
-      jobs,
-      notifications: [],
-      ratings: [],
-      monthlyEarnings: []
-    };
-  };
-
-  const fetchMockData = async (): Promise<ProviderData> => {
-    // Directly fetch the provider mock file in fallback case
-    const response = await fetch('/data/provider_mock_data.json');
-    if (!response.ok) {
-      throw new Error('Failed to load mock data');
-    }
-    return response.json();
-  };
-
-  const fetchData = useCallback(async () => {
-    if (dataModeLoading) return;
-
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      switch (dataMode) {
-        case 'live':
-          {
-            console.log('[ProviderData] Fetching live data');
-            const liveData = await fetchLiveData();
-            setData(liveData);
-          }
-          break;
-        case 'mock':
-          {
-            // Check if mockData has a valid .provider property (after the context fix)
-            console.log('[ProviderData] Provided mockData:', mockData);
+      if (dataMode === 'mock') {
+        // Load provider-specific mock data
+        const response = await fetch('/data/provider_mock_data.json');
+        if (!response.ok) {
+          throw new Error('Failed to load provider mock data');
+        }
+        
+        const providerMockData = await response.json();
+        const providerData = providerMockData[currentProviderId];
+        
+        if (!providerData) {
+          throw new Error(`No mock data found for provider ${currentProviderId}`);
+        }
 
-            let dataSource: ProviderData | null = null;
-            if (
-              mockData &&
-              typeof mockData === 'object' &&
-              mockData.provider &&
-              (Array.isArray(mockData.provider.jobs) ||
-                Array.isArray(mockData.provider.notifications) ||
-                Array.isArray(mockData.provider.ratings) ||
-                Array.isArray(mockData.provider.monthlyEarnings))
-            ) {
-              dataSource = {
-                jobs: mockData.provider.jobs || [],
-                notifications: mockData.provider.notifications || [],
-                ratings: mockData.provider.ratings || [],
-                monthlyEarnings: mockData.provider.monthlyEarnings || []
-              };
-              console.log('[ProviderData] Loaded provider data from merged global mockData:', dataSource);
-            } else {
-              // fallback: fetch directly
-              const fallbackProviderData = await fetchMockData();
-              dataSource = {
-                jobs: fallbackProviderData.jobs || [],
-                notifications: fallbackProviderData.notifications || [],
-                ratings: fallbackProviderData.ratings || [],
-                monthlyEarnings: fallbackProviderData.monthlyEarnings || [],
-              };
-              console.log('[ProviderData] Loaded provider data from fallback provider_mock_data.json:', dataSource);
-            }
-            setData(dataSource);
-          }
-          break;
-        case 'none':
-          console.log('[ProviderData] Data mode is none. Setting empty data.');
-          setData({
-            jobs: [],
-            notifications: [],
-            ratings: [],
-            monthlyEarnings: []
-          });
-          break;
-        default:
-          setData(null);
-          break;
+        setData({
+          jobs: providerData.jobs || [],
+          notifications: providerData.notifications || [],
+          ratings: providerData.ratings || [],
+          monthlyEarnings: providerData.monthlyEarnings || [],
+          profile: providerData.profile
+        });
+      } else if (dataMode === 'live') {
+        // TODO: Implement live data fetching from Supabase
+        setData({
+          jobs: [],
+          notifications: [],
+          ratings: [],
+          monthlyEarnings: []
+        });
+      } else {
+        // No data mode
+        setData(null);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch data');
-      setData(null);
-      console.error('[ProviderData] Error during fetchData:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load provider data';
+      setError(errorMessage);
+      console.error('Error loading provider data:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [dataMode, mockData, dataModeLoading]);
+  }, [dataMode, currentProviderId]);
 
+  // Load data when component mounts or data mode changes
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    loadData();
+  }, [loadData]);
 
-  const updateJobStatus = async (jobId: string, status: 'accepted' | 'completed') => {
+  // Job status update function
+  const updateJobStatus = async (jobId: string, newStatus: 'accepted' | 'completed'): Promise<void> => {
     if (!data) return;
 
-    if (dataMode === 'live') {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status })
-        .eq('id', jobId);
+    if (dataMode === 'mock') {
+      // Update job status in memory for mock data
+      const updatedJobs = data.jobs.map(job => {
+        if (job.id === jobId) {
+          const updatedJob = { ...job, status: newStatus };
+          if (newStatus === 'completed') {
+            updatedJob.completedDate = new Date().toISOString().split('T')[0];
+            updatedJob.payoutStatus = 'pending';
+          }
+          return updatedJob;
+        }
+        return job;
+      });
 
-      if (error) {
-        console.error('Error updating job status:', error);
-        return;
-      }
+      setData(prev => prev ? { ...prev, jobs: updatedJobs } : null);
+    } else if (dataMode === 'live') {
+      // TODO: Implement live data update to Supabase
+      console.log(`Updating job ${jobId} to status ${newStatus}`);
     }
-
-    // Update local state
-    setData(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        jobs: prev.jobs.map(job =>
-          job.id === jobId ? { ...job, status } : job
-        )
-      };
-    });
   };
 
   return {
     data,
-    isLoading: isLoading || dataModeLoading,
+    isLoading,
     error,
-    refetch: fetchData,
-    updateJobStatus
+    updateJobStatus,
+    refetch: loadData
   };
 };

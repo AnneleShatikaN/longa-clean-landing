@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -117,7 +118,7 @@ const App: React.FC = () => {
                               <Route path="/provider-dashboard" element={<ProtectedRoute allowedRoles={['provider']}><ProviderDashboard /></ProtectedRoute>} />
                               <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
                               
-                              {/* Catch all route */}
+                              {/* Catch all route - MUST be last */}
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                             <Toaster />

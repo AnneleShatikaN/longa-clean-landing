@@ -22,19 +22,22 @@ export const DataModeProvider: React.FC<{ children: ReactNode }> = ({ children }
       if (dataMode === 'mock') {
         setIsLoading(true);
         try {
-          // Load both admin and launch mock data
-          const [adminResponse, launchResponse] = await Promise.all([
+          // Load admin, launch, and provider mock data
+          const [adminResponse, launchResponse, providerResponse] = await Promise.all([
             fetch('/data/admin_mock.json'),
-            fetch('/data/launch_mock.json')
+            fetch('/data/launch_mock.json'),
+            fetch('/data/provider_mock_data.json')
           ]);
           
           const adminData = await adminResponse.json();
           const launchData = await launchResponse.json();
+          const providerData = await providerResponse.json();
           
-          // Merge the mock data
+          // Merge all the mock data
           setMockData({
             ...adminData,
-            ...launchData
+            ...launchData,
+            ...providerData
           });
         } catch (error) {
           console.error('Failed to load mock data:', error);

@@ -127,8 +127,8 @@ export const useProviderData = () => {
           setData(liveData);
           break;
         case 'mock':
-          if (mockData?.jobs) {
-            // Use provider-specific mock data from the general mock data
+          // First try to use provider-specific data from the global mock data
+          if (mockData?.jobs || mockData?.notifications || mockData?.ratings || mockData?.monthlyEarnings) {
             setData({
               jobs: mockData.jobs || [],
               notifications: mockData.notifications || [],
@@ -136,7 +136,7 @@ export const useProviderData = () => {
               monthlyEarnings: mockData.monthlyEarnings || []
             });
           } else {
-            // Fallback to provider-specific mock file
+            // Fallback to provider-specific mock file if global mock data doesn't have provider data
             const providerMockData = await fetchMockData();
             setData(providerMockData);
           }

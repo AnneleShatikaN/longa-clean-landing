@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,9 +16,8 @@ import ProviderProfileTab from '@/components/provider/ProviderProfileTab';
 import AvailabilityToggle from '@/components/AvailabilityToggle';
 import NotificationSystem from '@/components/NotificationSystem';
 import WorkLocationSelector from '@/components/provider/WorkLocationSelector';
-import FirstTimeLocationSetup from '@/components/provider/FirstTimeLocationSetup';
 import { 
-  LogOut, Bell, AlertCircle, Database, MapPin,
+  LogOut, Bell, AlertCircle, Database,
   Home, Briefcase, Wallet, User
 } from 'lucide-react';
 
@@ -27,21 +27,8 @@ const ProviderDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showEmailVerification, setShowEmailVerification] = useState(false);
-  const [showFirstTimeSetup, setShowFirstTimeSetup] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  const [hasCheckedFirstTime, setHasCheckedFirstTime] = useState(false);
-
-  // Check if this is the first time the user is logging in (no work location set)
-  useEffect(() => {
-    if (user && user.role === 'provider' && !hasCheckedFirstTime) {
-      // Only show if user has never set a location (null or undefined)
-      if (user.current_work_location === null || user.current_work_location === undefined) {
-        setShowFirstTimeSetup(true);
-      }
-      setHasCheckedFirstTime(true);
-    }
-  }, [user, hasCheckedFirstTime]);
 
   // Check email verification status
   useEffect(() => {
@@ -119,12 +106,6 @@ const ProviderDashboard = () => {
       title: "Location updated successfully 🌍",
       description: "You'll now see jobs relevant to your selected location.",
     });
-  };
-
-  const handleFirstTimeSetupComplete = (location: string) => {
-    setShowFirstTimeSetup(false);
-    // Refetch data to get location-filtered jobs
-    refetch();
   };
 
   if (isLoading) {
@@ -274,16 +255,11 @@ const ProviderDashboard = () => {
     averageRating
   };
 
-  // Check if user has set work location (not null, undefined, or empty string)
+  // Check if user has set work location
   const hasWorkLocation = user?.current_work_location && user.current_work_location.trim() !== '';
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <FirstTimeLocationSetup
-        isOpen={showFirstTimeSetup}
-        onComplete={handleFirstTimeSetupComplete}
-      />
-
       <EmailVerificationPrompt
         isOpen={showEmailVerification}
         onClose={() => setShowEmailVerification(false)}
@@ -323,6 +299,15 @@ const ProviderDashboard = () => {
                 currentLocation={user?.current_work_location}
                 onLocationUpdate={handleLocationUpdate}
               />
+            </div>
+          )}
+
+          {/* Show message if no work location is set */}
+          {!hasWorkLocation && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800">
+                <strong>Welcome!</strong> Please set your work location in your profile settings to see relevant job opportunities.
+              </p>
             </div>
           )}
 

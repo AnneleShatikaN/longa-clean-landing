@@ -6,12 +6,28 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PhoneValidation } from "@/components/profile/PhoneValidation";
 import { EmailVerificationPrompt } from "@/components/auth/EmailVerificationPrompt";
+
+const NAMIBIAN_TOWNS = [
+  { value: 'windhoek', label: 'Windhoek' },
+  { value: 'walvis-bay', label: 'Walvis Bay' },
+  { value: 'swakopmund', label: 'Swakopmund' },
+  { value: 'oshakati', label: 'Oshakati' },
+  { value: 'rundu', label: 'Rundu' },
+  { value: 'otjiwarongo', label: 'Otjiwarongo' },
+  { value: 'gobabis', label: 'Gobabis' },
+  { value: 'katima-mulilo', label: 'Katima Mulilo' },
+  { value: 'tsumeb', label: 'Tsumeb' },
+  { value: 'keetmanshoop', label: 'Keetmanshoop' },
+  { value: 'rehoboth', label: 'Rehoboth' },
+  { value: 'mariental', label: 'Mariental' }
+];
 
 type AuthMode = 'login' | 'signup' | 'forgot-password';
 
@@ -27,6 +43,7 @@ const Auth = () => {
     password: '',
     confirmPassword: '',
     role: 'client' as UserRole,
+    workLocation: 'windhoek',
     rememberMe: false
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -100,6 +117,9 @@ const Auth = () => {
       if (!formData.phone) {
         errors.phone = 'Phone is required';
       }
+      if (formData.role === 'provider' && !formData.workLocation) {
+        errors.workLocation = 'Work location is required for providers';
+      }
     }
 
     setFormErrors(errors);
@@ -130,7 +150,8 @@ const Auth = () => {
           phone: formData.phone,
           password: formData.password,
           confirmPassword: formData.confirmPassword,
-          role: formData.role
+          role: formData.role,
+          workLocation: formData.role === 'provider' ? formData.workLocation : undefined
         });
 
         if (result.success) {
@@ -352,6 +373,35 @@ const Auth = () => {
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Work Location for Provider signup */}
+              {mode === 'signup' && formData.role === 'provider' && (
+                <div className="space-y-2">
+                  <Label className="text-gray-700 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Work Location
+                  </Label>
+                  <Select
+                    value={formData.workLocation}
+                    onValueChange={(value) => handleInputChange('workLocation', value)}
+                  >
+                    <SelectTrigger className={`${formErrors.workLocation ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500`}>
+                      <SelectValue placeholder="Select your primary work location" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {NAMIBIAN_TOWNS.map((town) => (
+                        <SelectItem key={town.value} value={town.value}>
+                          {town.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.workLocation && <p className="text-sm text-red-500">{formErrors.workLocation}</p>}
+                  <p className="text-xs text-gray-500">
+                    You can change this later in your profile settings.
+                  </p>
                 </div>
               )}
 

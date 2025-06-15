@@ -61,7 +61,7 @@ export const loginUser = async (loginData: LoginData) => {
   return false;
 };
 
-export const signupUser = async (userData: UserRegistration) => {
+export const signupUser = async (userData: UserRegistration & { workLocation?: string }) => {
   // Check if email already exists
   const { data: existingUser } = await supabase
     .from('users')
@@ -81,7 +81,8 @@ export const signupUser = async (userData: UserRegistration) => {
       data: {
         full_name: userData.name,
         phone: userData.phone,
-        role: userData.role
+        role: userData.role,
+        work_location: userData.workLocation
       }
     }
   });

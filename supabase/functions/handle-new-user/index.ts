@@ -33,6 +33,7 @@ const handler = async (req: Request): Promise<Response> => {
         full_name: record.raw_user_meta_data?.full_name || record.email.split('@')[0],
         phone: record.raw_user_meta_data?.phone || null,
         role: record.raw_user_meta_data?.role || 'client',
+        current_work_location: record.raw_user_meta_data?.work_location || null,
         is_active: true,
         rating: 0,
         total_jobs: 0,

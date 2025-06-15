@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +23,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { user, isLoading, isInitialized } = useAuth();
   const location = useLocation();
 
+  console.log('ProtectedRoute - User:', user);
+  console.log('ProtectedRoute - RequiredRole:', requiredRole);
+  console.log('ProtectedRoute - AllowedRoles:', allowedRoles);
+  console.log('ProtectedRoute - UserRole:', user?.role);
+
   // Show loading while auth is initializing
   if (!isInitialized || isLoading) {
     return (
@@ -33,6 +39,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Redirect to auth if authentication is required and user is not logged in
   if (requireAuth && !user) {
+    console.log('ProtectedRoute - Redirecting to auth, no user');
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
@@ -41,6 +48,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const hasAccess = requiredRole 
       ? user.role === requiredRole
       : allowedRoles?.includes(user.role);
+
+    console.log('ProtectedRoute - Has access:', hasAccess);
 
     if (!hasAccess) {
       return (
@@ -55,6 +64,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                   <p className="text-sm">
                     You don't have permission to access this page. 
                     Required role: {requiredRole || allowedRoles?.join(', ')}
+                    Your role: {user.role}
                   </p>
                 </div>
               </AlertDescription>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -60,6 +59,16 @@ const App: React.FC = () => {
                               <Route path="/auth/callback" element={<Auth />} />
                               <Route path="/admin-setup" element={<AdminSetup />} />
                               <Route path="/search" element={<SearchPage />} />
+                              
+                              {/* Dashboard routes */}
+                              <Route 
+                                path="/dashboard/admin" 
+                                element={
+                                  <ProtectedRoute allowedRoles={['admin']}>
+                                    <AdminDashboard />
+                                  </ProtectedRoute>
+                                } 
+                              />
                               <Route 
                                 path="/dashboard/client" 
                                 element={
@@ -76,14 +85,8 @@ const App: React.FC = () => {
                                   </ProtectedRoute>
                                 } 
                               />
-                              <Route 
-                                path="/dashboard/admin" 
-                                element={
-                                  <ProtectedRoute allowedRoles={['admin']}>
-                                    <AdminDashboard />
-                                  </ProtectedRoute>
-                                } 
-                              />
+                              
+                              {/* Other protected routes */}
                               <Route 
                                 path="/notifications" 
                                 element={
@@ -114,6 +117,7 @@ const App: React.FC = () => {
                               <Route path="/provider-dashboard" element={<ProtectedRoute allowedRoles={['provider']}><ProviderDashboard /></ProtectedRoute>} />
                               <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
                               
+                              {/* Catch all route */}
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                             <Toaster />

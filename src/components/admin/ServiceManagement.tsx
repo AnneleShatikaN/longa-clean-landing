@@ -275,18 +275,14 @@ const ServiceManagement = () => {
             <DialogTitle>Add New Service</DialogTitle>
           </DialogHeader>
           <ServiceForm 
-            onSave={async (data) => {
-              try {
-                await createService(data);
-                setIsFormOpen(false);
-                toast({
-                  title: "Success",
-                  description: "Service created successfully",
-                });
-              } catch (error) {
-                // Error is handled in the context and displayed via toast there
-              }
+            onSuccess={() => {
+              setIsFormOpen(false);
+              toast({
+                title: "Success",
+                description: "Service created successfully",
+              });
             }}
+            onCancel={() => setIsFormOpen(false)}
           />
         </DialogContent>
       </Dialog>

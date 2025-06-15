@@ -500,6 +500,48 @@ export type Database = {
           },
         ]
       }
+      payment_method_configs: {
+        Row: {
+          api_endpoint: string | null
+          api_key_encrypted: string | null
+          created_at: string
+          id: string
+          is_configured: boolean
+          last_tested_at: string | null
+          name: string
+          status: string
+          test_result: Json | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          api_endpoint?: string | null
+          api_key_encrypted?: string | null
+          created_at?: string
+          id?: string
+          is_configured?: boolean
+          last_tested_at?: string | null
+          name: string
+          status?: string
+          test_result?: Json | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          api_endpoint?: string | null
+          api_key_encrypted?: string | null
+          created_at?: string
+          id?: string
+          is_configured?: boolean
+          last_tested_at?: string | null
+          name?: string
+          status?: string
+          test_result?: Json | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payout_analytics: {
         Row: {
           average_payout: number | null
@@ -1502,6 +1544,10 @@ export type Database = {
         Args: { "": string }
         Returns: string[]
       }
+      test_payment_method_connection: {
+        Args: { config_id: string }
+        Returns: Json
+      }
       unaccent: {
         Args: { "": string }
         Returns: string
@@ -1509,6 +1555,15 @@ export type Database = {
       unaccent_init: {
         Args: { "": unknown }
         Returns: unknown
+      }
+      update_payment_method_config: {
+        Args: {
+          config_id: string
+          endpoint?: string
+          api_key?: string
+          new_status?: string
+        }
+        Returns: Json
       }
     }
     Enums: {

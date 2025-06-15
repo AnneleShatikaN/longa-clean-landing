@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,8 +57,8 @@ export const PayoutExport = () => {
           booking_id,
           payout_type,
           status,
+          provider_id,
           users!provider_id(full_name),
-          provider_payment_methods!provider_id(mobile_number, account_number),
           bookings!booking_id(
             id,
             booking_date,
@@ -72,18 +71,36 @@ export const PayoutExport = () => {
 
       if (error) throw error;
 
-      const formattedData: PayoutExportData[] = (payoutsData || []).map(payout => ({
-        providerName: payout.users?.full_name || 'Unknown Provider',
-        bankMobileNumber: payout.provider_payment_methods?.mobile_number || payout.provider_payment_methods?.account_number || 'Not provided',
-        serviceType: payout.payout_type === 'manual' ? 'Manual' : (payout.bookings?.services?.service_type === 'one-off' ? 'One-Off' : 'Package'),
-        jobId: payout.booking_id || payout.id,
-        serviceName: payout.bookings?.services?.name || 'Manual Payout',
-        jobDate: payout.bookings?.booking_date || format(new Date(), 'yyyy-MM-dd'),
-        payoutAmount: Number(payout.amount),
-        paymentTypeNotes: payout.payout_type === 'manual' 
-          ? 'Manual payout'
-          : `Commission: ${payout.bookings?.services?.commission_percentage || 15}%`
-      }));
+      // Fetch provider payment methods separately
+      const providerIds = payoutsData?.map(p => p.provider_id).filter(Boolean) || [];
+      const { data: paymentMethods } = await supabase
+        .from('provider_payment_methods')
+        .select('provider_id, mobile_number, account_number, is_primary')
+        .in('provider_id', providerIds)
+        .eq('is_primary', true);
+
+      // Create a map for quick lookup
+      const paymentMethodsMap = new Map();
+      paymentMethods?.forEach(pm => {
+        paymentMethodsMap.set(pm.provider_id, pm);
+      });
+
+      const formattedData: PayoutExportData[] = (payoutsData || []).map(payout => {
+        const paymentMethod = paymentMethodsMap.get(payout.provider_id);
+        
+        return {
+          providerName: payout.users?.full_name || 'Unknown Provider',
+          bankMobileNumber: paymentMethod?.mobile_number || paymentMethod?.account_number || 'Not provided',
+          serviceType: payout.payout_type === 'manual' ? 'Manual' : (payout.bookings?.services?.service_type === 'one-off' ? 'One-Off' : 'Package'),
+          jobId: payout.booking_id || payout.id,
+          serviceName: payout.bookings?.services?.name || 'Manual Payout',
+          jobDate: payout.bookings?.booking_date || format(new Date(), 'yyyy-MM-dd'),
+          payoutAmount: Number(payout.amount),
+          paymentTypeNotes: payout.payout_type === 'manual' 
+            ? 'Manual payout'
+            : `Commission: ${payout.bookings?.services?.commission_percentage || 15}%`
+        };
+      });
 
       setExportableData(formattedData);
       return formattedData;
@@ -185,11 +202,8 @@ export const PayoutExport = () => {
       downloadCSV(csvContent, filename);
 
       // Mark as processed if checkbox is checked
-      if (markAsProcessed) {
-        const payoutIds = exportableData
-          .map((_, index) => index.toString()) // This would need proper payout IDs
-          .slice(0, payoutData.length);
-        
+      if (markAsProcessed && payoutsData) {
+        const payoutIds = payoutsData.map(p => p.id);
         await markPayoutsAsProcessed(payoutIds);
       }
 

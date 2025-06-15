@@ -32,7 +32,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     profilePicture: user?.profilePicture || '',
     bankMobileNumber: user?.bankMobileNumber || '',
     paymentMethod: user?.paymentMethod || 'mobile_money',
-    location: user?.location || 'windhoek',
+    location: (user as any)?.location || 'windhoek', // Type assertion for location
     bankDetails: {
       accountNumber: user?.bankDetails?.accountNumber || '',
       bankName: user?.bankDetails?.bankName || '',

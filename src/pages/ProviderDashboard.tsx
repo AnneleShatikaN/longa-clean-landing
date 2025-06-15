@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,7 +17,7 @@ import AvailabilityToggle from '@/components/AvailabilityToggle';
 import NotificationSystem from '@/components/NotificationSystem';
 import { 
   LogOut, Bell, AlertCircle, Database, 
-  Home, Briefcase, Wallet, User, HelpCircle, Menu, X
+  Home, Briefcase, Wallet, User
 } from 'lucide-react';
 
 const ProviderDashboard = () => {
@@ -24,7 +25,6 @@ const ProviderDashboard = () => {
   const { data, isLoading, error, updateJobStatus, isValidProvider } = useProviderData();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -218,36 +218,15 @@ const ProviderDashboard = () => {
         email={user?.email || ''}
       />
 
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
       {/* Header */}
       <header className="bg-white shadow-sm border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <h1 className="text-xl sm:text-2xl font-bold text-purple-600">Longa Provider</h1>
-              <span className="text-gray-300 hidden sm:inline">|</span>
-              <div className="hidden sm:block">
-                <h2 className="text-lg text-gray-700">Welcome, {providerProfile.name}</h2>
-              </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              >
-                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
-              
-              <div className="relative hidden sm:block">
+              <div className="relative">
                 <Bell className="h-6 w-6 text-gray-600" />
                 {notifications.filter(n => !n.read).length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -255,9 +234,8 @@ const ProviderDashboard = () => {
                   </span>
                 )}
               </div>
-              <Button variant="ghost" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Logout</span>
+              <Button variant="ghost" onClick={handleLogout} size="sm">
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -265,105 +243,88 @@ const ProviderDashboard = () => {
       </header>
 
       <div className="flex-1">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-3">
-              {/* Availability Toggle */}
-              <div className="mb-6">
-                <AvailabilityToggle 
-                  isAvailable={isAvailable}
-                  onToggle={setIsAvailable}
-                />
-              </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Availability Toggle */}
+          <div className="mb-6">
+            <AvailabilityToggle 
+              isAvailable={isAvailable}
+              onToggle={setIsAvailable}
+            />
+          </div>
 
-              {/* Tabbed Interface */}
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-5 mb-6">
-                  <TabsTrigger value="overview" className="flex items-center space-x-1">
-                    <Home className="h-4 w-4" />
-                    <span className="hidden sm:inline">Overview</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="jobs" className="flex items-center space-x-1">
-                    <Briefcase className="h-4 w-4" />
-                    <span className="hidden sm:inline">Jobs</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="payouts" className="flex items-center space-x-1">
-                    <Wallet className="h-4 w-4" />
-                    <span className="hidden sm:inline">Payouts</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="profile" className="flex items-center space-x-1">
-                    <User className="h-4 w-4" />
-                    <span className="hidden sm:inline">Profile</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="support" className="flex items-center space-x-1">
-                    <HelpCircle className="h-4 w-4" />
-                    <span className="hidden sm:inline">Support</span>
-                  </TabsTrigger>
-                </TabsList>
+          {/* Mobile-First Tabbed Interface */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4 mb-8 bg-white border">
+              <TabsTrigger 
+                value="overview" 
+                className="flex flex-col items-center py-3 space-y-1 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-600"
+              >
+                <Home className="h-5 w-5" />
+                <span className="text-xs font-medium">Overview</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="bookings" 
+                className="flex flex-col items-center py-3 space-y-1 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-600"
+              >
+                <Briefcase className="h-5 w-5" />
+                <span className="text-xs font-medium">Bookings</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="earnings" 
+                className="flex flex-col items-center py-3 space-y-1 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-600"
+              >
+                <Wallet className="h-5 w-5" />
+                <span className="text-xs font-medium">Earnings</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="settings" 
+                className="flex flex-col items-center py-3 space-y-1 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-600"
+              >
+                <User className="h-5 w-5" />
+                <span className="text-xs font-medium">Settings</span>
+              </TabsTrigger>
+            </TabsList>
 
-                <TabsContent value="overview">
-                  <ProviderOverviewTab profile={providerProfile} stats={stats} />
-                </TabsContent>
+            <TabsContent value="overview" className="mt-0">
+              <ProviderOverviewTab profile={providerProfile} stats={stats} />
+            </TabsContent>
 
-                <TabsContent value="jobs">
-                  <ProviderJobsTab
-                    availableJobs={availableJobs}
-                    myJobs={myJobs}
-                    onAcceptJob={acceptJob}
-                    onDeclineJob={declineJob}
-                    onCompleteJob={completeJob}
-                    isAvailable={isAvailable}
-                  />
-                </TabsContent>
-
-                <TabsContent value="payouts">
-                  <ProviderPayoutsTab
-                    monthlyEarnings={monthlyEarnings}
-                    completedJobs={completedJobs}
-                    pendingPayouts={totalPendingAmount}
-                    totalEarnings={totalEarnings}
-                  />
-                </TabsContent>
-
-                <TabsContent value="profile">
-                  <ProviderProfileTab
-                    profile={providerProfile}
-                    onUpdateProfile={handleUpdateProfile}
-                  />
-                </TabsContent>
-
-                <TabsContent value="support">
-                  <div className="text-center py-12">
-                    <HelpCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Support Center</h3>
-                    <p className="text-gray-600">Contact support for help with your account.</p>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-
-            {/* Sidebar */}
-            <div className={`space-y-6 ${isMobileMenuOpen ? 'fixed inset-y-0 right-0 w-80 bg-white z-50 p-6 shadow-lg lg:relative lg:inset-auto lg:w-auto lg:bg-transparent lg:z-auto lg:p-0 lg:shadow-none' : 'hidden lg:block'}`}>
-              {isMobileMenuOpen && (
-                <div className="flex justify-end mb-4 lg:hidden">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
-                </div>
-              )}
-
-              <NotificationSystem
-                notifications={notifications}
-                onMarkAsRead={() => {}}
-                onMarkAllAsRead={() => {}}
-                onDismiss={() => {}}
+            <TabsContent value="bookings" className="mt-0">
+              <ProviderJobsTab
+                availableJobs={availableJobs}
+                myJobs={myJobs}
+                onAcceptJob={acceptJob}
+                onDeclineJob={declineJob}
+                onCompleteJob={completeJob}
+                isAvailable={isAvailable}
               />
-            </div>
+            </TabsContent>
+
+            <TabsContent value="earnings" className="mt-0">
+              <ProviderPayoutsTab
+                monthlyEarnings={monthlyEarnings}
+                completedJobs={completedJobs}
+                pendingPayouts={totalPendingAmount}
+                totalEarnings={totalEarnings}
+              />
+            </TabsContent>
+
+            <TabsContent value="settings" className="mt-0">
+              <ProviderProfileTab
+                profile={providerProfile}
+                onUpdateProfile={handleUpdateProfile}
+              />
+            </TabsContent>
+          </Tabs>
+
+          {/* Notifications - Mobile-friendly sidebar */}
+          <div className="mt-8">
+            <NotificationSystem
+              notifications={notifications}
+              onMarkAsRead={() => {}}
+              onMarkAllAsRead={() => {}}
+              onDismiss={() => {}}
+            />
           </div>
         </div>
       </div>

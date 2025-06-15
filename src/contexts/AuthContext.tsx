@@ -26,71 +26,107 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [needsAdminSetup, setNeedsAdminSetup] = useState(false);
   const { toast } = useToast();
 
+  // Clear any stale localStorage flags that might be causing issues
+  const clearStaleFlags = () => {
+    try {
+      const adminSetupFlag = localStorage.getItem('admin_setup_completed');
+      console.log('Clearing stale flags, admin_setup_completed was:', adminSetupFlag);
+      localStorage.removeItem('admin_setup_completed');
+    } catch (error) {
+      console.error('Error clearing localStorage flags:', error);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
     const initializeAuth = async () => {
       try {
+        console.log('🔄 Initializing authentication...');
+        
+        // Clear any stale flags first
+        clearStaleFlags();
+
         // Set up auth state listener first
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
             if (!mounted) return;
 
-            console.log('Auth state change:', event, session?.user?.id);
+            console.log('🔑 Auth state change:', event, 'User ID:', session?.user?.id);
+            console.log('📧 Email confirmed:', session?.user?.email_confirmed_at ? 'Yes' : 'No');
+            
             setSession(session);
             setError(null);
 
-            if (session?.user) {
-              // Use setTimeout to prevent deadlocks
+            if (session?.user && session.user.email_confirmed_at) {
+              console.log('✅ User authenticated with confirmed email, fetching profile...');
+              
+              // Use setTimeout to prevent deadlocks during auth state changes
               setTimeout(async () => {
                 if (!mounted) return;
 
                 let profile = await fetchUserProfile(session.user.id);
                 
-                // If no profile exists, try to create one
                 if (!profile) {
-                  console.log('No profile found, creating one...');
+                  console.log('📝 No profile found, creating one...');
                   profile = await createUserProfileIfNeeded(session.user.id, session.user);
                 }
 
                 if (mounted && profile) {
+                  console.log('👤 Profile loaded:', profile.role, profile.email);
                   setUser(profile);
                   
-                  // Handle automatic redirect after login or admin setup
-                  if (event === 'SIGNED_IN') {
+                  // Admin setup is not needed if we have an authenticated admin user
+                  if (profile.role === 'admin') {
+                    console.log('🔧 Admin user detected, setup not needed');
+                    setNeedsAdminSetup(false);
+                  }
+                  
+                  // Handle automatic redirect after successful auth
+                  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
                     const currentPath = window.location.pathname;
-                    console.log('User signed in, current path:', currentPath, 'User role:', profile.role);
+                    console.log('🔀 Current path:', currentPath, 'User role:', profile.role);
                     
-                    // Only redirect if we're on auth or admin-setup pages
+                    // Redirect from auth pages to appropriate dashboard
                     if (currentPath === '/auth' || currentPath === '/admin-setup') {
+                      let redirectPath = '/';
+                      
                       switch (profile.role) {
                         case 'admin':
-                          console.log('Redirecting admin to dashboard');
-                          window.location.href = '/dashboard/admin';
+                          redirectPath = '/dashboard/admin';
                           break;
                         case 'provider':
-                          window.location.href = '/dashboard/provider';
+                          redirectPath = '/dashboard/provider';
                           break;
                         case 'client':
-                          window.location.href = '/dashboard/client';
-                          break;
-                        default:
+                          redirectPath = '/dashboard/client';
                           break;
                       }
+                      
+                      console.log('🚀 Redirecting to:', redirectPath);
+                      // Use setTimeout to ensure state updates complete first
+                      setTimeout(() => {
+                        window.location.href = redirectPath;
+                      }, 100);
                     }
                   }
                 } else if (mounted) {
-                  console.error('Failed to create or fetch user profile');
+                  console.error('❌ Failed to create or fetch user profile');
                   setUser(null);
                 }
               }, 0);
+            } else if (session?.user && !session.user.email_confirmed_at) {
+              console.log('📧 User authenticated but email not confirmed');
+              setUser(null);
             } else {
+              console.log('🚪 No authenticated user');
               setUser(null);
             }
 
             if (event === 'SIGNED_OUT') {
+              console.log('👋 User signed out');
               setUser(null);
-              localStorage.removeItem('admin_setup_completed');
+              clearStaleFlags();
             }
 
             setIsLoading(false);
@@ -98,32 +134,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         );
 
         // Get initial session
+        console.log('🔍 Checking for existing session...');
         const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (error) {
-          console.error('Session error:', error);
+          console.error('❌ Session error:', error);
           throw error;
         }
 
-        if (session?.user && mounted) {
-          let profile = await fetchUserProfile(session.user.id);
+        if (session?.user) {
+          console.log('💾 Found existing session for user:', session.user.id);
+          console.log('📧 Email confirmed:', session.user.email_confirmed_at ? 'Yes' : 'No');
           
-          if (!profile) {
-            console.log('No profile found during initialization, creating one...');
-            profile = await createUserProfileIfNeeded(session.user.id, session.user);
+          if (session.user.email_confirmed_at) {
+            let profile = await fetchUserProfile(session.user.id);
+            
+            if (!profile) {
+              console.log('📝 Creating profile for existing session...');
+              profile = await createUserProfileIfNeeded(session.user.id, session.user);
+            }
+            
+            if (profile) {
+              console.log('👤 Profile restored from session:', profile.role);
+              setUser(profile);
+              setSession(session);
+              
+              // If we have an admin user, setup is not needed
+              if (profile.role === 'admin') {
+                setNeedsAdminSetup(false);
+              }
+            }
           }
-          
-          if (profile) {
-            setUser(profile);
-            setSession(session);
-          }
-        }
-
-        // Check if admin setup is needed only if no authenticated user
-        if (!session?.user) {
-          const adminSetupNeeded = await checkAdminSetup();
-          setNeedsAdminSetup(adminSetupNeeded);
         } else {
-          setNeedsAdminSetup(false);
+          console.log('🔍 No existing session, checking if admin setup is needed...');
+          // Only check for admin setup if no authenticated user exists
+          const adminSetupNeeded = await checkAdminSetup();
+          console.log('🔧 Admin setup needed:', adminSetupNeeded);
+          setNeedsAdminSetup(adminSetupNeeded);
         }
         
         setIsInitialized(true);
@@ -134,7 +181,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           subscription.unsubscribe();
         };
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('💥 Auth initialization error:', error);
         setError(error instanceof Error ? error.message : 'Authentication initialization failed');
         setIsLoading(false);
         setIsInitialized(true);
@@ -217,7 +264,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       setSession(null);
       
-      localStorage.removeItem('admin_setup_completed');
+      clearStaleFlags();
       
       toast({
         title: "Logged out",
@@ -326,14 +373,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
 
     try {
-      console.log('Setting up admin account...');
+      console.log('🔧 Setting up admin account...');
       const success = await setupAdminService(data);
 
       if (success) {
         setNeedsAdminSetup(false);
-        
-        // Mark admin setup as completed
-        localStorage.setItem('admin_setup_completed', 'true');
         
         toast({
           title: "Admin account created!",
@@ -345,7 +389,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       return false;
     } catch (error) {
-      console.error('Admin setup error:', error);
+      console.error('💥 Admin setup error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Admin setup failed';
       setError(errorMessage);
       

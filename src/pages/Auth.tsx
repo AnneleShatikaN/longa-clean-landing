@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -7,12 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
+import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PhoneValidation } from "@/components/profile/PhoneValidation";
 import { supabase } from "@/integrations/supabase/client";
+import { cleanupAuthState } from "@/utils/authStateCleanup";
 
 type AuthMode = 'login' | 'signup' | 'forgot-password' | 'admin-setup';
 
@@ -63,6 +63,7 @@ const Auth = () => {
       const type = hashParams.get('type');
 
       if (type === 'email' && accessToken && refreshToken) {
+        console.log('📧 Processing email verification...');
         setIsVerifying(true);
         setVerificationStatus('pending');
 
@@ -73,7 +74,7 @@ const Auth = () => {
           });
 
           if (error) {
-            console.error('Verification error:', error);
+            console.error('❌ Verification error:', error);
             setVerificationStatus('error');
             toast({
               title: "Verification Failed",
@@ -81,21 +82,23 @@ const Auth = () => {
               variant: "destructive",
             });
           } else if (data.user) {
+            console.log('✅ Email verified successfully');
             setVerificationStatus('success');
             toast({
               title: "Email Verified!",
-              description: "Your account has been verified successfully. You can now sign in.",
+              description: "Your account has been verified successfully. Redirecting...",
             });
 
-            // Clear the hash and redirect to login
+            // Clear the hash and allow auth context to handle redirect
             window.history.replaceState(null, '', window.location.pathname);
+            
+            // Let the auth context handle the redirect based on user role
             setTimeout(() => {
-              setMode('login');
               setIsVerifying(false);
             }, 2000);
           }
         } catch (err) {
-          console.error('Verification error:', err);
+          console.error('💥 Verification error:', err);
           setVerificationStatus('error');
           toast({
             title: "Verification Failed",
@@ -112,6 +115,7 @@ const Auth = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (user && isInitialized && !isVerifying) {
+      console.log('🔀 User authenticated, redirecting...', user.role);
       // Redirect based on user role
       switch (user.role) {
         case 'admin':
@@ -129,12 +133,25 @@ const Auth = () => {
     }
   }, [user, isInitialized, navigate, from, isVerifying]);
 
-  // Check if admin setup is needed
+  // Determine auth mode based on setup needs
   useEffect(() => {
-    if (isInitialized && needsAdminSetup && !isVerifying) {
-      setMode('admin-setup');
+    if (isInitialized && !isVerifying) {
+      console.log('🔧 Checking auth mode - needsAdminSetup:', needsAdminSetup, 'user:', user?.email);
+      
+      // Only show admin setup if:
+      // 1. Admin setup is needed AND
+      // 2. User is not already authenticated
+      if (needsAdminSetup && !user) {
+        console.log('⚙️ Setting mode to admin-setup');
+        setMode('admin-setup');
+      } else if (user) {
+        console.log('👤 User already authenticated, will redirect');
+      } else {
+        console.log('🔑 Setting mode to login');
+        setMode('login');
+      }
     }
-  }, [isInitialized, needsAdminSetup, isVerifying]);
+  }, [isInitialized, needsAdminSetup, user, isVerifying]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -246,7 +263,7 @@ const Auth = () => {
         if (result) {
           toast({
             title: "Admin setup complete!",
-            description: "Your admin account has been created successfully.",
+            description: "Please check your email and click the verification link to complete setup.",
           });
         }
       }
@@ -292,7 +309,7 @@ const Auth = () => {
     if (isVerifying) {
       switch (verificationStatus) {
         case 'pending': return 'Please wait while we verify your email address...';
-        case 'success': return 'Your account has been verified. Redirecting to login...';
+        case 'success': return 'Your account has been verified. Redirecting...';
         case 'error': return 'There was an error verifying your email address.';
         default: return 'Please wait while we verify your email address...';
       }
@@ -304,6 +321,13 @@ const Auth = () => {
       case 'forgot-password': return 'Enter your email to receive reset instructions';
       case 'admin-setup': return 'Create the first admin account for your Longa platform';
     }
+  };
+
+  // Function to force refresh auth state
+  const handleForceRefresh = async () => {
+    console.log('🔄 Force refreshing auth state...');
+    cleanupAuthState();
+    window.location.reload();
   };
 
   // Show verification status if currently verifying
@@ -333,7 +357,7 @@ const Auth = () => {
                 <div className="flex flex-col items-center space-y-4">
                   <CheckCircle className="w-12 h-12 text-green-500" />
                   <p className="text-gray-600">Email verified successfully!</p>
-                  <p className="text-sm text-gray-500">Redirecting you to login...</p>
+                  <p className="text-sm text-gray-500">Redirecting you to your dashboard...</p>
                 </div>
               )}
 
@@ -371,6 +395,21 @@ const Auth = () => {
             </div>
             <span className="text-2xl font-bold text-gray-800">Longa</span>
           </div>
+        </div>
+      )}
+
+      {/* Debug info for admin setup issues */}
+      {mode !== 'admin-setup' && needsAdminSetup && (
+        <div className="absolute top-6 right-6">
+          <Button
+            onClick={handleForceRefresh}
+            variant="outline"
+            size="sm"
+            className="flex items-center space-x-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Refresh</span>
+          </Button>
         </div>
       )}
 

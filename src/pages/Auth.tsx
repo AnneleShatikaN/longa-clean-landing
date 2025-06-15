@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -47,26 +46,18 @@ const Auth = () => {
   // Get the intended destination from location state
   const from = location.state?.from?.pathname || '/';
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated - simplified logic
   useEffect(() => {
     if (user && isInitialized) {
       console.log('🔀 User authenticated, redirecting...', user.role);
-      // Redirect based on user role
-      switch (user.role) {
-        case 'admin':
-          navigate('/dashboard/admin');
-          break;
-        case 'provider':
-          navigate('/dashboard/provider');
-          break;
-        case 'client':
-          navigate('/dashboard/client');
-          break;
-        default:
-          navigate(from);
-      }
+      // Direct redirect without complex logic
+      const redirectPath = user.role === 'admin' ? '/dashboard/admin'
+        : user.role === 'provider' ? '/dashboard/provider'
+        : '/dashboard/client';
+      
+      navigate(redirectPath, { replace: true });
     }
-  }, [user, isInitialized, navigate, from]);
+  }, [user, isInitialized, navigate]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -119,12 +110,17 @@ const Auth = () => {
 
     try {
       if (mode === 'login') {
-        await login({
+        console.log('🔑 Attempting login with:', formData.email);
+        const success = await login({
           email: formData.email,
           password: formData.password,
-          role: formData.role,
+          role: formData.role, // Keep role for compatibility but service will skip validation
           rememberMe: formData.rememberMe
         });
+        
+        if (success) {
+          console.log('✅ Login successful');
+        }
       } else if (mode === 'signup') {
         const result = await signup({
           name: formData.name,
@@ -144,10 +140,6 @@ const Auth = () => {
         }
       } else if (mode === 'forgot-password') {
         await requestPasswordReset({ email: formData.email });
-        toast({
-          title: "Reset link sent",
-          description: "Check your email for password reset instructions.",
-        });
       }
     } catch (err) {
       console.error('Auth error:', err);
@@ -321,11 +313,12 @@ const Auth = () => {
                 </div>
               )}
 
+              {/* Show role selection for signup or allow all roles for login */}
               {(mode === 'login' || mode === 'signup') && (
                 <div className="space-y-2">
                   <Label className="text-gray-700">Role</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['client', 'provider'] as UserRole[]).map((role) => (
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['client', 'provider', 'admin'] as UserRole[]).map((role) => (
                       <button
                         key={role}
                         type="button"

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { logSecurityEvent, detectSuspiciousActivity, checkRateLimit } from '@/utils/security';
 import { LoginData, UserRegistration, PasswordReset, ChangePassword } from '@/schemas/validation';
@@ -15,9 +14,7 @@ export const loginUser = async (loginData: LoginData) => {
     throw new Error('Too many login attempts. Please try again later.');
   }
 
-  // Clean up any existing session
-  await supabase.auth.signOut();
-
+  // Sign in with email/password - no need to clean session first
   const { data, error } = await supabase.auth.signInWithPassword({
     email: loginData.email,
     password: loginData.password,
@@ -32,11 +29,8 @@ export const loginUser = async (loginData: LoginData) => {
       throw new Error('User profile not found');
     }
 
-    // Verify role matches if specified
-    if (loginData.role && profile.role !== loginData.role) {
-      await supabase.auth.signOut();
-      throw new Error(`Access denied. This account is not registered as a ${loginData.role}.`);
-    }
+    // Skip role validation for existing users - let them login regardless
+    console.log('User logged in successfully:', profile.email, 'Role:', profile.role);
 
     // Log successful login
     logSecurityEvent({

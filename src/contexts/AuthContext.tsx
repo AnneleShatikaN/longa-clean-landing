@@ -31,6 +31,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         console.log('🔄 Initializing authentication...');
 
+        // Set up auth state listener first
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (!mounted) return;
+
+            console.log('🔑 Auth state change:', event, 'User ID:', session?.user?.id);
+            
+            setSession(session);
+            setError(null);
+
+            if (session?.user && mounted) {
+              console.log('✅ User authenticated, fetching profile...');
+              
+              // Defer profile fetching to prevent deadlocks
+              setTimeout(async () => {
+                if (!mounted) return;
+
+                let profile = await fetchUserProfile(session.user.id);
+                
+                if (!profile) {
+                  console.log('📝 No profile found, creating one...');
+                  profile = await createUserProfileIfNeeded(session.user.id, session.user);
+                }
+
+                if (mounted && profile) {
+                  console.log('👤 Profile loaded:', profile.role, profile.email);
+                  setUser(profile);
+                } else if (mounted) {
+                  console.error('❌ Failed to create or fetch user profile');
+                  setUser(null);
+                }
+              }, 0);
+            } else {
+              console.log('🚪 No authenticated user');
+              setUser(null);
+            }
+
+            if (event === 'SIGNED_OUT') {
+              console.log('👋 User signed out');
+              setUser(null);
+            }
+
+            setIsLoading(false);
+          }
+        );
+
         // Get initial session
         const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
         
@@ -54,83 +100,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.log('👤 Profile restored from session:', profile.role, profile.email);
             setUser(profile);
             setSession(initialSession);
-            
-            // Handle redirect for existing session
-            const currentPath = window.location.pathname;
-            if (currentPath === '/auth' && profile.role) {
-              console.log('🚀 Redirecting existing session to dashboard');
-              setTimeout(() => {
-                const redirectPath = profile.role === 'admin' ? '/dashboard/admin' 
-                  : profile.role === 'provider' ? '/dashboard/provider' 
-                  : '/dashboard/client';
-                window.location.href = redirectPath;
-              }, 100);
-            }
           }
         }
-
-        // Set up auth state listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            if (!mounted) return;
-
-            console.log('🔑 Auth state change:', event, 'User ID:', session?.user?.id);
-            
-            setSession(session);
-            setError(null);
-
-            if (session?.user && mounted) {
-              console.log('✅ User authenticated, fetching profile...');
-              
-              setTimeout(async () => {
-                if (!mounted) return;
-
-                let profile = await fetchUserProfile(session.user.id);
-                
-                if (!profile) {
-                  console.log('📝 No profile found, creating one...');
-                  profile = await createUserProfileIfNeeded(session.user.id, session.user);
-                }
-
-                if (mounted && profile) {
-                  console.log('👤 Profile loaded:', profile.role, profile.email);
-                  setUser(profile);
-                  
-                  // Handle automatic redirect after successful auth
-                  if (event === 'SIGNED_IN') {
-                    const currentPath = window.location.pathname;
-                    console.log('🔀 Current path:', currentPath, 'User role:', profile.role);
-                    
-                    // Redirect from auth pages to appropriate dashboard
-                    if (currentPath === '/auth') {
-                      const redirectPath = profile.role === 'admin' ? '/dashboard/admin'
-                        : profile.role === 'provider' ? '/dashboard/provider'
-                        : '/dashboard/client';
-                      
-                      console.log('🚀 Redirecting to:', redirectPath);
-                      setTimeout(() => {
-                        window.location.href = redirectPath;
-                      }, 100);
-                    }
-                  }
-                } else if (mounted) {
-                  console.error('❌ Failed to create or fetch user profile');
-                  setUser(null);
-                }
-              }, 0);
-            } else {
-              console.log('🚪 No authenticated user');
-              setUser(null);
-            }
-
-            if (event === 'SIGNED_OUT') {
-              console.log('👋 User signed out');
-              setUser(null);
-            }
-
-            setIsLoading(false);
-          }
-        );
         
         setIsInitialized(true);
         setIsLoading(false);
@@ -157,16 +128,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
 
     try {
+      console.log('🔑 Login attempt for:', loginData.email);
       const success = await loginUser(loginData);
       
-      toast({
-        title: "Welcome back!",
-        description: "You have been logged in successfully.",
-      });
+      if (success) {
+        toast({
+          title: "Welcome back!",
+          description: "You have been logged in successfully.",
+        });
+      }
 
       return success;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      console.error('❌ Login error:', errorMessage);
       setError(errorMessage);
       
       toast({
@@ -338,7 +313,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setupAdmin,
       isLoading,
       error,
-      needsAdminSetup: false, // Always false now
+      needsAdminSetup: false, // Always false - no admin setup needed
       isInitialized
     }}>
       {children}

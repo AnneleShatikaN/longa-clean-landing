@@ -1,27 +1,25 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Checkbox } from '@/components/ui/checkbox';
-import { UserCheck, Activity, AlertCircle, Settings, Save, Ban, Plus } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { UserCheck, Activity, AlertCircle, Settings, Save, Ban, RefreshCw } from 'lucide-react';
 import ServiceManagement from '@/components/admin/ServiceManagement';
 import { PayoutSystemTabs } from '@/components/admin/PayoutSystemTabs';
 import { FinancialManagement } from '@/components/admin/FinancialManagement';
 import { LaunchDashboard } from '@/components/admin/launch/LaunchDashboard';
 import { AnalyticsDashboard } from '@/components/admin/analytics/AnalyticsDashboard';
 import { SupportSystem } from '@/components/admin/support/SupportSystem';
-import { SetupWizard } from '@/components/admin/setup/SetupWizard';
+import { DataModeToggle } from '@/components/admin/DataModeToggle';
+import { DataModeProvider } from '@/contexts/DataModeContext';
+import { useAdminData } from '@/hooks/useAdminData';
 import { useToast } from '@/hooks/use-toast';
 
-const AdminDashboard: React.FC = () => {
+const AdminDashboardContent: React.FC = () => {
   const { toast } = useToast();
+  const { data, isLoading, error, refetch } = useAdminData();
   const [activeTab, setActiveTab] = useState('overview');
   const [settings, setSettings] = useState({
     maintenanceMode: false,
@@ -66,15 +64,38 @@ const AdminDashboard: React.FC = () => {
     });
   };
 
-  // Mock data for dashboard overview
-  const dashboardStats = {
-    totalUsers: 1250,
-    activeProviders: 85,
-    totalBookings: 3456,
-    revenue: 125430,
-    pendingPayouts: 12340,
-    systemHealth: 98.5
+  const dashboardStats = data?.dashboardStats || {
+    totalUsers: 0,
+    activeProviders: 0,
+    totalBookings: 0,
+    revenue: 0,
+    pendingPayouts: 0,
+    systemHealth: 0
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <Card className="border-red-200">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 text-red-600">
+                <AlertCircle className="h-5 w-5" />
+                <div>
+                  <p className="font-medium">Error loading data</p>
+                  <p className="text-sm">{error}</p>
+                </div>
+                <Button onClick={refetch} variant="outline" size="sm">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -86,6 +107,7 @@ const AdminDashboard: React.FC = () => {
             <p className="text-gray-600">Manage your marketplace platform</p>
           </div>
           <div className="flex items-center gap-3">
+            <DataModeToggle />
             <Badge variant="default" className="bg-green-100 text-green-800">
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -95,73 +117,89 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Loading state */}
+        {isLoading && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <RefreshCw className="h-5 w-5 animate-spin" />
+                <p>Loading data...</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Quick Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Users</p>
-                  <p className="text-2xl font-bold">{dashboardStats.totalUsers.toLocaleString()}</p>
-                  <p className="text-xs text-green-600">+12% from last month</p>
+        {!isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Users</p>
+                    <p className="text-2xl font-bold">{dashboardStats.totalUsers.toLocaleString()}</p>
+                    <p className="text-xs text-green-600">+12% from last month</p>
+                  </div>
+                  <UserCheck className="h-8 w-8 text-blue-600" />
                 </div>
-                <UserCheck className="h-8 w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Active Providers</p>
-                  <p className="text-2xl font-bold">{dashboardStats.activeProviders}</p>
-                  <p className="text-xs text-green-600">+8% from last week</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Active Providers</p>
+                    <p className="text-2xl font-bold">{dashboardStats.activeProviders}</p>
+                    <p className="text-xs text-green-600">+8% from last week</p>
+                  </div>
+                  <Activity className="h-8 w-8 text-green-600" />
                 </div>
-                <Activity className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-                  <p className="text-2xl font-bold">{dashboardStats.totalBookings.toLocaleString()}</p>
-                  <p className="text-xs text-green-600">+15% from last month</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                    <p className="text-2xl font-bold">{dashboardStats.totalBookings.toLocaleString()}</p>
+                    <p className="text-xs text-green-600">+15% from last month</p>
+                  </div>
+                  <Activity className="h-8 w-8 text-purple-600" />
                 </div>
-                <Activity className="h-8 w-8 text-purple-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Revenue</p>
-                  <p className="text-2xl font-bold">N${dashboardStats.revenue.toLocaleString()}</p>
-                  <p className="text-xs text-green-600">+22% from last month</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Revenue</p>
+                    <p className="text-2xl font-bold">N${dashboardStats.revenue.toLocaleString()}</p>
+                    <p className="text-xs text-green-600">+22% from last month</p>
+                  </div>
+                  <Activity className="h-8 w-8 text-yellow-600" />
                 </div>
-                <Activity className="h-8 w-8 text-yellow-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* System Health Alert */}
-        <Card className="border-l-4 border-l-yellow-400">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-600" />
-              <div>
-                <p className="font-medium">System Health: {dashboardStats.systemHealth}%</p>
-                <p className="text-sm text-gray-600">All systems operational. Next maintenance scheduled for Sunday 2:00 AM.</p>
+        {!isLoading && dashboardStats.systemHealth > 0 && (
+          <Card className="border-l-4 border-l-yellow-400">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-yellow-600" />
+                <div>
+                  <p className="font-medium">System Health: {dashboardStats.systemHealth}%</p>
+                  <p className="text-sm text-gray-600">All systems operational. Next maintenance scheduled for Sunday 2:00 AM.</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Main Admin Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -184,20 +222,26 @@ const AdminDashboard: React.FC = () => {
                   <CardTitle>Recent Bookings</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {[1, 2, 3, 4].map((item) => (
-                      <div key={item} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <UserCheck className="h-8 w-8 bg-blue-100 p-2 rounded-full text-blue-600" />
-                          <div>
-                            <p className="font-medium">Plumbing Service</p>
-                            <p className="text-sm text-gray-600">John Doe • 2 hours ago</p>
+                  {data?.bookings?.length > 0 ? (
+                    <div className="space-y-4">
+                      {data.bookings.slice(0, 4).map((booking: any) => (
+                        <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <UserCheck className="h-8 w-8 bg-blue-100 p-2 rounded-full text-blue-600" />
+                            <div>
+                              <p className="font-medium">{booking.serviceName || 'Unknown Service'}</p>
+                              <p className="text-sm text-gray-600">{booking.clientName || 'Unknown Client'} • {booking.booking_date}</p>
+                            </div>
                           </div>
+                          <Badge>{booking.status || 'pending'}</Badge>
                         </div>
-                        <Badge>Completed</Badge>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No recent bookings</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -394,6 +438,14 @@ const AdminDashboard: React.FC = () => {
         </Tabs>
       </div>
     </div>
+  );
+};
+
+const AdminDashboard: React.FC = () => {
+  return (
+    <DataModeProvider>
+      <AdminDashboardContent />
+    </DataModeProvider>
   );
 };
 

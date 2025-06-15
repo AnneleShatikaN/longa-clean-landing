@@ -1,0 +1,176 @@
+
+{
+  "dashboardStats": {
+    "totalUsers": 1250,
+    "activeProviders": 85,
+    "totalBookings": 3456,
+    "revenue": 125430,
+    "pendingPayouts": 12340,
+    "systemHealth": 98.5
+  },
+  "users": [
+    {
+      "id": "1",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "provider",
+      "rating": 4.8,
+      "total_jobs": 156,
+      "status": "active",
+      "joinDate": "2024-01-15",
+      "lastActive": "2024-06-14T10:30:00Z"
+    },
+    {
+      "id": "2",
+      "name": "Jane Smith",
+      "email": "jane@example.com",
+      "role": "client",
+      "rating": 4.5,
+      "total_jobs": 23,
+      "status": "active",
+      "joinDate": "2024-02-20",
+      "lastActive": "2024-06-14T14:20:00Z"
+    },
+    {
+      "id": "3",
+      "name": "Mike Johnson",
+      "email": "mike@example.com",
+      "role": "provider",
+      "rating": 4.9,
+      "total_jobs": 234,
+      "status": "active",
+      "joinDate": "2023-11-10",
+      "lastActive": "2024-06-14T09:15:00Z"
+    }
+  ],
+  "services": [
+    {
+      "id": "service-1",
+      "name": "House Cleaning",
+      "description": "Professional house cleaning service",
+      "service_type": "one-off",
+      "client_price": 150,
+      "provider_fee": 120,
+      "commission_percentage": 20,
+      "duration_minutes": 120,
+      "is_active": true,
+      "tags": ["cleaning", "house", "professional"]
+    },
+    {
+      "id": "service-2", 
+      "name": "Garden Maintenance",
+      "description": "Weekly garden maintenance subscription",
+      "service_type": "subscription",
+      "client_price": 80,
+      "provider_fee": 70,
+      "commission_percentage": 12.5,
+      "duration_minutes": 90,
+      "is_active": true,
+      "tags": ["garden", "maintenance", "weekly"]
+    },
+    {
+      "id": "service-3",
+      "name": "Plumbing Repair",
+      "description": "Emergency plumbing repair service",
+      "service_type": "one-off",
+      "client_price": 200,
+      "provider_fee": 160,
+      "commission_percentage": 20,
+      "duration_minutes": 60,
+      "is_active": true,
+      "tags": ["plumbing", "repair", "emergency"]
+    }
+  ],
+  "bookings": [
+    {
+      "id": 1,
+      "client_id": "2",
+      "provider_id": "1",
+      "service_id": "service-1",
+      "status": "completed",
+      "booking_date": "2024-06-10",
+      "booking_time": "09:00",
+      "total_amount": 150,
+      "provider_payout": 120,
+      "rating": 5,
+      "serviceName": "House Cleaning",
+      "clientName": "Jane Smith",
+      "providerName": "John Doe",
+      "completionDate": "2024-06-10",
+      "paidOut": false,
+      "jobType": "one-off",
+      "commissionPercentage": 20,
+      "expectedPayout": 120
+    },
+    {
+      "id": 2,
+      "client_id": "2",
+      "provider_id": "3",
+      "service_id": "service-3",
+      "status": "in_progress",
+      "booking_date": "2024-06-15",
+      "booking_time": "14:00",
+      "total_amount": 200,
+      "provider_payout": 160,
+      "serviceName": "Plumbing Repair",
+      "clientName": "Jane Smith",
+      "providerName": "Mike Johnson",
+      "jobType": "one-off",
+      "commissionPercentage": 20,
+      "expectedPayout": 160
+    }
+  ],
+  "payouts": [
+    {
+      "id": "payout-1",
+      "provider_id": "1",
+      "booking_id": 1,
+      "amount": 120,
+      "status": "pending",
+      "created_at": "2024-06-10T18:00:00Z",
+      "payment_method": "bank_transfer",
+      "urgency_level": "normal"
+    }
+  ],
+  "analytics": {
+    "monthlyRevenue": [
+      { "month": "2024-01", "revenue": 45000, "growth": 12 },
+      { "month": "2024-02", "revenue": 52000, "growth": 15.6 },
+      { "month": "2024-03", "revenue": 48000, "growth": -7.7 },
+      { "month": "2024-04", "revenue": 61000, "growth": 27.1 },
+      { "month": "2024-05", "revenue": 67000, "growth": 9.8 },
+      { "month": "2024-06", "revenue": 73000, "growth": 9.0 }
+    ],
+    "servicePopularity": [
+      { "name": "House Cleaning", "bookings": 450, "revenue": 67500 },
+      { "name": "Garden Maintenance", "bookings": 320, "revenue": 25600 },
+      { "name": "Plumbing Repair", "bookings": 180, "revenue": 36000 }
+    ],
+    "providerPerformance": [
+      { "name": "John Doe", "jobs": 156, "rating": 4.8, "earnings": 18720 },
+      { "name": "Mike Johnson", "jobs": 234, "rating": 4.9, "earnings": 28080 }
+    ]
+  },
+  "supportTickets": [
+    {
+      "id": "ticket-1",
+      "user_id": "2",
+      "subject": "Payment Issue",
+      "description": "Unable to process payment for booking",
+      "status": "open",
+      "priority": "high",
+      "category": "payment",
+      "created_at": "2024-06-14T10:00:00Z"
+    },
+    {
+      "id": "ticket-2", 
+      "user_id": "1",
+      "subject": "Account Verification",
+      "description": "Need help with account verification process",
+      "status": "in_progress",
+      "priority": "normal", 
+      "category": "account",
+      "created_at": "2024-06-13T15:30:00Z"
+    }
+  ]
+}

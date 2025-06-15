@@ -587,6 +587,73 @@ export type Database = {
           },
         ]
       }
+      package_entitlements: {
+        Row: {
+          allowed_service_id: string
+          cycle_days: number
+          id: string
+          package_id: string
+          quantity_per_cycle: number
+        }
+        Insert: {
+          allowed_service_id: string
+          cycle_days?: number
+          id?: string
+          package_id: string
+          quantity_per_cycle: number
+        }
+        Update: {
+          allowed_service_id?: string
+          cycle_days?: number
+          id?: string
+          package_id?: string
+          quantity_per_cycle?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_entitlements_allowed_service_id_fkey"
+            columns: ["allowed_service_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_popularity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_entitlements_allowed_service_id_fkey"
+            columns: ["allowed_service_id"]
+            isOneToOne: false
+            referencedRelation: "service_search_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_entitlements_allowed_service_id_fkey"
+            columns: ["allowed_service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_entitlements_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_popularity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_entitlements_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "service_search_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_entitlements_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_method_configs: {
         Row: {
           api_endpoint: string | null
@@ -1079,6 +1146,76 @@ export type Database = {
           },
         ]
       }
+      service_usage_logs: {
+        Row: {
+          allowed_service_id: string
+          booking_id: string | null
+          id: string
+          package_id: string
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed_service_id: string
+          booking_id?: string | null
+          id?: string
+          package_id: string
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed_service_id?: string
+          booking_id?: string | null
+          id?: string
+          package_id?: string
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_usage_logs_allowed_service_id_fkey"
+            columns: ["allowed_service_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_popularity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_usage_logs_allowed_service_id_fkey"
+            columns: ["allowed_service_id"]
+            isOneToOne: false
+            referencedRelation: "service_search_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_usage_logs_allowed_service_id_fkey"
+            columns: ["allowed_service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_usage_logs_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_popularity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_usage_logs_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "service_search_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_usage_logs_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           client_price: number
@@ -1334,6 +1471,55 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_active_packages: {
+        Row: {
+          expiry_date: string
+          id: string
+          package_id: string
+          start_date: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          expiry_date: string
+          id?: string
+          package_id: string
+          start_date?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          expiry_date?: string
+          id?: string
+          package_id?: string
+          start_date?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_active_packages_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_popularity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_active_packages_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "service_search_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_active_packages_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]

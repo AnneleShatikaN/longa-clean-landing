@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Filter, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Database, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Database, Wifi, WifiOff, Package } from 'lucide-react';
 import { useServices } from '@/contexts/ServiceContext';
 import ServiceForm from './ServiceForm';
 import ServiceViewModal from './ServiceViewModal';
@@ -13,6 +13,7 @@ import ServiceEditModal from './ServiceEditModal';
 import EmptyServicesState from './EmptyServicesState';
 import { toast } from 'sonner';
 import { useDataMode } from '@/contexts/DataModeContext';
+import { PackageEntitlementManager } from './PackageEntitlementManager';
 
 const ServiceManagement: React.FC = () => {
   const { services, deleteService, toggleServiceStatus, isLoading } = useServices();
@@ -20,6 +21,7 @@ const ServiceManagement: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEntitlementModalOpen, setIsEntitlementModalOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -64,9 +66,15 @@ const ServiceManagement: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
+  const handleManageEntitlements = (serviceId: string) => {
+    setSelectedServiceId(serviceId);
+    setIsEntitlementModalOpen(true);
+  };
+
   const handleCloseModals = () => {
     setIsViewModalOpen(false);
     setIsEditModalOpen(false);
+    setIsEntitlementModalOpen(false);
     setSelectedServiceId(null);
   };
 
@@ -300,6 +308,16 @@ const ServiceManagement: React.FC = () => {
                       <Eye className="h-3 w-3 mr-1" />
                       View
                     </Button>
+                    {service.type === 'subscription' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleManageEntitlements(service.id)}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <Package className="h-3 w-3" />
+                      </Button>
+                    )}
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -354,6 +372,22 @@ const ServiceManagement: React.FC = () => {
           onClose={handleCloseModals}
         />
       )}
+
+      {/* Package Entitlement Management Modal */}
+      <Dialog open={isEntitlementModalOpen} onOpenChange={setIsEntitlementModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Package Entitlements</DialogTitle>
+          </DialogHeader>
+          {selectedServiceId && (
+            <PackageEntitlementManager
+              packageId={selectedServiceId}
+              packageName={services.find(s => s.id === selectedServiceId)?.name || ''}
+              onClose={handleCloseModals}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

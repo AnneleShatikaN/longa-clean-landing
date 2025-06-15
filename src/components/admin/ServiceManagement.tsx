@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -161,7 +160,6 @@ const ServiceManagement = () => {
           {/* Services Grid */}
           {filteredServices.length === 0 ? (
             <EmptyServicesState 
-              hasServices={services.length > 0} 
               onCreateService={() => setIsFormOpen(true)} 
             />
           ) : (
@@ -277,7 +275,6 @@ const ServiceManagement = () => {
             <DialogTitle>Add New Service</DialogTitle>
           </DialogHeader>
           <ServiceForm 
-            onClose={() => setIsFormOpen(false)}
             onSave={async (data) => {
               try {
                 await createService(data);
@@ -296,45 +293,20 @@ const ServiceManagement = () => {
 
       {/* View Service Dialog */}
       {viewService && (
-        <Dialog open={!!viewService} onOpenChange={() => setViewService(null)}>
-          <DialogContent className="max-w-2xl">
-            <ServiceViewModal 
-              serviceId={viewService} 
-              onClose={() => setViewService(null)}
-              onEdit={() => {
-                setEditService(viewService);
-                setViewService(null);
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <ServiceViewModal 
+          serviceId={viewService} 
+          isOpen={!!viewService}
+          onClose={() => setViewService(null)}
+        />
       )}
 
       {/* Edit Service Dialog */}
       {editService && (
-        <Dialog open={!!editService} onOpenChange={() => setEditService(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Service</DialogTitle>
-            </DialogHeader>
-            <ServiceEditModal 
-              serviceId={editService}
-              onClose={() => setEditService(null)}
-              onSave={async (id, data) => {
-                try {
-                  await updateService(id, data);
-                  setEditService(null);
-                  toast({
-                    title: "Success",
-                    description: "Service updated successfully",
-                  });
-                } catch (error) {
-                  // Error is handled in the context
-                }
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <ServiceEditModal 
+          serviceId={editService}
+          isOpen={!!editService}
+          onClose={() => setEditService(null)}
+        />
       )}
 
       {/* Delete Confirmation Dialog */}

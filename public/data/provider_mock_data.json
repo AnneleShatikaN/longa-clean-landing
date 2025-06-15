@@ -1,0 +1,96 @@
+
+{
+  "jobs": [
+    {
+      "id": 1,
+      "service": "House Cleaning",
+      "clientName": "Sarah Johnson",
+      "clientPhone": "+264 81 234 5678",
+      "clientEmail": "sarah.johnson@email.com",
+      "location": "Klein Windhoek",
+      "amount": 150,
+      "date": "2024-06-20",
+      "status": "requested",
+      "duration": "2h 30m",
+      "jobType": "one-off",
+      "expectedPayout": 127.5,
+      "commissionPercentage": 15,
+      "providerFee": null
+    },
+    {
+      "id": 2,
+      "service": "Garden Maintenance",
+      "clientName": "Michael Brown",
+      "clientPhone": "+264 81 345 6789",
+      "clientEmail": "michael.brown@email.com",
+      "location": "Olympia",
+      "amount": 200,
+      "date": "2024-06-21",
+      "status": "accepted",
+      "duration": "3h 0m",
+      "jobType": "one-off",
+      "expectedPayout": 170,
+      "commissionPercentage": 15,
+      "providerFee": null
+    },
+    {
+      "id": 3,
+      "service": "Laundry Service",
+      "clientName": "Emma Davis",
+      "clientPhone": "+264 81 456 7890",
+      "clientEmail": "emma.davis@email.com",
+      "location": "Windhoek Central",
+      "amount": 80,
+      "date": "2024-06-18",
+      "status": "completed",
+      "duration": "1h 30m",
+      "completedDate": "2024-06-18",
+      "jobType": "subscription",
+      "expectedPayout": 68,
+      "actualPayout": 68,
+      "commissionPercentage": null,
+      "providerFee": 68,
+      "payoutStatus": "paid",
+      "payoutDate": "2024-06-19",
+      "rating": 5,
+      "reviewComment": "Excellent service! Very professional and thorough."
+    }
+  ],
+  "notifications": [
+    {
+      "id": 1,
+      "type": "new_job",
+      "title": "New Job Request",
+      "message": "House Cleaning job in Klein Windhoek for N$150",
+      "time": "5 minutes ago",
+      "read": false,
+      "actionable": true
+    },
+    {
+      "id": 2,
+      "type": "rating_received",
+      "title": "New Rating Received",
+      "message": "Emma Davis rated your service 5 stars",
+      "time": "2 hours ago",
+      "read": false
+    }
+  ],
+  "ratings": [
+    {
+      "id": 1,
+      "jobId": 3,
+      "clientName": "Emma Davis",
+      "rating": 5,
+      "comment": "Excellent service! Very professional and thorough.",
+      "date": "2024-06-18",
+      "service": "Laundry Service"
+    }
+  ],
+  "monthlyEarnings": [
+    { "month": "Jan 2024", "earnings": 2400, "jobsCompleted": 28, "averageRating": 4.8 },
+    { "month": "Feb 2024", "earnings": 2100, "jobsCompleted": 25, "averageRating": 4.7 },
+    { "month": "Mar 2024", "earnings": 2800, "jobsCompleted": 32, "averageRating": 4.9 },
+    { "month": "Apr 2024", "earnings": 2650, "jobsCompleted": 30, "averageRating": 4.8 },
+    { "month": "May 2024", "earnings": 1250, "jobsCompleted": 15, "averageRating": 4.9 }
+  ]
+}

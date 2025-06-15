@@ -1,17 +1,19 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useData } from '@/contexts/DataContext';
+import { useProviderData } from '@/hooks/useProviderData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { EmptyState } from '@/components/EmptyState';
+import { EmailVerificationPrompt } from '@/components/auth/EmailVerificationPrompt';
 import Footer from '@/components/Footer';
 import { 
   Calendar, User, LogOut, MapPin, DollarSign, Clock, 
   Phone, Mail, Star, Filter, Bell, Calculator, Percent, Banknote,
-  TrendingUp, Wallet, CheckCircle, XCircle, AlertCircle, Menu, X
+  TrendingUp, Wallet, CheckCircle, XCircle, AlertCircle, Menu, X,
+  FileText, Database, Ban
 } from 'lucide-react';
 import JobFilters from '@/components/JobFilters';
 import AvailabilityToggle from '@/components/AvailabilityToggle';
@@ -54,10 +56,11 @@ interface Notification {
 
 const ProviderDashboard = () => {
   const { user, logout } = useAuth();
-  const { bookings, updateBookingStatus } = useData();
+  const { data, isLoading, error, updateJobStatus } = useProviderData();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
 
   // State management
   const [isAvailable, setIsAvailable] = useState(true);
@@ -65,96 +68,17 @@ const ProviderDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
 
-  // Convert bookings to jobs format with enhanced payout info
-  const jobs: Job[] = bookings.map(booking => ({
-    id: booking.id,
-    service: booking.serviceName,
-    clientName: booking.clientName,
-    clientPhone: '+264 81 123 4567',
-    clientEmail: 'client@email.com',
-    location: 'Windhoek',
-    amount: booking.amount,
-    date: booking.date,
-    status: booking.status as 'requested' | 'accepted' | 'completed',
-    duration: booking.duration ? `${Math.floor(booking.duration / 60)}h ${booking.duration % 60}m` : '2h 0m',
-    completedDate: booking.completionDate,
-    jobType: booking.jobType,
-    expectedPayout: booking.expectedPayout || 0,
-    actualPayout: booking.status === 'completed' ? booking.expectedPayout : undefined,
-    commissionPercentage: booking.commissionPercentage,
-    providerFee: booking.providerFee,
-    payoutStatus: booking.status === 'completed' ? (booking.paidOut ? 'paid' : 'pending') : undefined,
-    payoutDate: booking.paidOut ? booking.completionDate : undefined
-  }));
-
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: 1,
-      type: 'new_job',
-      title: 'New Job Request',
-      message: 'House Cleaning job in Klein Windhoek for N$150',
-      time: '5 minutes ago',
-      read: false,
-      actionable: true
-    },
-    {
-      id: 2,
-      type: 'rating_received',
-      title: 'New Rating Received',
-      message: 'Emma Davis rated your service 5 stars',
-      time: '2 hours ago',
-      read: false
-    },
-    {
-      id: 3,
-      type: 'payment_received',
-      title: 'Payment Received',
-      message: 'N$68 payment received for completed laundry service',
-      time: '1 day ago',
-      read: true
+  // Check email verification status
+  useEffect(() => {
+    if (user && !user.email_confirmed) {
+      setShowEmailVerification(true);
     }
-  ]);
+  }, [user]);
 
-  const ratings = [
-    {
-      id: 1,
-      jobId: 5,
-      clientName: 'Emma Davis',
-      rating: 5,
-      comment: 'Excellent service! Very professional and thorough.',
-      date: '2024-05-25',
-      service: 'Laundry Service'
-    }
-  ];
-
-  const monthlyEarnings = [
-    { month: 'Jan 2024', earnings: 2400, jobsCompleted: 28, averageRating: 4.8 },
-    { month: 'Feb 2024', earnings: 2100, jobsCompleted: 25, averageRating: 4.7 },
-    { month: 'Mar 2024', earnings: 2800, jobsCompleted: 32, averageRating: 4.9 },
-    { month: 'Apr 2024', earnings: 2650, jobsCompleted: 30, averageRating: 4.8 },
-    { month: 'May 2024', earnings: 1250, jobsCompleted: 15, averageRating: 4.9 }
-  ];
-
-  // Enhanced calculations for earnings summary
-  const completedJobs = jobs.filter(job => job.status === 'completed');
-  const pendingPayouts = completedJobs.filter(job => job.payoutStatus === 'pending');
-  const totalPendingAmount = pendingPayouts.reduce((sum, job) => sum + job.expectedPayout, 0);
-  
-  // This week's calculations (mock - last 7 days)
-  const thisWeekCompleted = completedJobs.filter(job => {
-    const jobDate = new Date(job.completedDate!);
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    return jobDate >= weekAgo;
-  });
-  
-  const thisWeekEarnings = thisWeekCompleted.reduce((sum, job) => sum + job.expectedPayout, 0);
-  
-  // Average payouts by job type
-  const oneOffJobs = completedJobs.filter(job => job.jobType === 'one-off');
-  const subscriptionJobs = completedJobs.filter(job => job.jobType === 'subscription');
-  const avgOneOffPayout = oneOffJobs.length > 0 ? oneOffJobs.reduce((sum, job) => sum + job.expectedPayout, 0) / oneOffJobs.length : 0;
-  const avgSubscriptionPayout = subscriptionJobs.length > 0 ? subscriptionJobs.reduce((sum, job) => sum + job.expectedPayout, 0) / subscriptionJobs.length : 0;
+  const jobs: Job[] = data?.jobs || [];
+  const notifications: Notification[] = data?.notifications || [];
+  const ratings = data?.ratings || [];
+  const monthlyEarnings = data?.monthlyEarnings || [];
 
   const handleLogout = async () => {
     try {
@@ -175,7 +99,7 @@ const ProviderDashboard = () => {
 
   // Job management functions
   const acceptJob = async (jobId: number) => {
-    await updateBookingStatus(jobId, 'accepted');
+    await updateJobStatus(jobId, 'accepted');
     
     addNotification({
       type: 'new_job',
@@ -190,7 +114,7 @@ const ProviderDashboard = () => {
   };
 
   const completeJob = async (jobId: number) => {
-    await updateBookingStatus(jobId, 'completed');
+    await updateJobStatus(jobId, 'completed');
     
     addNotification({
       type: 'job_completed',
@@ -202,26 +126,20 @@ const ProviderDashboard = () => {
 
   // Notification functions
   const addNotification = (notification: Omit<Notification, 'id' | 'read'>) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: notifications.length + 1,
-      read: false
-    };
-    setNotifications([newNotification, ...notifications]);
+    // This would normally update the notifications in the data source
+    console.log('Adding notification:', notification);
   };
 
   const markAsRead = (id: number) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
+    console.log('Marking notification as read:', id);
   };
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+    console.log('Marking all notifications as read');
   };
 
   const dismissNotification = (id: number) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+    console.log('Dismissing notification:', id);
   };
 
   // Filter and search functions
@@ -287,13 +205,112 @@ const ProviderDashboard = () => {
 
   const availableJobs = filteredJobs.filter(job => job.status === 'requested');
   const myJobs = filteredJobs.filter(job => job.status === 'accepted' || job.status === 'completed');
-  const totalEarnings = jobs
-    .filter(job => job.status === 'completed')
-    .reduce((sum, job) => sum + job.expectedPayout, 0);
+
+  // Enhanced calculations for earnings summary
+  const completedJobs = jobs.filter(job => job.status === 'completed');
+  const pendingPayouts = completedJobs.filter(job => job.payoutStatus === 'pending');
+  const totalPendingAmount = pendingPayouts.reduce((sum, job) => sum + job.expectedPayout, 0);
+  
+  // This week's calculations (mock - last 7 days)
+  const thisWeekCompleted = completedJobs.filter(job => {
+    if (!job.completedDate) return false;
+    const jobDate = new Date(job.completedDate);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return jobDate >= weekAgo;
+  });
+  
+  const thisWeekEarnings = thisWeekCompleted.reduce((sum, job) => sum + job.expectedPayout, 0);
+  
+  // Average payouts by job type
+  const oneOffJobs = completedJobs.filter(job => job.jobType === 'one-off');
+  const subscriptionJobs = completedJobs.filter(job => job.jobType === 'subscription');
+  const avgOneOffPayout = oneOffJobs.length > 0 ? oneOffJobs.reduce((sum, job) => sum + job.expectedPayout, 0) / oneOffJobs.length : 0;
+  const avgSubscriptionPayout = subscriptionJobs.length > 0 ? subscriptionJobs.reduce((sum, job) => sum + job.expectedPayout, 0) / subscriptionJobs.length : 0;
+
+  const totalEarnings = completedJobs.reduce((sum, job) => sum + job.expectedPayout, 0);
   const currentMonthEarnings = monthlyEarnings[monthlyEarnings.length - 1]?.earnings || 0;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <EmptyState
+          icon={AlertCircle}
+          title="Error Loading Dashboard"
+          description={error}
+          action={{
+            label: "Try Again",
+            onClick: () => window.location.reload()
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Show empty state when no data mode is selected
+  if (!data || (jobs.length === 0 && notifications.length === 0 && monthlyEarnings.length === 0)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <EmailVerificationPrompt
+          isOpen={showEmailVerification}
+          onClose={() => setShowEmailVerification(false)}
+          email={user?.email || ''}
+        />
+
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b sticky top-0 z-30">
+          <div className="max-w-7xl mx-auto mobile-container">
+            <div className="mobile-header h-16">
+              <div className="flex items-center space-x-4">
+                <h1 className="text-xl sm:text-2xl font-bold text-purple-600">Longa Provider</h1>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Button 
+                  variant="ghost" 
+                  onClick={handleLogout}
+                  className="text-gray-600 hover:text-gray-900"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  <span className="mobile-hide">Logout</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex-1 flex items-center justify-center p-4">
+          <EmptyState
+            icon={Database}
+            title="No Data Loaded"
+            description="The admin has not configured a data source yet. Please contact your administrator or check back later."
+            className="max-w-md"
+          />
+        </div>
+        
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <EmailVerificationPrompt
+        isOpen={showEmailVerification}
+        onClose={() => setShowEmailVerification(false)}
+        email={user?.email || ''}
+      />
+
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -503,12 +520,10 @@ const ProviderDashboard = () => {
                     ))}
                   </div>
                   {availableJobs.length === 0 && (
-                    <Card>
-                      <CardContent className="p-8 text-center">
-                        <p className="text-gray-500">No available jobs match your current filters.</p>
-                        <p className="text-sm text-gray-400 mt-1">Try adjusting your search or filters!</p>
-                      </CardContent>
-                    </Card>
+                    <EmptyState
+                      title="No Available Jobs"
+                      description="No available jobs match your current filters. Try adjusting your search or filters!"
+                    />
                   )}
                 </div>
               )}
@@ -518,168 +533,172 @@ const ProviderDashboard = () => {
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
                   My Jobs ({myJobs.length})
                 </h3>
-                <div className="space-y-4 lg:hidden">
-                  {/* Mobile card view */}
-                  {myJobs.map((job) => (
-                    <Card key={job.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="mobile-card">
-                        <div className="mobile-stack mb-3">
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900">{job.service}</h4>
-                            <p className="text-sm text-gray-600">{job.clientName}</p>
-                            <p className="text-sm text-gray-500">{job.date}</p>
-                          </div>
-                          <div className="flex flex-col space-y-1">
-                            <Badge className="text-xs bg-green-100 text-green-800">
-                              {job.status}
-                            </Badge>
-                            <Badge className="text-xs bg-blue-100 text-blue-800">
-                              {job.jobType === 'one-off' ? 'One-Off' : 'Package'}
-                            </Badge>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Expected Payout:</span>
-                            <span className="font-medium text-purple-600">N${job.expectedPayout}</span>
-                          </div>
-                          {job.payoutStatus && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Payout Status:</span>
-                              <Badge className={`text-xs ${job.payoutStatus === 'paid' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
-                                {job.payoutStatus}
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {job.status === 'accepted' && (
-                          <Button 
-                            onClick={() => completeJob(job.id)}
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 w-full mt-3"
-                          >
-                            Mark Complete
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
                 
-                {/* Desktop table view */}
-                <Card className="overflow-hidden mobile-hide">
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payout Info</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {myJobs.map((job) => {
-                            const payoutInfo = getPayoutCalculationInfo(job);
-                            const PayoutIcon = payoutInfo.icon;
-                            const PayoutStatusIcon = getPayoutStatusIcon(job.payoutStatus);
+                {myJobs.length === 0 ? (
+                  <EmptyState
+                    title="No Jobs Yet"
+                    description="You haven't accepted any jobs yet. Available jobs will appear above when you're marked as available."
+                  />
+                ) : (
+                  <>
+                    {/* Mobile card view */}
+                    <div className="space-y-4 lg:hidden">
+                      {myJobs.map((job) => (
+                        <Card key={job.id} className="hover:shadow-md transition-shadow">
+                          <CardContent className="mobile-card">
+                            <div className="mobile-stack mb-3">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900">{job.service}</h4>
+                                <p className="text-sm text-gray-600">{job.clientName}</p>
+                                <p className="text-sm text-gray-500">{job.date}</p>
+                              </div>
+                              <div className="flex flex-col space-y-1">
+                                <Badge className={`text-xs ${getStatusColor(job.status)}`}>
+                                  {job.status}
+                                </Badge>
+                                <Badge className={`text-xs ${getJobTypeColor(job.jobType)}`}>
+                                  {job.jobType === 'one-off' ? 'One-Off' : 'Package'}
+                                </Badge>
+                              </div>
+                            </div>
                             
-                            return (
-                              <tr key={job.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div>
-                                    <div className="text-sm font-medium text-gray-900">{job.service}</div>
-                                    <Badge className={`${getJobTypeColor(job.jobType)} text-xs mt-1`}>
-                                      {job.jobType === 'one-off' ? 'One-Off' : 'Package'}
-                                    </Badge>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                  {job.clientName}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                  <div className="flex flex-col">
-                                    <span>{job.date}</span>
-                                    {job.completedDate && (
-                                      <span className="text-xs text-green-600">Completed: {job.completedDate}</span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex flex-col space-y-1">
-                                    <div className="flex items-center text-sm text-purple-600 font-medium">
-                                      <PayoutIcon className="h-3 w-3 mr-1" />
-                                      N${job.expectedPayout}
-                                      {job.actualPayout && job.actualPayout !== job.expectedPayout && (
-                                        <span className="text-xs text-gray-500 ml-1">
-                                          (Actual: N${job.actualPayout})
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      {job.jobType === 'one-off' ? `${job.commissionPercentage}% commission` : 'Fixed fee'}
-                                    </div>
-                                    {job.payoutStatus && (
-                                      <div className="flex items-center">
-                                        <PayoutStatusIcon className="h-3 w-3 mr-1" />
-                                        <Badge className={`${getPayoutStatusColor(job.payoutStatus)} text-xs`}>
-                                          {job.payoutStatus}
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Expected Payout:</span>
+                                <span className="font-medium text-purple-600">N${job.expectedPayout}</span>
+                              </div>
+                              {job.payoutStatus && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Payout Status:</span>
+                                  <Badge className={`text-xs ${getPayoutStatusColor(job.payoutStatus)}`}>
+                                    {job.payoutStatus}
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {job.status === 'accepted' && (
+                              <Button 
+                                onClick={() => completeJob(job.id)}
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 w-full mt-3"
+                              >
+                                Mark Complete
+                              </Button>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {/* Desktop table view */}
+                    <Card className="overflow-hidden mobile-hide">
+                      <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payout Info</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {myJobs.map((job) => {
+                                const payoutInfo = getPayoutCalculationInfo(job);
+                                const PayoutIcon = payoutInfo.icon;
+                                const PayoutStatusIcon = getPayoutStatusIcon(job.payoutStatus);
+                                
+                                return (
+                                  <tr key={job.id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-900">{job.service}</div>
+                                        <Badge className={`${getJobTypeColor(job.jobType)} text-xs mt-1`}>
+                                          {job.jobType === 'one-off' ? 'One-Off' : 'Package'}
                                         </Badge>
                                       </div>
-                                    )}
-                                    {job.payoutDate && (
-                                      <div className="text-xs text-green-600">
-                                        Paid: {job.payoutDate}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                      {job.clientName}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                      <div className="flex flex-col">
+                                        <span>{job.date}</span>
+                                        {job.completedDate && (
+                                          <span className="text-xs text-green-600">Completed: {job.completedDate}</span>
+                                        )}
                                       </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex flex-col">
-                                    <Badge className={`${getStatusColor(job.status)} border-0 mb-1`}>
-                                      {job.status}
-                                    </Badge>
-                                    {job.rating && (
-                                      <div className="flex items-center">
-                                        <Star className="h-3 w-3 text-yellow-400 fill-current mr-1" />
-                                        <span className="text-xs text-gray-600">{job.rating}/5</span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <div className="flex flex-col space-y-1">
+                                        <div className="flex items-center text-sm text-purple-600 font-medium">
+                                          <PayoutIcon className="h-3 w-3 mr-1" />
+                                          N${job.expectedPayout}
+                                          {job.actualPayout && job.actualPayout !== job.expectedPayout && (
+                                            <span className="text-xs text-gray-500 ml-1">
+                                              (Actual: N${job.actualPayout})
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                          {job.jobType === 'one-off' ? `${job.commissionPercentage}% commission` : 'Fixed fee'}
+                                        </div>
+                                        {job.payoutStatus && (
+                                          <div className="flex items-center">
+                                            <PayoutStatusIcon className="h-3 w-3 mr-1" />
+                                            <Badge className={`${getPayoutStatusColor(job.payoutStatus)} text-xs`}>
+                                              {job.payoutStatus}
+                                            </Badge>
+                                          </div>
+                                        )}
+                                        {job.payoutDate && (
+                                          <div className="text-xs text-green-600">
+                                            Paid: {job.payoutDate}
+                                          </div>
+                                        )}
                                       </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                  {job.status === 'accepted' && (
-                                    <Button 
-                                      onClick={() => completeJob(job.id)}
-                                      size="sm"
-                                      className="bg-green-600 hover:bg-green-700"
-                                    >
-                                      Mark Complete
-                                    </Button>
-                                  )}
-                                  {job.status === 'completed' && (
-                                    <span className="text-green-600 font-medium">✓ Completed</span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    {myJobs.length === 0 && (
-                      <div className="p-8 text-center">
-                        <p className="text-gray-500">No jobs match your current filters.</p>
-                        <p className="text-sm text-gray-400 mt-1">Try adjusting your search or filters!</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <div className="flex flex-col">
+                                        <Badge className={`${getStatusColor(job.status)} border-0 mb-1`}>
+                                          {job.status}
+                                        </Badge>
+                                        {job.rating && (
+                                          <div className="flex items-center">
+                                            <Star className="h-3 w-3 text-yellow-400 fill-current mr-1" />
+                                            <span className="text-xs text-gray-600">{job.rating}/5</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                      {job.status === 'accepted' && (
+                                        <Button 
+                                          onClick={() => completeJob(job.id)}
+                                          size="sm"
+                                          className="bg-green-600 hover:bg-green-700"
+                                        >
+                                          Mark Complete
+                                        </Button>
+                                      )}
+                                      {job.status === 'completed' && (
+                                        <span className="text-green-600 font-medium">✓ Completed</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
               </div>
             </div>
 

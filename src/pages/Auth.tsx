@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PhoneValidation } from "@/components/profile/PhoneValidation";
+import { EmailVerificationPrompt } from "@/components/auth/EmailVerificationPrompt";
 
 type AuthMode = 'login' | 'signup' | 'forgot-password';
 
@@ -19,6 +19,7 @@ const Auth = () => {
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -117,7 +118,6 @@ const Auth = () => {
           email: formData.email,
           password: formData.password,
           rememberMe: formData.rememberMe
-          // Role removed from login
         });
         
         if (success) {
@@ -134,11 +134,16 @@ const Auth = () => {
         });
 
         if (result.success) {
-          toast({
-            title: "Account created!",
-            description: "You can now sign in with your credentials.",
-          });
-          setMode('login');
+          // Show email verification prompt for provider signups
+          if (formData.role === 'provider') {
+            setShowEmailVerification(true);
+          } else {
+            toast({
+              title: "Account created!",
+              description: "You can now sign in with your credentials.",
+            });
+            setMode('login');
+          }
         }
       } else if (mode === 'forgot-password') {
         await requestPasswordReset({ email: formData.email });
@@ -199,6 +204,15 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+      <EmailVerificationPrompt
+        isOpen={showEmailVerification}
+        onClose={() => {
+          setShowEmailVerification(false);
+          setMode('login');
+        }}
+        email={formData.email}
+      />
+
       {/* Header */}
       <div className="absolute top-6 left-6">
         <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate('/')}>

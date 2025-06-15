@@ -31,6 +31,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const initializeAuth = async () => {
       try {
+        // Set up auth state listener first
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
             if (!mounted) return;
@@ -40,6 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setError(null);
 
             if (session?.user) {
+              // Use setTimeout to prevent deadlocks
               setTimeout(async () => {
                 if (!mounted) return;
 
@@ -54,36 +56,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 if (mounted && profile) {
                   setUser(profile);
                   
-                  // Handle automatic redirect after admin setup or login
+                  // Handle automatic redirect after login or admin setup
                   if (event === 'SIGNED_IN') {
-                    const adminSetupCompleted = localStorage.getItem('admin_setup_completed');
+                    const currentPath = window.location.pathname;
+                    console.log('User signed in, current path:', currentPath, 'User role:', profile.role);
                     
-                    if (profile.role === 'admin') {
-                      // Clear the setup flag since we're now logged in
-                      if (adminSetupCompleted) {
-                        localStorage.removeItem('admin_setup_completed');
-                      }
-                      
-                      // Redirect to admin dashboard if not already there
-                      if (window.location.pathname === '/' || window.location.pathname === '/auth') {
-                        setTimeout(() => {
+                    // Only redirect if we're on auth or admin-setup pages
+                    if (currentPath === '/auth' || currentPath === '/admin-setup') {
+                      switch (profile.role) {
+                        case 'admin':
+                          console.log('Redirecting admin to dashboard');
                           window.location.href = '/dashboard/admin';
-                        }, 100);
-                      }
-                    } else {
-                      // Redirect based on user role
-                      const currentPath = window.location.pathname;
-                      if (currentPath === '/' || currentPath === '/auth') {
-                        switch (profile.role) {
-                          case 'provider':
-                            window.location.href = '/dashboard/provider';
-                            break;
-                          case 'client':
-                            window.location.href = '/dashboard/client';
-                            break;
-                          default:
-                            break;
-                        }
+                          break;
+                        case 'provider':
+                          window.location.href = '/dashboard/provider';
+                          break;
+                        case 'client':
+                          window.location.href = '/dashboard/client';
+                          break;
+                        default:
+                          break;
                       }
                     }
                   }
@@ -98,7 +90,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             if (event === 'SIGNED_OUT') {
               setUser(null);
-              // Clear any lingering admin setup flags
               localStorage.removeItem('admin_setup_completed');
             }
 
@@ -106,6 +97,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         );
 
+        // Get initial session
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           console.error('Session error:', error);
@@ -115,7 +107,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (session?.user && mounted) {
           let profile = await fetchUserProfile(session.user.id);
           
-          // If no profile exists, try to create one
           if (!profile) {
             console.log('No profile found during initialization, creating one...');
             profile = await createUserProfileIfNeeded(session.user.id, session.user);
@@ -123,12 +114,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           
           if (profile) {
             setUser(profile);
+            setSession(session);
           }
         }
 
-        // Check if admin setup is needed
-        const adminSetupNeeded = await checkAdminSetup();
-        setNeedsAdminSetup(adminSetupNeeded);
+        // Check if admin setup is needed only if no authenticated user
+        if (!session?.user) {
+          const adminSetupNeeded = await checkAdminSetup();
+          setNeedsAdminSetup(adminSetupNeeded);
+        } else {
+          setNeedsAdminSetup(false);
+        }
         
         setIsInitialized(true);
         setIsLoading(false);
@@ -221,7 +217,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       setSession(null);
       
-      // Clear admin setup flags
       localStorage.removeItem('admin_setup_completed');
       
       toast({
@@ -323,7 +318,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const verifyEmail = async (userId: string, token: string): Promise<boolean> => {
-    // This is handled automatically by Supabase Auth
     return true;
   };
 
@@ -337,6 +331,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (success) {
         setNeedsAdminSetup(false);
+        
+        // Mark admin setup as completed
+        localStorage.setItem('admin_setup_completed', 'true');
         
         toast({
           title: "Admin account created!",
@@ -394,5 +391,4 @@ export const useAuth = () => {
   return context;
 };
 
-// Export types for backward compatibility
 export type { UserProfile as User, UserRole };

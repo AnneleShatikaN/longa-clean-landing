@@ -3,15 +3,16 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Database, FileText, Ban } from 'lucide-react';
+import { Database, FileText, Ban, Shield, AlertTriangle } from 'lucide-react';
 import { useDataMode, DataMode } from '@/contexts/DataModeContext';
 import { useToast } from '@/hooks/use-toast';
 
 export const DataModeToggle: React.FC = () => {
-  const { dataMode, setDataMode, isLoading } = useDataMode();
+  const { dataMode, setDataMode, isLoading, isDevelopmentMode } = useDataMode();
   const { toast } = useToast();
 
   const handleModeChange = (mode: DataMode) => {
+    const previousMode = dataMode;
     setDataMode(mode);
     
     const modeLabels = {
@@ -20,10 +21,14 @@ export const DataModeToggle: React.FC = () => {
       none: 'No Data'
     };
 
+    // Enhanced admin notification
     toast({
-      title: "Data Mode Changed",
-      description: `Switched to ${modeLabels[mode]}`,
+      title: "Global Data Mode Changed",
+      description: `All users switched from ${modeLabels[previousMode]} to ${modeLabels[mode]}. This affects the entire application.`,
+      duration: 5000,
     });
+
+    console.log(`[Admin] Changed global data mode from ${previousMode} to ${mode}`);
   };
 
   const getModeIcon = (mode: DataMode) => {
@@ -45,9 +50,20 @@ export const DataModeToggle: React.FC = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-medium">Data Source</CardTitle>
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Shield className="h-4 w-4 text-purple-600" />
+          Global Data Source Control
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Development Mode Warning */}
+        {isDevelopmentMode && (
+          <div className="flex items-center gap-2 p-2 bg-orange-50 rounded-lg border border-orange-200">
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
+            <span className="text-xs text-orange-700">Development Mode</span>
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           <Badge className={getModeColor(dataMode)}>
             {getModeIcon(dataMode)}
@@ -89,9 +105,14 @@ export const DataModeToggle: React.FC = () => {
         </Select>
         
         <div className="text-xs text-gray-500">
-          {dataMode === 'live' && 'Fetching real data from Supabase database'}
-          {dataMode === 'mock' && 'Using static mock data from JSON file'}
-          {dataMode === 'none' && 'No data loaded - empty state'}
+          {dataMode === 'live' && 'All users see real data from Supabase database'}
+          {dataMode === 'mock' && 'All users see static mock data from JSON files'}
+          {dataMode === 'none' && 'All users see empty state - no data loaded'}
+        </div>
+
+        <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-xs text-blue-700 font-medium">Admin Control</p>
+          <p className="text-xs text-blue-600">Changes here affect the entire application for all users.</p>
         </div>
       </CardContent>
     </Card>

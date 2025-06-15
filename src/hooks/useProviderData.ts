@@ -110,6 +110,8 @@ export const useProviderData = () => {
           monthlyEarnings: providerData.monthlyEarnings || [],
           profile: providerData.profile
         });
+        
+        console.log(`[useProviderData] Loaded mock data for provider ${currentProviderId}`);
       } else if (dataMode === 'live') {
         // TODO: Implement live data fetching from Supabase
         setData({
@@ -118,14 +120,16 @@ export const useProviderData = () => {
           ratings: [],
           monthlyEarnings: []
         });
+        console.log('[useProviderData] Live data mode - empty data returned');
       } else {
         // No data mode
         setData(null);
+        console.log('[useProviderData] No data mode - null data returned');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load provider data';
       setError(errorMessage);
-      console.error('Error loading provider data:', err);
+      console.error('[useProviderData] Error loading provider data:', err);
     } finally {
       setIsLoading(false);
     }
@@ -134,6 +138,20 @@ export const useProviderData = () => {
   // Load data when component mounts or data mode changes
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  // Listen for global data mode changes
+  useEffect(() => {
+    const handleDataModeChange = () => {
+      console.log('[useProviderData] Global data mode changed, reloading data...');
+      loadData();
+    };
+
+    window.addEventListener('datamode-changed', handleDataModeChange);
+    
+    return () => {
+      window.removeEventListener('datamode-changed', handleDataModeChange);
+    };
   }, [loadData]);
 
   // Job status update function
@@ -155,9 +173,10 @@ export const useProviderData = () => {
       });
 
       setData(prev => prev ? { ...prev, jobs: updatedJobs } : null);
+      console.log(`[useProviderData] Updated job ${jobId} status to ${newStatus}`);
     } else if (dataMode === 'live') {
       // TODO: Implement live data update to Supabase
-      console.log(`Updating job ${jobId} to status ${newStatus}`);
+      console.log(`[useProviderData] Updating job ${jobId} to status ${newStatus} in live mode`);
     }
   };
 

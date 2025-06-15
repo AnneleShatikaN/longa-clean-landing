@@ -1,0 +1,64 @@
+
+{
+  "launchData": {
+    "metrics": [
+      {
+        "label": "Active Users",
+        "value": 342,
+        "change": "+28%",
+        "trend": "up"
+      },
+      {
+        "label": "Services Created",
+        "value": 18,
+        "change": "+6",
+        "trend": "up"
+      },
+      {
+        "label": "Revenue (24h)",
+        "value": "NAD 4,780",
+        "change": "+22%",
+        "trend": "up"
+      },
+      {
+        "label": "System Health",
+        "value": "99.1%",
+        "change": "+0.4%",
+        "trend": "up"
+      }
+    ],
+    "systemHealth": {
+      "apiResponseTime": 98,
+      "databasePerformance": 97,
+      "serverUptime": 99.9,
+      "status": "excellent"
+    },
+    "issues": [
+      {
+        "id": 1,
+        "title": "High user activity detected",
+        "severity": "low",
+        "status": "monitoring"
+      },
+      {
+        "id": 2,
+        "title": "Payment gateway optimization",
+        "severity": "medium",
+        "status": "investigating"
+      },
+      {
+        "id": 3,
+        "title": "SMS delivery optimized",
+        "severity": "low",
+        "status": "resolved"
+      }
+    ],
+    "launchReadiness": {
+      "servicesConfigured": 15,
+      "totalServices": 18,
+      "usersRegistered": 342,
+      "paymentsSetup": true,
+      "notificationsEnabled": true
+    }
+  }
+}

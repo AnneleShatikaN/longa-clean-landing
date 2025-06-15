@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { UserCheck, Activity, AlertCircle, Settings, Save, Ban, RefreshCw } from 'lucide-react';
+import { UserCheck, Activity, AlertCircle, Settings, Save, Ban, RefreshCw, Trash2 } from 'lucide-react';
 import ServiceManagement from '@/components/admin/ServiceManagement';
 import { PayoutSystemTabs } from '@/components/admin/PayoutSystemTabs';
 import { FinancialManagement } from '@/components/admin/FinancialManagement';
@@ -16,11 +16,14 @@ import { DataModeToggle } from '@/components/admin/DataModeToggle';
 import { DataModeProvider } from '@/contexts/DataModeContext';
 import { useAdminData } from '@/hooks/useAdminData';
 import { useToast } from '@/hooks/use-toast';
+import { AdminOverview } from '@/components/admin/AdminOverview';
+import { PendingActions } from '@/components/admin/PendingActions';
 
 const AdminDashboardContent: React.FC = () => {
   const { toast } = useToast();
   const { data, isLoading, error, refetch } = useAdminData();
   const [activeTab, setActiveTab] = useState('overview');
+
   const [settings, setSettings] = useState({
     maintenanceMode: false,
     newRegistrations: true,
@@ -215,66 +218,9 @@ const AdminDashboardContent: React.FC = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Bookings</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {data?.bookings?.length > 0 ? (
-                    <div className="space-y-4">
-                      {data.bookings.slice(0, 4).map((booking: any) => (
-                        <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <UserCheck className="h-8 w-8 bg-blue-100 p-2 rounded-full text-blue-600" />
-                            <div>
-                              <p className="font-medium">{booking.serviceName || 'Unknown Service'}</p>
-                              <p className="text-sm text-gray-600">{booking.clientName || 'Unknown Client'} • {booking.booking_date}</p>
-                            </div>
-                          </div>
-                          <Badge>{booking.status || 'pending'}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">No recent bookings</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pending Actions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 border rounded-lg border-yellow-200 bg-yellow-50">
-                      <div className="flex items-center gap-3">
-                        <UserCheck className="h-8 w-8 bg-yellow-100 p-2 rounded-full text-yellow-600" />
-                        <div>
-                          <p className="font-medium">Provider Verification</p>
-                          <p className="text-sm text-gray-600">3 providers awaiting approval</p>
-                        </div>
-                      </div>
-                      <Button size="sm">Review</Button>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-3 border rounded-lg border-red-200 bg-red-50">
-                      <div className="flex items-center gap-3">
-                        <Settings className="h-8 w-8 bg-red-100 p-2 rounded-full text-red-600" />
-                        <div>
-                          <p className="font-medium">Failed Payments</p>
-                          <p className="text-sm text-gray-600">2 payment retries needed</p>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="destructive">Fix</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <AdminOverview data={data} isLoading={isLoading} />
+              <PendingActions data={data} isLoading={isLoading} onRefresh={refetch} />
             </div>
           </TabsContent>
 

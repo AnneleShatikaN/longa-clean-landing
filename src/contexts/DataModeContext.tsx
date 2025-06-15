@@ -38,26 +38,28 @@ export const DataModeProvider: React.FC<{ children: ReactNode }> = ({ children }
             fetch('/data/launch_mock.json'),
             fetch('/data/provider_mock_data.json')
           ]);
-          
+
           const adminData = await adminResponse.json();
           const launchData = await launchResponse.json();
           const providerData = await providerResponse.json();
-          
-          // Merge all the mock data
-          setMockData({
-            ...adminData,
-            ...launchData,
-            ...providerData
-          });
+
+          const merged = {
+            admin: adminData,
+            launch: launchData,
+            provider: providerData,
+          };
+
+          setMockData(merged);
+          console.log('[DataModeContext] Set mockData:', merged);
         } catch (error) {
-          console.error('Failed to load mock data:', error);
+          console.error('[DataModeContext] Failed to load mock data:', error);
           setMockData(null);
         } finally {
           setIsLoading(false);
         }
       } else {
-        // Clear mock data when not in mock mode
         setMockData(null);
+        console.log('[DataModeContext] Cleared mock data (not in mock mode)');
       }
     };
 

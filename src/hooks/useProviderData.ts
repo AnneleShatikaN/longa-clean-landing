@@ -107,6 +107,7 @@ export const useProviderData = () => {
   };
 
   const fetchMockData = async (): Promise<ProviderData> => {
+    // Directly fetch the provider mock file in fallback case
     const response = await fetch('/data/provider_mock_data.json');
     if (!response.ok) {
       throw new Error('Failed to load mock data');
@@ -116,32 +117,57 @@ export const useProviderData = () => {
 
   const fetchData = useCallback(async () => {
     if (dataModeLoading) return;
-    
+
     setIsLoading(true);
     setError(null);
 
     try {
       switch (dataMode) {
         case 'live':
-          const liveData = await fetchLiveData();
-          setData(liveData);
+          {
+            console.log('[ProviderData] Fetching live data');
+            const liveData = await fetchLiveData();
+            setData(liveData);
+          }
           break;
         case 'mock':
-          // First try to use provider-specific data from the global mock data
-          if (mockData?.jobs || mockData?.notifications || mockData?.ratings || mockData?.monthlyEarnings) {
-            setData({
-              jobs: mockData.jobs || [],
-              notifications: mockData.notifications || [],
-              ratings: mockData.ratings || [],
-              monthlyEarnings: mockData.monthlyEarnings || []
-            });
-          } else {
-            // Fallback to provider-specific mock file if global mock data doesn't have provider data
-            const providerMockData = await fetchMockData();
-            setData(providerMockData);
+          {
+            // Check if mockData has a valid .provider property (after the context fix)
+            console.log('[ProviderData] Provided mockData:', mockData);
+
+            let dataSource: ProviderData | null = null;
+            if (
+              mockData &&
+              typeof mockData === 'object' &&
+              mockData.provider &&
+              (Array.isArray(mockData.provider.jobs) ||
+                Array.isArray(mockData.provider.notifications) ||
+                Array.isArray(mockData.provider.ratings) ||
+                Array.isArray(mockData.provider.monthlyEarnings))
+            ) {
+              dataSource = {
+                jobs: mockData.provider.jobs || [],
+                notifications: mockData.provider.notifications || [],
+                ratings: mockData.provider.ratings || [],
+                monthlyEarnings: mockData.provider.monthlyEarnings || []
+              };
+              console.log('[ProviderData] Loaded provider data from merged global mockData:', dataSource);
+            } else {
+              // fallback: fetch directly
+              const fallbackProviderData = await fetchMockData();
+              dataSource = {
+                jobs: fallbackProviderData.jobs || [],
+                notifications: fallbackProviderData.notifications || [],
+                ratings: fallbackProviderData.ratings || [],
+                monthlyEarnings: fallbackProviderData.monthlyEarnings || [],
+              };
+              console.log('[ProviderData] Loaded provider data from fallback provider_mock_data.json:', dataSource);
+            }
+            setData(dataSource);
           }
           break;
         case 'none':
+          console.log('[ProviderData] Data mode is none. Setting empty data.');
           setData({
             jobs: [],
             notifications: [],
@@ -149,10 +175,14 @@ export const useProviderData = () => {
             monthlyEarnings: []
           });
           break;
+        default:
+          setData(null);
+          break;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
       setData(null);
+      console.error('[ProviderData] Error during fetchData:', err);
     } finally {
       setIsLoading(false);
     }

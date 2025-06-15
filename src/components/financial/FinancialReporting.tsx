@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,16 +5,42 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Download, TrendingUp, DollarSign, Users, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Download, TrendingUp, DollarSign, Users, AlertCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+interface ReportData {
+  total_revenue: number;
+  total_payouts: number;
+  platform_commission: number;
+  bookings: Array<{
+    id: string;
+    booking_date: string;
+    total_amount: number;
+    provider_payout: number;
+    service_name: string;
+    client_name: string;
+    provider_name: string;
+    status: string;
+  }>;
+  payouts: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    created_at: string;
+    provider_name: string;
+    payment_method: string;
+  }>;
+}
 
 export const FinancialReporting = () => {
   const { toast } = useToast();
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
   const [reportType, setReportType] = useState('monthly');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const financialMetrics = [
     {
@@ -71,22 +96,229 @@ export const FinancialReporting = () => {
     }
   ];
 
-  const handleGenerateReport = async () => {
-    await new Promise(resolve => setTimeout(resolve, 1500));
+  const fetchReportData = async (): Promise<ReportData | null> => {
+    try {
+      const fromDate = dateFrom ? format(dateFrom, 'yyyy-MM-dd') : format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
+      const toDate = dateTo ? format(dateTo, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+
+      // Fetch bookings data
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          booking_date,
+          total_amount,
+          provider_payout,
+          status,
+          services!inner(name),
+          client:users!client_id(full_name),
+          provider:users!provider_id(full_name)
+        `)
+        .gte('booking_date', fromDate)
+        .lte('booking_date', toDate)
+        .eq('status', 'completed');
+
+      if (bookingsError) throw bookingsError;
+
+      // Fetch payouts data
+      const { data: payoutsData, error: payoutsError } = await supabase
+        .from('payouts')
+        .select(`
+          id,
+          amount,
+          status,
+          created_at,
+          payment_method,
+          users!provider_id(full_name)
+        `)
+        .gte('created_at', fromDate)
+        .lte('created_at', toDate);
+
+      if (payoutsError) throw payoutsError;
+
+      // Calculate totals
+      const totalRevenue = bookingsData?.reduce((sum, booking) => sum + Number(booking.total_amount), 0) || 0;
+      const totalPayouts = payoutsData?.reduce((sum, payout) => sum + Number(payout.amount), 0) || 0;
+      const platformCommission = totalRevenue - totalPayouts;
+
+      return {
+        total_revenue: totalRevenue,
+        total_payouts: totalPayouts,
+        platform_commission: platformCommission,
+        bookings: bookingsData?.map(booking => ({
+          id: booking.id,
+          booking_date: booking.booking_date,
+          total_amount: Number(booking.total_amount),
+          provider_payout: Number(booking.provider_payout || 0),
+          service_name: booking.services?.name || 'Unknown Service',
+          client_name: booking.client?.full_name || 'Unknown Client',
+          provider_name: booking.provider?.full_name || 'Unknown Provider',
+          status: booking.status
+        })) || [],
+        payouts: payoutsData?.map(payout => ({
+          id: payout.id,
+          amount: Number(payout.amount),
+          status: payout.status,
+          created_at: payout.created_at,
+          provider_name: payout.users?.full_name || 'Unknown Provider',
+          payment_method: payout.payment_method || 'Unknown Method'
+        })) || []
+      };
+    } catch (error) {
+      console.error('Error fetching report data:', error);
+      return null;
+    }
+  };
+
+  const generateCSV = (data: ReportData): string => {
+    const headers = [
+      'Report Type', 'Date From', 'Date To', 'Total Revenue (NAD)', 'Total Payouts (NAD)', 'Platform Commission (NAD)'
+    ];
     
-    toast({
-      title: "Report Generated",
-      description: "Financial report has been generated and is ready for download.",
-    });
+    const summaryRows = [
+      [
+        reportType,
+        dateFrom ? format(dateFrom, 'yyyy-MM-dd') : 'N/A',
+        dateTo ? format(dateTo, 'yyyy-MM-dd') : 'N/A',
+        data.total_revenue.toFixed(2),
+        data.total_payouts.toFixed(2),
+        data.platform_commission.toFixed(2)
+      ]
+    ];
+
+    const bookingHeaders = [
+      '', // Empty row
+      'BOOKINGS DETAILS',
+      'Booking ID', 'Date', 'Service', 'Client', 'Provider', 'Amount (NAD)', 'Provider Payout (NAD)', 'Status'
+    ];
+
+    const bookingRows = data.bookings.map(booking => [
+      booking.id,
+      booking.booking_date,
+      booking.service_name,
+      booking.client_name,
+      booking.provider_name,
+      booking.total_amount.toFixed(2),
+      booking.provider_payout.toFixed(2),
+      booking.status
+    ]);
+
+    const payoutHeaders = [
+      '', // Empty row
+      'PAYOUTS DETAILS',
+      'Payout ID', 'Provider', 'Amount (NAD)', 'Payment Method', 'Status', 'Date'
+    ];
+
+    const payoutRows = data.payouts.map(payout => [
+      payout.id,
+      payout.provider_name,
+      payout.amount.toFixed(2),
+      payout.payment_method,
+      payout.status,
+      format(new Date(payout.created_at), 'yyyy-MM-dd')
+    ]);
+
+    const allRows = [
+      headers,
+      ...summaryRows,
+      bookingHeaders.slice(0, 1), // Empty row
+      bookingHeaders.slice(1, 2), // "BOOKINGS DETAILS"
+      bookingHeaders.slice(2), // Actual headers
+      ...bookingRows,
+      payoutHeaders.slice(0, 1), // Empty row
+      payoutHeaders.slice(1, 2), // "PAYOUTS DETAILS"
+      payoutHeaders.slice(2), // Actual headers
+      ...payoutRows
+    ];
+
+    return allRows.map(row => 
+      row.map(cell => `"${cell}"`).join(',')
+    ).join('\n');
+  };
+
+  const downloadFile = (content: string, filename: string, type: string) => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleGenerateReport = async () => {
+    setIsGenerating(true);
+    
+    try {
+      const reportData = await fetchReportData();
+      
+      if (!reportData) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch report data. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (reportData.bookings.length === 0 && reportData.payouts.length === 0) {
+        toast({
+          title: "No data available",
+          description: "No data found for the selected date range.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const timestamp = format(new Date(), 'yyyyMMdd');
+      const filename = `longa-report-${timestamp}.csv`;
+      const csvContent = generateCSV(reportData);
+      
+      downloadFile(csvContent, filename, 'text/csv;charset=utf-8;');
+      
+      toast({
+        title: "Download Successful",
+        description: `Report downloaded as ${filename}`,
+        className: "border-green-200 bg-green-50",
+      });
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate report. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleReconciliation = async (period: string) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: "Reconciliation Started",
-      description: `Financial reconciliation for ${period} has been initiated.`,
-    });
+    try {
+      // Call the reconciliation function
+      const { data, error } = await supabase.rpc('perform_financial_reconciliation', {
+        start_date: dateFrom ? format(dateFrom, 'yyyy-MM-dd') : format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd'),
+        end_date: dateTo ? format(dateTo, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
+      });
+
+      if (error) throw error;
+      
+      toast({
+        title: "Reconciliation Started",
+        description: `Financial reconciliation for ${period} has been completed.`,
+        className: "border-green-200 bg-green-50",
+      });
+    } catch (error) {
+      console.error('Error performing reconciliation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to perform reconciliation. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -195,9 +427,22 @@ export const FinancialReporting = () => {
             </div>
 
             <div className="flex items-end">
-              <Button onClick={handleGenerateReport} className="w-full">
-                <Download className="h-4 w-4 mr-2" />
-                Generate Report
+              <Button 
+                onClick={handleGenerateReport} 
+                className="w-full"
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Generate Report
+                  </>
+                )}
               </Button>
             </div>
           </div>

@@ -13,9 +13,19 @@ interface DataModeContextType {
 const DataModeContext = createContext<DataModeContextType | undefined>(undefined);
 
 export const DataModeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [dataMode, setDataMode] = useState<DataMode>('live');
+  // Initialize from localStorage or default to 'live'
+  const [dataMode, setDataModeState] = useState<DataMode>(() => {
+    const saved = localStorage.getItem('longa-data-mode');
+    return (saved as DataMode) || 'live';
+  });
   const [mockData, setMockData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Persist data mode changes to localStorage
+  const setDataMode = (mode: DataMode) => {
+    setDataModeState(mode);
+    localStorage.setItem('longa-data-mode', mode);
+  };
 
   useEffect(() => {
     const loadMockData = async () => {
@@ -45,6 +55,9 @@ export const DataModeProvider: React.FC<{ children: ReactNode }> = ({ children }
         } finally {
           setIsLoading(false);
         }
+      } else {
+        // Clear mock data when not in mock mode
+        setMockData(null);
       }
     };
 

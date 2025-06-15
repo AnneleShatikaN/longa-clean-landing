@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,7 @@ import { useSupportData } from '@/hooks/useSupportData';
 import { useSupportContacts } from '@/hooks/useSupportContacts';
 import { FAQModal } from './FAQModal';
 import { EditableContactCard } from './EditableContactCard';
+import { AddEmergencyContactModal } from './AddEmergencyContactModal';
 
 interface Ticket {
   id: string;
@@ -39,7 +39,7 @@ interface Ticket {
 
 export const SupportSystem: React.FC = () => {
   const { faqs, docLinks, isLoading, addFAQ, updateFAQ, deleteFAQ } = useSupportData();
-  const { contacts, isLoading: contactsLoading, updateContact } = useSupportContacts();
+  const { contacts, isLoading: contactsLoading, updateContact, addEmergencyContact } = useSupportContacts();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -137,25 +137,21 @@ export const SupportSystem: React.FC = () => {
     }
   };
 
-  // Filter contacts by type
-  const getContactsByType = (type: string) => {
-    return contacts.filter(contact => contact.contact_type === type);
-  };
-
+  // Filter contacts by type with emergency support
   const getRegularContacts = () => {
     return contacts.filter(contact => 
-      contact.contact_type === 'email' || 
-      contact.contact_type === 'phone' || 
-      contact.contact_type === 'live_chat'
+      !contact.is_emergency && (
+        contact.contact_type === 'email' || 
+        contact.contact_type === 'phone' || 
+        contact.contact_type === 'live_chat'
+      )
     );
   };
 
   const getEmergencyContacts = () => {
     return contacts.filter(contact => 
-      contact.contact_type.includes('emergency') || 
-      contact.display_name.toLowerCase().includes('emergency') ||
-      contact.display_name.toLowerCase().includes('outage') ||
-      contact.display_name.toLowerCase().includes('security')
+      contact.is_emergency || 
+      contact.contact_type.includes('emergency')
     );
   };
 
@@ -503,10 +499,15 @@ export const SupportSystem: React.FC = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Emergency Contacts</CardTitle>
-                  <p className="text-sm text-gray-600">
-                    Critical contact information for system emergencies. Click edit to update values.
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Emergency Contacts</CardTitle>
+                      <p className="text-sm text-gray-600">
+                        Critical contact information for system emergencies. Click edit to update values.
+                      </p>
+                    </div>
+                    <AddEmergencyContactModal onAddContact={addEmergencyContact} />
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {contactsLoading ? (
@@ -522,33 +523,10 @@ export const SupportSystem: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <div className="flex items-center mb-2">
-                          <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
-                          <p className="font-medium text-red-800">System Outage</p>
-                        </div>
-                        <p className="text-sm text-red-600">+264 XX XXX XXXX (24/7)</p>
-                        <p className="text-xs text-red-500 mt-1">Configure emergency contacts in your support settings</p>
-                      </div>
-                      
-                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="flex items-center mb-2">
-                          <Phone className="h-5 w-5 text-yellow-500 mr-2" />
-                          <p className="font-medium text-yellow-800">Payment Issues</p>
-                        </div>
-                        <p className="text-sm text-yellow-600">payments@longa.com</p>
-                        <p className="text-xs text-yellow-500 mt-1">Configure emergency contacts in your support settings</p>
-                      </div>
-                      
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-center mb-2">
-                          <Shield className="h-5 w-5 text-blue-500 mr-2" />
-                          <p className="font-medium text-blue-800">Security Concerns</p>
-                        </div>
-                        <p className="text-sm text-blue-600">security@longa.com</p>
-                        <p className="text-xs text-blue-500 mt-1">Configure emergency contacts in your support settings</p>
-                      </div>
+                    <div className="text-center py-8 text-gray-500">
+                      <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>No emergency contacts configured</p>
+                      <p className="text-sm">Add emergency contacts for critical situations</p>
                     </div>
                   )}
                 </CardContent>

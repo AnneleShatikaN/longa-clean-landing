@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { 
   Mail, 
   Phone, 
@@ -15,7 +16,9 @@ import {
   Eye, 
   EyeOff,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Shield,
+  AlertTriangle
 } from 'lucide-react';
 import { SupportContact } from '@/hooks/useSupportContacts';
 
@@ -26,7 +29,8 @@ interface EditableContactCardProps {
     contactValue: string,
     displayName?: string,
     description?: string,
-    availabilityHours?: string
+    availabilityHours?: string,
+    isEmergency?: boolean
   ) => Promise<{ success: boolean; isVerified: boolean }>;
 }
 
@@ -41,10 +45,17 @@ export const EditableContactCard: React.FC<EditableContactCardProps> = ({
     contact_value: contact.contact_value,
     display_name: contact.display_name,
     description: contact.description || '',
-    availability_hours: contact.availability_hours || ''
+    availability_hours: contact.availability_hours || '',
+    is_emergency: contact.is_emergency || false
   });
 
-  const getContactIcon = (type: string) => {
+  const getContactIcon = (type: string, isEmergency: boolean = false) => {
+    if (isEmergency) {
+      if (type.includes('security')) return <Shield className="h-6 w-6 text-blue-500" />;
+      if (type.includes('outage')) return <AlertTriangle className="h-6 w-6 text-red-500" />;
+      return <AlertCircle className="h-6 w-6 text-orange-500" />;
+    }
+    
     switch (type) {
       case 'email':
         return <Mail className="h-6 w-6 text-blue-500" />;
@@ -55,6 +66,14 @@ export const EditableContactCard: React.FC<EditableContactCardProps> = ({
       default:
         return <Mail className="h-6 w-6 text-gray-500" />;
     }
+  };
+
+  const getCardBackground = (isEmergency: boolean, contactType: string) => {
+    if (!isEmergency) return '';
+    
+    if (contactType.includes('security')) return 'bg-blue-50 border-blue-200';
+    if (contactType.includes('outage')) return 'bg-red-50 border-red-200';
+    return 'bg-orange-50 border-orange-200';
   };
 
   const validateContact = (value: string, type: string): boolean => {
@@ -81,7 +100,8 @@ export const EditableContactCard: React.FC<EditableContactCardProps> = ({
         formData.contact_value,
         formData.display_name,
         formData.description,
-        formData.availability_hours
+        formData.availability_hours,
+        formData.is_emergency
       );
 
       if (result.success) {
@@ -97,7 +117,8 @@ export const EditableContactCard: React.FC<EditableContactCardProps> = ({
       contact_value: contact.contact_value,
       display_name: contact.display_name,
       description: contact.description || '',
-      availability_hours: contact.availability_hours || ''
+      availability_hours: contact.availability_hours || '',
+      is_emergency: contact.is_emergency || false
     });
     setIsEditing(false);
   };
@@ -120,11 +141,11 @@ export const EditableContactCard: React.FC<EditableContactCardProps> = ({
   };
 
   return (
-    <Card>
+    <Card className={getCardBackground(formData.is_emergency, contact.contact_type)}>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            {getContactIcon(contact.contact_type)}
+            {getContactIcon(contact.contact_type, formData.is_emergency)}
             <div>
               {isEditing ? (
                 <Input
@@ -144,6 +165,12 @@ export const EditableContactCard: React.FC<EditableContactCardProps> = ({
                   )}
                   {contact.is_verified ? 'Verified' : 'Invalid'}
                 </Badge>
+                {formData.is_emergency && (
+                  <Badge variant="destructive">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Emergency
+                  </Badge>
+                )}
                 {!isValid && isEditing && (
                   <Badge variant="destructive">
                     <AlertCircle className="h-3 w-3 mr-1" />
@@ -233,6 +260,16 @@ export const EditableContactCard: React.FC<EditableContactCardProps> = ({
             <p className="text-xs text-gray-500">{contact.availability_hours}</p>
           )}
         </div>
+
+        {isEditing && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              checked={formData.is_emergency}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_emergency: checked })}
+            />
+            <label className="text-sm font-medium">Emergency Contact</label>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

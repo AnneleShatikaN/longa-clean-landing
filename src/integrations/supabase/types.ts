@@ -1086,6 +1086,7 @@ export type Database = {
           display_name: string
           id: string
           is_active: boolean | null
+          is_emergency: boolean | null
           is_verified: boolean | null
           updated_at: string | null
         }
@@ -1098,6 +1099,7 @@ export type Database = {
           display_name: string
           id?: string
           is_active?: boolean | null
+          is_emergency?: boolean | null
           is_verified?: boolean | null
           updated_at?: string | null
         }
@@ -1110,6 +1112,7 @@ export type Database = {
           display_name?: string
           id?: string
           is_active?: boolean | null
+          is_emergency?: boolean | null
           is_verified?: boolean | null
           updated_at?: string | null
         }
@@ -1684,13 +1687,22 @@ export type Database = {
         Returns: Json
       }
       update_support_contact: {
-        Args: {
-          p_contact_type: string
-          p_contact_value: string
-          p_display_name?: string
-          p_description?: string
-          p_availability_hours?: string
-        }
+        Args:
+          | {
+              p_contact_type: string
+              p_contact_value: string
+              p_display_name?: string
+              p_description?: string
+              p_availability_hours?: string
+            }
+          | {
+              p_contact_type: string
+              p_contact_value: string
+              p_display_name?: string
+              p_description?: string
+              p_availability_hours?: string
+              p_is_emergency?: boolean
+            }
         Returns: Json
       }
     }

@@ -12,6 +12,7 @@ export interface SupportContact {
   availability_hours?: string;
   is_active: boolean;
   is_verified: boolean;
+  is_emergency?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -51,7 +52,8 @@ export const useSupportContacts = () => {
     contactValue: string,
     displayName?: string,
     description?: string,
-    availabilityHours?: string
+    availabilityHours?: string,
+    isEmergency?: boolean
   ) => {
     try {
       const { data, error } = await supabase.rpc('update_support_contact', {
@@ -59,17 +61,17 @@ export const useSupportContacts = () => {
         p_contact_value: contactValue,
         p_display_name: displayName,
         p_description: description,
-        p_availability_hours: availabilityHours
+        p_availability_hours: availabilityHours,
+        p_is_emergency: isEmergency
       });
 
       if (error) throw error;
 
-      // Type cast the response properly through unknown first
       const response = data as unknown as UpdateContactResponse;
 
       if (response?.success) {
         toast.success('Contact updated successfully');
-        await fetchContacts(); // Refresh the data
+        await fetchContacts();
         return { success: true, isVerified: response.is_verified || false };
       } else {
         throw new Error(response?.error || 'Update failed');
@@ -81,6 +83,40 @@ export const useSupportContacts = () => {
     }
   };
 
+  const addEmergencyContact = async (
+    contactType: string,
+    contactValue: string,
+    displayName: string,
+    description?: string,
+    availabilityHours?: string
+  ) => {
+    try {
+      const { data, error } = await supabase
+        .from('support_contacts')
+        .insert([{
+          contact_type: contactType,
+          contact_value: contactValue,
+          display_name: displayName,
+          description,
+          availability_hours: availabilityHours,
+          is_emergency: true,
+          is_active: true
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success('Emergency contact added successfully');
+      await fetchContacts();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error adding emergency contact:', error);
+      toast.error('Failed to add emergency contact');
+      return { success: false };
+    }
+  };
+
   useEffect(() => {
     fetchContacts();
   }, []);
@@ -89,6 +125,7 @@ export const useSupportContacts = () => {
     contacts,
     isLoading,
     updateContact,
+    addEmergencyContact,
     refreshContacts: fetchContacts
   };
 };

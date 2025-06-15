@@ -46,12 +46,12 @@ const App: React.FC = () => {
         <BrowserRouter>
           <AuthProvider>
             <UserProvider>
-              <ServiceProvider>
-                <BookingProvider>
-                  <SupabaseBookingProvider>
-                    <PayoutProvider>
-                      <DataProvider>
-                        <DataModeProvider>
+              <DataModeProvider>
+                <ServiceProvider>
+                  <BookingProvider>
+                    <SupabaseBookingProvider>
+                      <PayoutProvider>
+                        <DataProvider>
                           <NotificationProvider>
                             <TooltipProvider>
                               <SessionManager />
@@ -126,12 +126,12 @@ const App: React.FC = () => {
                               <Sonner />
                             </TooltipProvider>
                           </NotificationProvider>
-                        </DataModeProvider>
-                      </DataProvider>
-                    </PayoutProvider>
-                  </SupabaseBookingProvider>
-                </BookingProvider>
-              </ServiceProvider>
+                        </DataProvider>
+                      </PayoutProvider>
+                    </SupabaseBookingProvider>
+                  </BookingProvider>
+                </ServiceProvider>
+              </DataModeProvider>
             </UserProvider>
           </AuthProvider>
         </BrowserRouter>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,9 @@ import {
   Plus
 } from 'lucide-react';
 import { useSupportData } from '@/hooks/useSupportData';
+import { useSupportContacts } from '@/hooks/useSupportContacts';
 import { FAQModal } from './FAQModal';
+import { EditableContactCard } from './EditableContactCard';
 
 interface Ticket {
   id: string;
@@ -56,6 +57,7 @@ const mockTickets: Ticket[] = [
 
 export const SupportSystem: React.FC = () => {
   const { faqs, docLinks, isLoading, addFAQ, updateFAQ, deleteFAQ } = useSupportData();
+  const { contacts, isLoading: contactsLoading, updateContact } = useSupportContacts();
   const [tickets, setTickets] = useState(mockTickets);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -426,40 +428,33 @@ export const SupportSystem: React.FC = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Contact Channels</CardTitle>
+                  <p className="text-sm text-gray-600">
+                    Manage your support contact information. Click edit to update values.
+                  </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <Mail className="h-6 w-6 text-blue-500" />
-                    <div>
-                      <p className="font-medium">Email Support</p>
-                      <p className="text-sm text-gray-600">support@longa.com</p>
-                      <p className="text-xs text-gray-500">24/7 response within 2 hours</p>
+                  {contactsLoading ? (
+                    <div className="text-center py-8">Loading contacts...</div>
+                  ) : (
+                    <div className="space-y-4">
+                      {contacts.map((contact) => (
+                        <EditableContactCard
+                          key={contact.id}
+                          contact={contact}
+                          onUpdate={updateContact}
+                        />
+                      ))}
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <Phone className="h-6 w-6 text-green-500" />
-                    <div>
-                      <p className="font-medium">Phone Support</p>
-                      <p className="text-sm text-gray-600">+264 XX XXX XXXX</p>
-                      <p className="text-xs text-gray-500">Mon-Fri 8AM-6PM WAT</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <MessageSquare className="h-6 w-6 text-purple-500" />
-                    <div>
-                      <p className="font-medium">Live Chat</p>
-                      <p className="text-sm text-gray-600">Available in app</p>
-                      <p className="text-xs text-gray-500">Instant response during business hours</p>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
                   <CardTitle>Emergency Contacts</CardTitle>
+                  <p className="text-sm text-gray-600">
+                    Critical contact information for system emergencies.
+                  </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="p-3 bg-red-50 border border-red-200 rounded-lg">

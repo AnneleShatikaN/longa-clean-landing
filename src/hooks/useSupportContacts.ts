@@ -1,0 +1,84 @@
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useEnhancedToast } from '@/hooks/useEnhancedToast';
+
+export interface SupportContact {
+  id: string;
+  contact_type: string;
+  contact_value: string;
+  display_name: string;
+  description?: string;
+  availability_hours?: string;
+  is_active: boolean;
+  is_verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const useSupportContacts = () => {
+  const [contacts, setContacts] = useState<SupportContact[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useEnhancedToast();
+
+  const fetchContacts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('support_contacts')
+        .select('*')
+        .eq('is_active', true)
+        .order('contact_type');
+
+      if (error) throw error;
+      setContacts(data || []);
+    } catch (error) {
+      console.error('Error fetching support contacts:', error);
+      toast.error('Failed to load support contacts');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateContact = async (
+    contactType: string,
+    contactValue: string,
+    displayName?: string,
+    description?: string,
+    availabilityHours?: string
+  ) => {
+    try {
+      const { data, error } = await supabase.rpc('update_support_contact', {
+        p_contact_type: contactType,
+        p_contact_value: contactValue,
+        p_display_name: displayName,
+        p_description: description,
+        p_availability_hours: availabilityHours
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success('Contact updated successfully');
+        await fetchContacts(); // Refresh the data
+        return { success: true, isVerified: data.is_verified };
+      } else {
+        throw new Error(data?.error || 'Update failed');
+      }
+    } catch (error) {
+      console.error('Error updating contact:', error);
+      toast.error('Failed to update contact');
+      return { success: false, isVerified: false };
+    }
+  };
+
+  useEffect(() => {
+    fetchContacts();
+  }, []);
+
+  return {
+    contacts,
+    isLoading,
+    updateContact,
+    refreshContacts: fetchContacts
+  };
+};

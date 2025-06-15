@@ -1076,6 +1076,45 @@ export type Database = {
         }
         Relationships: []
       }
+      support_contacts: {
+        Row: {
+          availability_hours: string | null
+          contact_type: string
+          contact_value: string
+          created_at: string | null
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean | null
+          is_verified: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          availability_hours?: string | null
+          contact_type: string
+          contact_value: string
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          availability_hours?: string | null
+          contact_type?: string
+          contact_value?: string
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       support_faqs: {
         Row: {
           answer: string
@@ -1641,6 +1680,16 @@ export type Database = {
           endpoint?: string
           api_key?: string
           new_status?: string
+        }
+        Returns: Json
+      }
+      update_support_contact: {
+        Args: {
+          p_contact_type: string
+          p_contact_value: string
+          p_display_name?: string
+          p_description?: string
+          p_availability_hours?: string
         }
         Returns: Json
       }

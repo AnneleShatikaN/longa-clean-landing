@@ -2,7 +2,7 @@
 {
   "jobs": [
     {
-      "id": 1,
+      "id": "1",
       "service": "House Cleaning",
       "clientName": "Sarah Johnson",
       "clientPhone": "+264 81 234 5678",
@@ -18,7 +18,7 @@
       "providerFee": null
     },
     {
-      "id": 2,
+      "id": "2",
       "service": "Garden Maintenance",
       "clientName": "Michael Brown",
       "clientPhone": "+264 81 345 6789",
@@ -34,7 +34,7 @@
       "providerFee": null
     },
     {
-      "id": 3,
+      "id": "3",
       "service": "Laundry Service",
       "clientName": "Emma Davis",
       "clientPhone": "+264 81 456 7890",
@@ -78,7 +78,7 @@
   "ratings": [
     {
       "id": 1,
-      "jobId": 3,
+      "jobId": "3",
       "clientName": "Emma Davis",
       "rating": 5,
       "comment": "Excellent service! Very professional and thorough.",

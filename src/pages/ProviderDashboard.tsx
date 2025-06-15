@@ -70,7 +70,8 @@ const ProviderDashboard = () => {
 
   // Check email verification status
   useEffect(() => {
-    if (user && !user.email_confirmed) {
+    // Check if user exists and has email_confirmed property from Supabase auth
+    if (user && user.email && !user.email_confirmed_at) {
       setShowEmailVerification(true);
     }
   }, [user]);
@@ -98,7 +99,7 @@ const ProviderDashboard = () => {
   };
 
   // Job management functions
-  const acceptJob = async (jobId: number) => {
+  const acceptJob = async (jobId: string) => {
     await updateJobStatus(jobId, 'accepted');
     
     addNotification({
@@ -109,11 +110,11 @@ const ProviderDashboard = () => {
     });
   };
 
-  const declineJob = (jobId: number) => {
+  const declineJob = (jobId: string) => {
     console.log(`Declined job ${jobId}`);
   };
 
-  const completeJob = async (jobId: number) => {
+  const completeJob = async (jobId: string) => {
     await updateJobStatus(jobId, 'completed');
     
     addNotification({

@@ -4,7 +4,7 @@ import { useDataMode } from '@/contexts/DataModeContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Job {
-  id: number;
+  id: string; // Changed from number to string to match Supabase UUID
   service: string;
   clientName: string;
   clientPhone: string;
@@ -38,7 +38,7 @@ interface Notification {
 
 interface Rating {
   id: number;
-  jobId: number;
+  jobId: string; // Changed from number to string
   clientName: string;
   rating: number;
   comment: string;
@@ -67,29 +67,33 @@ export const useProviderData = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchLiveData = async (): Promise<ProviderData> => {
-    // Fetch real data from Supabase
+    // Fetch real data from Supabase with proper joins to get service and client names
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
-      .select('*')
+      .select(`
+        *,
+        services(name),
+        users!bookings_client_id_fkey(full_name)
+      `)
       .order('created_at', { ascending: false });
 
     if (bookingsError) throw bookingsError;
 
-    // Transform bookings to jobs format
+    // Transform bookings to jobs format with proper property mapping
     const jobs: Job[] = (bookings || []).map(booking => ({
       id: booking.id,
-      service: booking.service_name || 'Service',
-      clientName: booking.client_name || 'Client',
+      service: booking.services?.name || 'Service',
+      clientName: booking.users?.full_name || 'Client',
       clientPhone: '+264 81 123 4567',
       clientEmail: 'client@email.com',
       location: 'Windhoek',
       amount: booking.total_amount || 0,
       date: new Date(booking.created_at).toISOString().split('T')[0],
       status: booking.status as 'requested' | 'accepted' | 'completed',
-      duration: '2h 0m',
-      completedDate: booking.completed_at ? new Date(booking.completed_at).toISOString().split('T')[0] : undefined,
+      duration: `${Math.floor((booking.duration_minutes || 120) / 60)}h ${(booking.duration_minutes || 120) % 60}m`,
+      completedDate: booking.status === 'completed' ? new Date(booking.created_at).toISOString().split('T')[0] : undefined,
       jobType: 'one-off',
-      expectedPayout: booking.total_amount * 0.85 || 0,
+      expectedPayout: (booking.total_amount || 0) * 0.85,
       commissionPercentage: 15,
       payoutStatus: booking.status === 'completed' ? 'paid' : 'pending'
     }));
@@ -158,7 +162,7 @@ export const useProviderData = () => {
     fetchData();
   }, [fetchData]);
 
-  const updateJobStatus = async (jobId: number, status: 'accepted' | 'completed') => {
+  const updateJobStatus = async (jobId: string, status: 'accepted' | 'completed') => {
     if (!data) return;
 
     if (dataMode === 'live') {

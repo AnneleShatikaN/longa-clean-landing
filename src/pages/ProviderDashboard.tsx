@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -73,7 +72,7 @@ const ProviderDashboard = () => {
   // Check email verification status
   useEffect(() => {
     // Check if user exists and email verification status
-    if (user && user.email && (!user.email_confirmed_at && !user.emailVerified)) {
+    if (user && user.email && !user.isEmailVerified) {
       setShowEmailVerification(true);
     }
   }, [user]);

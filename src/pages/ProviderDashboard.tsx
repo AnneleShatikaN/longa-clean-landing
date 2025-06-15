@@ -57,7 +57,7 @@ interface Notification {
 
 const ProviderDashboard = () => {
   const { user, logout } = useAuth();
-  const { data, isLoading, error, updateJobStatus } = useProviderData();
+  const { data, isLoading, error, updateJobStatus, isValidProvider } = useProviderData();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -77,17 +77,29 @@ const ProviderDashboard = () => {
     }
   }, [user]);
 
+  // Handle non-provider users
+  useEffect(() => {
+    if (user && !isValidProvider && !isLoading) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have provider access. Please contact your administrator.",
+        variant: "destructive"
+      });
+      navigate('/');
+    }
+  }, [user, isValidProvider, isLoading, navigate, toast]);
+
   // Use mock profile data if available, otherwise fall back to user data
   const providerProfile = data?.profile || {
-    name: user?.name || 'Provider',
+    name: user?.name || user?.full_name || 'Provider',
     email: user?.email || '',
-    phone: '',
-    rating: 0,
-    totalJobs: 0,
+    phone: user?.phone || '',
+    rating: user?.rating || 0,
+    totalJobs: user?.total_jobs || 0,
     specialties: [],
     available: true,
     location: '',
-    joinDate: '',
+    joinDate: user?.created_at || '',
     lastActive: ''
   };
 
@@ -274,8 +286,8 @@ const ProviderDashboard = () => {
     );
   }
 
-  // Show empty state when no data mode is selected
-  if (!data || (jobs.length === 0 && notifications.length === 0 && monthlyEarnings.length === 0)) {
+  // Show empty state when no data mode is selected or user is not a provider
+  if (!data || !isValidProvider || (jobs.length === 0 && notifications.length === 0 && monthlyEarnings.length === 0)) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <EmailVerificationPrompt
@@ -307,10 +319,17 @@ const ProviderDashboard = () => {
 
         <div className="flex-1 flex items-center justify-center p-4">
           <EmptyState
-            icon={Database}
-            title="No Data Loaded"
-            description="The admin has not configured a data source yet. Please contact your administrator or check back later."
+            icon={!isValidProvider ? AlertCircle : Database}
+            title={!isValidProvider ? "Access Denied" : "No Data Loaded"}
+            description={!isValidProvider 
+              ? "You don't have provider access. Please contact your administrator."
+              : "The admin has not configured a data source yet. Please contact your administrator or check back later."
+            }
             className="max-w-md"
+            action={!isValidProvider ? {
+              label: "Go to Home",
+              onClick: () => navigate('/')
+            } : undefined}
           />
         </div>
         

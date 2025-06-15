@@ -52,6 +52,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
   const [requirements, setRequirements] = useState<string[]>([]);
   const [newRequirement, setNewRequirement] = useState('');
   const [coverageAreas, setCoverageAreas] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ServiceData>({
     resolver: zodResolver(serviceSchema),
@@ -98,26 +99,68 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
     form.setValue('requirements', updatedReqs);
   };
 
+  const validateCurrentStep = () => {
+    const values = form.getValues();
+    
+    switch (currentStep) {
+      case 1:
+        return values.name && values.type;
+      case 2:
+        return values.clientPrice >= 50 && values.commissionPercentage >= 5;
+      case 3:
+        return values.description;
+      case 4:
+        return true; // Coverage areas are optional
+      default:
+        return false;
+    }
+  };
+
   const onSubmit = async (data: ServiceData) => {
+    setIsSubmitting(true);
     try {
+      // Validate required fields
+      if (!data.name || !data.type) {
+        toast.error('Please fill in all required fields (title and type)');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Create the service with all collected data
       await createService({
         ...data,
-        tags: tags.length > 0 ? tags : ['general']
+        tags: tags.length > 0 ? tags : ['general'],
+        requirements: requirements
       });
+      
       toast.success('Service created successfully!');
+      
+      // Reset form and state
       form.reset();
       setTags([]);
       setRequirements([]);
       setCoverageAreas([]);
       setCurrentStep(1);
+      setSelectedCategory('');
+      setSelectedIcon('');
+      
       onSuccess?.();
     } catch (error) {
       toast.error('Failed to create service. Please try again.');
       console.error('Service creation error:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 4));
+  const nextStep = () => {
+    if (validateCurrentStep()) {
+      setCurrentStep(prev => Math.min(prev + 1, 4));
+    } else {
+      toast.error('Please complete all required fields before proceeding');
+    }
+  };
+  
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
   return (
@@ -146,7 +189,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Service Name</FormLabel>
+                        <FormLabel>Service Name *</FormLabel>
                         <FormControl>
                           <Input placeholder="e.g., Deep House Cleaning" {...field} />
                         </FormControl>
@@ -160,7 +203,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
                     name="type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Service Type</FormLabel>
+                        <FormLabel>Service Type *</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -221,7 +264,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
                     name="clientPrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Client Price (NAD)</FormLabel>
+                        <FormLabel>Client Price (NAD) *</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -241,7 +284,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
                     name="commissionPercentage"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Commission Percentage (%)</FormLabel>
+                        <FormLabel>Commission Percentage (%) *</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -307,7 +350,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Service Description</FormLabel>
+                      <FormLabel>Service Description *</FormLabel>
                       <FormControl>
                         <Textarea 
                           placeholder="Describe what this service includes..."
@@ -439,8 +482,8 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
                     Next
                   </Button>
                 ) : (
-                  <Button type="submit">
-                    Create Service
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Creating...' : 'Create Service'}
                   </Button>
                 )}
               </div>

@@ -9,12 +9,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Search, Filter, Edit, Trash2, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useServices } from '@/contexts/ServiceContext';
 import ServiceForm from './ServiceForm';
+import ServiceViewModal from './ServiceViewModal';
+import ServiceEditModal from './ServiceEditModal';
 import EmptyServicesState from './EmptyServicesState';
 import { toast } from 'sonner';
 
 const ServiceManagement: React.FC = () => {
   const { services, deleteService, toggleServiceStatus, isLoading } = useServices();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'one-off' | 'subscription'>('all');
@@ -46,6 +51,22 @@ const ServiceManagement: React.FC = () => {
     } catch (error) {
       toast.error('Failed to update service status');
     }
+  };
+
+  const handleViewService = (serviceId: string) => {
+    setSelectedServiceId(serviceId);
+    setIsViewModalOpen(true);
+  };
+
+  const handleEditService = (serviceId: string) => {
+    setSelectedServiceId(serviceId);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseModals = () => {
+    setIsViewModalOpen(false);
+    setIsEditModalOpen(false);
+    setSelectedServiceId(null);
   };
 
   if (isLoading) {
@@ -204,11 +225,21 @@ const ServiceManagement: React.FC = () => {
                   )}
                   
                   <div className="flex gap-2 pt-2">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleEditService(service.id)}
+                    >
                       <Edit className="h-3 w-3 mr-1" />
                       Edit
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleViewService(service.id)}
+                    >
                       <Eye className="h-3 w-3 mr-1" />
                       View
                     </Button>
@@ -248,6 +279,24 @@ const ServiceManagement: React.FC = () => {
           />
         </DialogContent>
       </Dialog>
+
+      {/* View Service Modal */}
+      {selectedServiceId && (
+        <ServiceViewModal
+          serviceId={selectedServiceId}
+          isOpen={isViewModalOpen}
+          onClose={handleCloseModals}
+        />
+      )}
+
+      {/* Edit Service Modal */}
+      {selectedServiceId && (
+        <ServiceEditModal
+          serviceId={selectedServiceId}
+          isOpen={isEditModalOpen}
+          onClose={handleCloseModals}
+        />
+      )}
     </div>
   );
 };

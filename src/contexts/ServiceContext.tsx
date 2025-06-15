@@ -137,7 +137,14 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (dataMode === 'mock') {
         // Load from mockData.admin.services if available, or fallback to empty
-        const mockServices = mockData?.admin?.services || [];
+        const mockServices = (mockData?.admin?.services || []).map((service: any) => ({
+          ...service,
+          id: String(service.id),
+          duration: {
+            hours: typeof service.duration?.hours === 'number' ? service.duration.hours : 0,
+            minutes: typeof service.duration?.minutes === 'number' ? service.duration.minutes : 0,
+          },
+        }));
         dispatch({ type: 'SET_SERVICES', payload: mockServices });
         dispatch({ type: 'SET_LOADING', payload: false });
       } else if (dataMode === 'none') {
@@ -183,7 +190,10 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
         clientPrice: validatedData.clientPrice,
         providerFee: validatedData.providerFee || (validatedData.clientPrice * (1 - (validatedData.commissionPercentage || 15) / 100)),
         commissionPercentage: validatedData.commissionPercentage || 15,
-        duration: validatedData.duration!,
+        duration: {
+          hours: validatedData.duration?.hours || 0,
+          minutes: validatedData.duration?.minutes || 0,
+        },
         status: validatedData.status || 'active',
         tags: validatedData.tags || [],
         description: validatedData.description || '',
@@ -254,7 +264,15 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
 
     if (dataMode === 'mock') {
       // Local state update for mock data
-      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates } });
+      // Ensure update types match Service interface (id: string and duration always has hours and minutes)
+      const safeUpdates: Partial<Service> = { ...updates };
+      if (updates.duration) {
+        safeUpdates.duration = {
+          hours: updates.duration.hours ?? 0,
+          minutes: updates.duration.minutes ?? 0,
+        };
+      }
+      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates: safeUpdates } });
       dispatch({ type: 'SET_LOADING', payload: false });
       toast({
         title: "Success (Mock)",

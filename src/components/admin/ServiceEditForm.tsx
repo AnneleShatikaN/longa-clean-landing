@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Plus, X, Save, Cancel } from 'lucide-react';
+import { Plus, X, Save } from 'lucide-react';
 import { serviceSchema, ServiceData } from '@/schemas/validation';
 import { useServices, Service } from '@/contexts/ServiceContext';
 import { toast } from 'sonner';
@@ -285,7 +284,7 @@ const ServiceEditForm: React.FC<ServiceEditFormProps> = ({
             <div className="flex justify-end gap-3 pt-4 border-t">
               {onCancel && (
                 <Button type="button" variant="outline" onClick={onCancel}>
-                  <Cancel className="h-4 w-4 mr-2" />
+                  <X className="h-4 w-4 mr-2" />
                   Cancel
                 </Button>
               )}

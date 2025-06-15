@@ -38,24 +38,27 @@ interface Notification {
 
 interface Rating {
   id: number;
+  jobId: string; // Changed from number to string to match Supabase UUID
   rating: number;
   comment: string;
-  client: string;
+  clientName: string; // Changed from 'client' to 'clientName'
   date: string;
   service: string;
 }
 
-interface MonthlyEarning {
+interface MonthlyEarnings { // Changed from MonthlyEarning to MonthlyEarnings
   month: string;
   earnings: number;
-  jobs: number;
+  jobs: number; // This will be mapped to jobsCompleted
+  jobsCompleted: number; // Added for EarningsTracker compatibility
+  averageRating: number; // Added for EarningsTracker compatibility
 }
 
 interface ProviderData {
   jobs: Job[];
   notifications: Notification[];
   ratings: Rating[];
-  monthlyEarnings: MonthlyEarning[];
+  monthlyEarnings: MonthlyEarnings[];
   profile?: {
     id: string;
     name: string;

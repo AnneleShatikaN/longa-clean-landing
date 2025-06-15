@@ -100,17 +100,17 @@
       }
     ],
     "ratings": [
-      { "id": 1, "rating": 5, "comment": "Excellent service, very thorough cleaning", "client": "Jane Smith", "date": "2024-06-10", "service": "House Cleaning" },
-      { "id": 2, "rating": 4, "comment": "Good work, arrived on time", "client": "Maria Rodriguez", "date": "2024-06-05", "service": "House Cleaning" },
-      { "id": 3, "rating": 5, "comment": "Professional and efficient", "client": "Peter Anderson", "date": "2024-06-01", "service": "Deep Office Cleaning" }
+      { "id": 1, "jobId": "job-1", "rating": 5, "comment": "Excellent service, very thorough cleaning", "clientName": "Jane Smith", "date": "2024-06-10", "service": "House Cleaning" },
+      { "id": 2, "jobId": "job-4", "rating": 4, "comment": "Good work, arrived on time", "clientName": "Maria Rodriguez", "date": "2024-06-05", "service": "House Cleaning" },
+      { "id": 3, "jobId": "job-5", "rating": 5, "comment": "Professional and efficient", "clientName": "Peter Anderson", "date": "2024-06-01", "service": "Deep Office Cleaning" }
     ],
     "monthlyEarnings": [
-      { "month": "January", "earnings": 2400, "jobs": 20 },
-      { "month": "February", "earnings": 2700, "jobs": 22 },
-      { "month": "March", "earnings": 3100, "jobs": 26 },
-      { "month": "April", "earnings": 3400, "jobs": 28 },
-      { "month": "May", "earnings": 3800, "jobs": 32 },
-      { "month": "June", "earnings": 2200, "jobs": 18 }
+      { "month": "January", "earnings": 2400, "jobs": 20, "jobsCompleted": 20, "averageRating": 4.7 },
+      { "month": "February", "earnings": 2700, "jobs": 22, "jobsCompleted": 22, "averageRating": 4.8 },
+      { "month": "March", "earnings": 3100, "jobs": 26, "jobsCompleted": 26, "averageRating": 4.9 },
+      { "month": "April", "earnings": 3400, "jobs": 28, "jobsCompleted": 28, "averageRating": 4.8 },
+      { "month": "May", "earnings": 3800, "jobs": 32, "jobsCompleted": 32, "averageRating": 4.9 },
+      { "month": "June", "earnings": 2200, "jobs": 18, "jobsCompleted": 18, "averageRating": 4.8 }
     ]
   },
   "provider-2": {
@@ -204,17 +204,17 @@
       }
     ],
     "ratings": [
-      { "id": 4, "rating": 4, "comment": "Fixed the leak quickly and professionally", "client": "Jane Smith", "date": "2024-06-12", "service": "Plumbing Repair" },
-      { "id": 5, "rating": 5, "comment": "Expert electrical work, very satisfied", "client": "Corporate Tech", "date": "2024-06-08", "service": "Electrical Repairs" },
-      { "id": 6, "rating": 5, "comment": "Reliable and skilled technician", "client": "Home Solutions", "date": "2024-06-03", "service": "HVAC Maintenance" }
+      { "id": 4, "jobId": "job-4", "rating": 4, "comment": "Fixed the leak quickly and professionally", "clientName": "Jane Smith", "date": "2024-06-12", "service": "Plumbing Repair" },
+      { "id": 5, "jobId": "job-7", "rating": 5, "comment": "Expert electrical work, very satisfied", "clientName": "Corporate Tech", "date": "2024-06-08", "service": "Electrical Repairs" },
+      { "id": 6, "jobId": "job-8", "rating": 5, "comment": "Reliable and skilled technician", "clientName": "Home Solutions", "date": "2024-06-03", "service": "HVAC Maintenance" }
     ],
     "monthlyEarnings": [
-      { "month": "January", "earnings": 4200, "jobs": 28 },
-      { "month": "February", "earnings": 4600, "jobs": 31 },
-      { "month": "March", "earnings": 5100, "jobs": 34 },
-      { "month": "April", "earnings": 5400, "jobs": 36 },
-      { "month": "May", "earnings": 5800, "jobs": 39 },
-      { "month": "June", "earnings": 3400, "jobs": 23 }
+      { "month": "January", "earnings": 4200, "jobs": 28, "jobsCompleted": 28, "averageRating": 4.8 },
+      { "month": "February", "earnings": 4600, "jobs": 31, "jobsCompleted": 31, "averageRating": 4.9 },
+      { "month": "March", "earnings": 5100, "jobs": 34, "jobsCompleted": 34, "averageRating": 4.9 },
+      { "month": "April", "earnings": 5400, "jobs": 36, "jobsCompleted": 36, "averageRating": 4.8 },
+      { "month": "May", "earnings": 5800, "jobs": 39, "jobsCompleted": 39, "averageRating": 4.9 },
+      { "month": "June", "earnings": 3400, "jobs": 23, "jobsCompleted": 23, "averageRating": 4.9 }
     ]
   },
   "provider-3": {
@@ -292,15 +292,15 @@
       }
     ],
     "ratings": [
-      { "id": 7, "rating": 5, "comment": "Professional nail care, excellent results", "client": "Peter Anderson", "date": "2024-06-08", "service": "Manicure & Pedicure" },
-      { "id": 8, "rating": 4, "comment": "Relaxing massage therapy", "client": "Maria Rodriguez", "date": "2024-06-02", "service": "Wellness Massage" },
-      { "id": 9, "rating": 5, "comment": "Amazing beauty treatment", "client": "Lisa Johnson", "date": "2024-05-28", "service": "Beauty Package" }
+      { "id": 7, "jobId": "job-7", "rating": 5, "comment": "Professional nail care, excellent results", "clientName": "Peter Anderson", "date": "2024-06-08", "service": "Manicure & Pedicure" },
+      { "id": 8, "jobId": "job-9", "rating": 4, "comment": "Relaxing massage therapy", "clientName": "Maria Rodriguez", "date": "2024-06-02", "service": "Wellness Massage" },
+      { "id": 9, "jobId": "job-10", "rating": 5, "comment": "Amazing beauty treatment", "clientName": "Lisa Johnson", "date": "2024-05-28", "service": "Beauty Package" }
     ],
     "monthlyEarnings": [
-      { "month": "March", "earnings": 1400, "jobs": 12 },
-      { "month": "April", "earnings": 1800, "jobs": 15 },
-      { "month": "May", "earnings": 2200, "jobs": 18 },
-      { "month": "June", "earnings": 1600, "jobs": 13 }
+      { "month": "March", "earnings": 1400, "jobs": 12, "jobsCompleted": 12, "averageRating": 4.6 },
+      { "month": "April", "earnings": 1800, "jobs": 15, "jobsCompleted": 15, "averageRating": 4.7 },
+      { "month": "May", "earnings": 2200, "jobs": 18, "jobsCompleted": 18, "averageRating": 4.8 },
+      { "month": "June", "earnings": 1600, "jobs": 13, "jobsCompleted": 13, "averageRating": 4.7 }
     ]
   }
 }

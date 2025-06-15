@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -8,34 +8,6 @@ export const useAdminData = () => {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        switch (dataMode) {
-          case 'live':
-            await fetchLiveData();
-            break;
-          case 'mock':
-            setData(mockData);
-            break;
-          case 'none':
-            setData(null);
-            break;
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch data');
-        setData(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [dataMode, mockData]);
 
   const fetchLiveData = async () => {
     // Fetch dashboard stats
@@ -69,5 +41,33 @@ export const useAdminData = () => {
     });
   };
 
-  return { data, isLoading, error, refetch: () => fetchData() };
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      switch (dataMode) {
+        case 'live':
+          await fetchLiveData();
+          break;
+        case 'mock':
+          setData(mockData);
+          break;
+        case 'none':
+          setData(null);
+          break;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch data');
+      setData(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dataMode, mockData]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, isLoading, error, refetch: fetchData };
 };

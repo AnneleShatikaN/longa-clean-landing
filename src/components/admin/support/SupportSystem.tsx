@@ -34,31 +34,10 @@ interface Ticket {
   createdAt: string;
 }
 
-const mockTickets: Ticket[] = [
-  {
-    id: 'T001',
-    title: 'Payment not processing',
-    description: 'Customer unable to complete payment for booking',
-    status: 'open',
-    priority: 'high',
-    category: 'Payment',
-    createdAt: '2024-01-15',
-  },
-  {
-    id: 'T002',
-    title: 'App login issues',
-    description: 'User cannot access their account',
-    status: 'in_progress',
-    priority: 'medium',
-    category: 'Authentication',
-    createdAt: '2024-01-14',
-  },
-];
-
 export const SupportSystem: React.FC = () => {
   const { faqs, docLinks, isLoading, addFAQ, updateFAQ, deleteFAQ } = useSupportData();
   const { contacts, isLoading: contactsLoading, updateContact } = useSupportContacts();
-  const [tickets, setTickets] = useState(mockTickets);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -238,28 +217,36 @@ export const SupportSystem: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {tickets.map((ticket) => (
-                      <div key={ticket.id} className="p-3 border rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium">{ticket.title}</h4>
-                          <div className="flex space-x-2">
-                            <Badge variant={getPriorityColor(ticket.priority) as any}>
-                              {ticket.priority}
-                            </Badge>
-                            <Badge variant={getStatusColor(ticket.status) as any}>
-                              {ticket.status.replace('_', ' ')}
-                            </Badge>
+                  {tickets.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>No support tickets yet</p>
+                      <p className="text-sm">Create a ticket to get started</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {tickets.map((ticket) => (
+                        <div key={ticket.id} className="p-3 border rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">{ticket.title}</h4>
+                            <div className="flex space-x-2">
+                              <Badge variant={getPriorityColor(ticket.priority) as any}>
+                                {ticket.priority}
+                              </Badge>
+                              <Badge variant={getStatusColor(ticket.status) as any}>
+                                {ticket.status.replace('_', ' ')}
+                              </Badge>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">{ticket.description}</p>
+                          <div className="flex justify-between text-xs text-gray-500">
+                            <span>{ticket.category}</span>
+                            <span>{ticket.createdAt}</span>
                           </div>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">{ticket.description}</p>
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>{ticket.category}</span>
-                          <span>{ticket.createdAt}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

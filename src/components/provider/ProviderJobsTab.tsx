@@ -14,7 +14,7 @@ interface Job {
   location: string;
   amount: number;
   date: string;
-  status: 'requested' | 'accepted' | 'completed';
+  status: 'requested' | 'accepted' | 'completed' | 'cancelled'; // Added 'cancelled' to match useProviderData
   duration: string;
   rating?: number;
   expectedPayout: number;
@@ -42,6 +42,7 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
       case 'completed': return 'bg-green-100 text-green-800';
       case 'accepted': return 'bg-blue-100 text-blue-800';
       case 'requested': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled': return 'bg-red-100 text-red-800'; // Added cancelled status color
       default: return 'bg-gray-100 text-gray-800';
     }
   };

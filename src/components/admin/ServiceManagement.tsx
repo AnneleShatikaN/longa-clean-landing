@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,9 +12,11 @@ import ServiceViewModal from './ServiceViewModal';
 import ServiceEditModal from './ServiceEditModal';
 import EmptyServicesState from './EmptyServicesState';
 import { toast } from 'sonner';
+import { useDataMode } from '@/contexts/DataModeContext';
 
 const ServiceManagement: React.FC = () => {
   const { services, deleteService, toggleServiceStatus, isLoading } = useServices();
+  const { dataMode } = useDataMode();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -106,6 +107,13 @@ const ServiceManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Show a warning banner if MOCK mode is active */}
+      {dataMode === 'mock' && (
+        <div className="p-2 rounded bg-yellow-100 text-yellow-700 text-center font-semibold">
+          MOCK DATA MODE ACTIVE – Changes made here will NOT affect your live database.
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

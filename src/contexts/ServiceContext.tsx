@@ -1,8 +1,8 @@
-
-import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect, useCallback } from 'react';
 import { ServiceData, serviceSchema } from '@/schemas/validation';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useDataMode } from './DataModeContext';
 
 export interface Service {
   id: string;
@@ -127,22 +127,35 @@ const ServiceContext = createContext<ServiceContextType | undefined>(undefined);
 export const ServiceProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(serviceReducer, initialState);
   const { toast } = useToast();
+  const { dataMode, mockData, isLoading: dataModeLoading } = useDataMode();
 
-  const loadServices = async (): Promise<void> => {
+  // Helper for loading services based on data mode
+  const loadServices = useCallback(async (): Promise<void> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .order('created_at', { ascending: false });
+      if (dataMode === 'mock') {
+        // Load from mockData.admin.services if available, or fallback to empty
+        const mockServices = mockData?.admin?.services || [];
+        dispatch({ type: 'SET_SERVICES', payload: mockServices });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      } else if (dataMode === 'none') {
+        dispatch({ type: 'SET_SERVICES', payload: [] });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      } else {
+        // LIVE MODE
+        const { data, error } = await supabase
+          .from('services')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const mappedServices = data?.map(mapSupabaseService) || [];
-      dispatch({ type: 'SET_SERVICES', payload: mappedServices });
-      dispatch({ type: 'SET_LOADING', payload: false });
+        const mappedServices = data?.map(mapSupabaseService) || [];
+        dispatch({ type: 'SET_SERVICES', payload: mappedServices });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load services';
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
@@ -152,17 +165,49 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
         variant: "destructive",
       });
     }
-  };
+  }, [dataMode, mockData]);
 
+  // --- CRUD Operations, all will branch on dataMode ---
   const createService = async (serviceData: ServiceData): Promise<Service> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
+    if (dataMode === 'mock') {
+      // In-memory create for mock data
+      const validatedData = serviceSchema.parse(serviceData);
+      const totalMinutes = (validatedData.duration?.hours || 0) * 60 + (validatedData.duration?.minutes || 0);
+      const newService: Service = {
+        id: (Math.random() + 1).toString(36).substring(7),
+        name: validatedData.name,
+        type: validatedData.type,
+        clientPrice: validatedData.clientPrice,
+        providerFee: validatedData.providerFee || (validatedData.clientPrice * (1 - (validatedData.commissionPercentage || 15) / 100)),
+        commissionPercentage: validatedData.commissionPercentage || 15,
+        duration: validatedData.duration!,
+        status: validatedData.status || 'active',
+        tags: validatedData.tags || [],
+        description: validatedData.description || '',
+        requirements: [],
+        popularity: 0,
+        averageRating: 0,
+        totalBookings: 0,
+        totalRevenue: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      dispatch({ type: 'ADD_SERVICE', payload: newService });
+      dispatch({ type: 'SET_LOADING', payload: false });
+      toast({
+        title: "Success (Mock)",
+        description: "Service (mock) created successfully",
+      });
+      return newService;
+    }
+
     try {
       const validatedData = serviceSchema.parse(serviceData);
-      
       const totalMinutes = (validatedData.duration?.hours || 0) * 60 + (validatedData.duration?.minutes || 0);
-      
+
       const { data, error } = await supabase
         .from('services')
         .insert({
@@ -184,12 +229,12 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
       const newService = mapSupabaseService(data);
       dispatch({ type: 'ADD_SERVICE', payload: newService });
       dispatch({ type: 'SET_LOADING', payload: false });
-      
+
       toast({
         title: "Success",
         description: "Service created successfully",
       });
-      
+
       return newService;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Service creation failed';
@@ -207,9 +252,20 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
+    if (dataMode === 'mock') {
+      // Local state update for mock data
+      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates } });
+      dispatch({ type: 'SET_LOADING', payload: false });
+      toast({
+        title: "Success (Mock)",
+        description: "Service (mock) updated successfully",
+      });
+      return;
+    }
+
     try {
       const updateData: any = {};
-      
+
       if (updates.name) updateData.name = updates.name;
       if (updates.description) updateData.description = updates.description;
       if (updates.type) updateData.service_type = updates.type;
@@ -254,6 +310,17 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
   const deleteService = async (id: string): Promise<void> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
+
+    if (dataMode === 'mock') {
+      // Remove from memory
+      dispatch({ type: 'DELETE_SERVICE', payload: id });
+      dispatch({ type: 'SET_LOADING', payload: false });
+      toast({
+        title: "Success (Mock)",
+        description: "Service (mock) deleted successfully",
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -322,10 +389,10 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
       .slice(0, 6);
   };
 
-  // Load services on component mount
+  // Load (or reload) services whenever dataMode or mockData changes
   useEffect(() => {
     loadServices();
-  }, []);
+  }, [loadServices]);
 
   const value: ServiceContextType = {
     ...state,

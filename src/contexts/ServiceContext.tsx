@@ -267,9 +267,9 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
       // Ensure update types match Service interface (id: string and duration always has hours and minutes)
       const safeUpdates: Partial<Service> = { ...updates };
 
-      // --- fix: id is always string in Partial<Service> ---
-      if ('id' in safeUpdates && typeof safeUpdates.id !== 'string') {
-        (safeUpdates as any).id = String((safeUpdates as any).id);
+      // id should never be updated via safeUpdates!
+      if ('id' in safeUpdates) {
+        delete (safeUpdates as any).id;
       }
 
       if (updates.duration) {

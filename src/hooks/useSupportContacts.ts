@@ -16,6 +16,13 @@ export interface SupportContact {
   updated_at: string;
 }
 
+interface UpdateContactResponse {
+  success: boolean;
+  error?: string;
+  message?: string;
+  is_verified?: boolean;
+}
+
 export const useSupportContacts = () => {
   const [contacts, setContacts] = useState<SupportContact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,12 +64,15 @@ export const useSupportContacts = () => {
 
       if (error) throw error;
 
-      if (data?.success) {
+      // Type cast the response to our expected interface
+      const response = data as UpdateContactResponse;
+
+      if (response?.success) {
         toast.success('Contact updated successfully');
         await fetchContacts(); // Refresh the data
-        return { success: true, isVerified: data.is_verified };
+        return { success: true, isVerified: response.is_verified || false };
       } else {
-        throw new Error(data?.error || 'Update failed');
+        throw new Error(response?.error || 'Update failed');
       }
     } catch (error) {
       console.error('Error updating contact:', error);

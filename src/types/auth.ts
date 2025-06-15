@@ -1,4 +1,3 @@
-
 import { Session } from '@supabase/supabase-js';
 
 export type UserRole = 'client' | 'provider' | 'admin';
@@ -16,6 +15,7 @@ export interface UserProfile {
   total_jobs: number;
   created_at: string;
   updated_at: string;
+  current_work_location?: string; // Add the new property
   // Additional properties for compatibility
   address?: string;
   profilePicture?: string;

@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export type DataMode = 'live' | 'mock' | 'none';
 
@@ -17,7 +18,7 @@ export const DataModeProvider: React.FC<{ children: ReactNode }> = ({ children }
   // Detect development mode
   const isDevelopmentMode = import.meta.env.DEV || window.location.hostname === 'localhost';
   
-  // Initialize from localStorage or default to 'live'
+  // Initialize from localStorage as fallback or default to 'live'
   const [dataMode, setDataModeState] = useState<DataMode>(() => {
     const saved = localStorage.getItem('longa-data-mode');
     return (saved as DataMode) || 'live';
@@ -25,9 +26,54 @@ export const DataModeProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [mockData, setMockData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Enhanced setDataMode with global state broadcasting
-  const setDataMode = (mode: DataMode) => {
+  // Fetch global settings from database
+  const fetchGlobalSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('global_settings')
+        .select('key, value')
+        .eq('key', 'data_mode')
+        .single();
+
+      if (error) {
+        console.log('[DataModeContext] Could not fetch global settings, using fallback:', error.message);
+        return;
+      }
+
+      if (data?.value) {
+        const newMode = JSON.parse(data.value) as DataMode;
+        if (newMode !== dataMode) {
+          setDataModeState(newMode);
+          localStorage.setItem('longa-data-mode', newMode);
+          console.log(`[DataModeContext] Fetched data mode from database: ${newMode}`);
+        }
+      }
+    } catch (error) {
+      console.error('[DataModeContext] Error fetching global settings:', error);
+    }
+  };
+
+  // Enhanced setDataMode for admin users to update database
+  const setDataMode = async (mode: DataMode) => {
     const previousMode = dataMode;
+    
+    try {
+      // Try to update in database first (only works for admins)
+      const { data, error } = await supabase.rpc('update_global_setting', {
+        setting_key: 'data_mode',
+        setting_value: JSON.stringify(mode)
+      });
+
+      if (error) {
+        console.log('[DataModeContext] Could not update database, updating locally only:', error.message);
+      } else if (data?.success) {
+        console.log('[DataModeContext] Successfully updated global data mode in database');
+      }
+    } catch (error) {
+      console.error('[DataModeContext] Error updating global setting:', error);
+    }
+
+    // Update local state regardless
     setDataModeState(mode);
     localStorage.setItem('longa-data-mode', mode);
     
@@ -38,6 +84,50 @@ export const DataModeProvider: React.FC<{ children: ReactNode }> = ({ children }
     
     console.log(`[DataModeContext] Data mode changed from ${previousMode} to ${mode}`);
   };
+
+  // Fetch global settings on mount
+  useEffect(() => {
+    fetchGlobalSettings();
+  }, []);
+
+  // Listen for real-time changes to global_settings
+  useEffect(() => {
+    const channel = supabase
+      .channel('global_settings_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'global_settings',
+          filter: 'key=eq.data_mode'
+        },
+        (payload) => {
+          console.log('[DataModeContext] Received real-time global settings update:', payload);
+          
+          if (payload.new && payload.new.value) {
+            const newMode = JSON.parse(payload.new.value) as DataMode;
+            if (newMode !== dataMode) {
+              const previousMode = dataMode;
+              setDataModeState(newMode);
+              localStorage.setItem('longa-data-mode', newMode);
+              
+              // Broadcast to other components
+              window.dispatchEvent(new CustomEvent('datamode-changed', { 
+                detail: { newMode, previousMode } 
+              }));
+              
+              console.log(`[DataModeContext] Real-time update: data mode changed to ${newMode}`);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [dataMode]);
 
   // Listen for data mode changes from other tabs/windows
   useEffect(() => {

@@ -1,34 +1,49 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Database, FileText, Ban, Shield, AlertTriangle } from 'lucide-react';
+import { Database, FileText, Ban, Shield, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { useDataMode, DataMode } from '@/contexts/DataModeContext';
 import { useToast } from '@/hooks/use-toast';
 
 export const DataModeToggle: React.FC = () => {
   const { dataMode, setDataMode, isLoading, isDevelopmentMode } = useDataMode();
   const { toast } = useToast();
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleModeChange = (mode: DataMode) => {
+  const handleModeChange = async (mode: DataMode) => {
     const previousMode = dataMode;
-    setDataMode(mode);
+    setIsUpdating(true);
     
-    const modeLabels = {
-      live: 'Live Data (Supabase)',
-      mock: 'Mock Data (JSON)',
-      none: 'No Data'
-    };
+    try {
+      await setDataMode(mode);
+      
+      const modeLabels = {
+        live: 'Live Data (Supabase)',
+        mock: 'Mock Data (JSON)',
+        none: 'No Data'
+      };
 
-    // Enhanced admin notification
-    toast({
-      title: "Global Data Mode Changed",
-      description: `All users switched from ${modeLabels[previousMode]} to ${modeLabels[mode]}. This affects the entire application.`,
-      duration: 5000,
-    });
+      // Enhanced admin notification
+      toast({
+        title: "Global Data Mode Updated",
+        description: `Successfully changed from ${modeLabels[previousMode]} to ${modeLabels[mode]}. All users will see this change immediately.`,
+        duration: 5000,
+      });
 
-    console.log(`[Admin] Changed global data mode from ${previousMode} to ${mode}`);
+      console.log(`[Admin] Changed global data mode from ${previousMode} to ${mode}`);
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: "Could not update global data mode. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      console.error(`[Admin] Failed to change data mode:`, error);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const getModeIcon = (mode: DataMode) => {
@@ -53,6 +68,7 @@ export const DataModeToggle: React.FC = () => {
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Shield className="h-4 w-4 text-purple-600" />
           Global Data Source Control
+          {isUpdating && <span className="text-xs text-blue-600">Updating...</span>}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -76,9 +92,12 @@ export const DataModeToggle: React.FC = () => {
           {isLoading && (
             <span className="text-xs text-gray-500">Loading...</span>
           )}
+          {isUpdating && (
+            <span className="text-xs text-blue-600">Saving...</span>
+          )}
         </div>
         
-        <Select value={dataMode} onValueChange={handleModeChange}>
+        <Select value={dataMode} onValueChange={handleModeChange} disabled={isUpdating}>
           <SelectTrigger>
             <SelectValue placeholder="Select data source" />
           </SelectTrigger>
@@ -111,8 +130,11 @@ export const DataModeToggle: React.FC = () => {
         </div>
 
         <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-xs text-blue-700 font-medium">Admin Control</p>
-          <p className="text-xs text-blue-600">Changes here affect the entire application for all users.</p>
+          <p className="text-xs text-blue-700 font-medium flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" />
+            Database-Backed Control
+          </p>
+          <p className="text-xs text-blue-600">Changes are saved to database and sync across all users in real-time.</p>
         </div>
       </CardContent>
     </Card>

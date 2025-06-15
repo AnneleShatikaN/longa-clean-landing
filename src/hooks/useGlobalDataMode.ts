@@ -11,7 +11,7 @@ export const useGlobalDataMode = () => {
     const handleDataModeChange = (event: CustomEvent) => {
       const { newMode, previousMode } = event.detail;
       
-      // Only show notification to non-admin users when data mode changes
+      // Only show notification to users when data mode changes
       if (newMode !== previousMode) {
         const modeLabels = {
           live: 'Live Data',
@@ -21,9 +21,11 @@ export const useGlobalDataMode = () => {
         
         toast({
           title: "Data Source Updated",
-          description: `Application switched to ${modeLabels[newMode]} mode.`,
-          duration: 3000,
+          description: `Application switched to ${modeLabels[newMode]} mode by admin.`,
+          duration: 4000,
         });
+        
+        console.log(`[useGlobalDataMode] Data mode changed to ${newMode}`);
       }
     };
 

@@ -76,7 +76,7 @@ interface ProviderData {
 }
 
 export const useProviderData = () => {
-  const { dataMode } = useDataMode();
+  const { dataMode, mockData } = useDataMode();
   const [data, setData] = useState<ProviderData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,28 +90,47 @@ export const useProviderData = () => {
 
     try {
       if (dataMode === 'mock') {
-        // Load provider-specific mock data
-        const response = await fetch('/data/provider_mock_data.json');
-        if (!response.ok) {
-          throw new Error('Failed to load provider mock data');
-        }
-        
-        const providerMockData = await response.json();
-        const providerData = providerMockData[currentProviderId];
-        
-        if (!providerData) {
-          throw new Error(`No mock data found for provider ${currentProviderId}`);
-        }
+        // Use mockData from context if available, otherwise fetch
+        if (mockData?.provider) {
+          const providerData = mockData.provider[currentProviderId];
+          
+          if (!providerData) {
+            throw new Error(`No mock data found for provider ${currentProviderId}`);
+          }
 
-        setData({
-          jobs: providerData.jobs || [],
-          notifications: providerData.notifications || [],
-          ratings: providerData.ratings || [],
-          monthlyEarnings: providerData.monthlyEarnings || [],
-          profile: providerData.profile
-        });
-        
-        console.log(`[useProviderData] Loaded mock data for provider ${currentProviderId}`);
+          setData({
+            jobs: providerData.jobs || [],
+            notifications: providerData.notifications || [],
+            ratings: providerData.ratings || [],
+            monthlyEarnings: providerData.monthlyEarnings || [],
+            profile: providerData.profile
+          });
+          
+          console.log(`[useProviderData] Loaded mock data for provider ${currentProviderId} from context`);
+        } else {
+          // Fallback to direct fetch
+          const response = await fetch('/data/provider_mock_data.json');
+          if (!response.ok) {
+            throw new Error('Failed to load provider mock data');
+          }
+          
+          const providerMockData = await response.json();
+          const providerData = providerMockData[currentProviderId];
+          
+          if (!providerData) {
+            throw new Error(`No mock data found for provider ${currentProviderId}`);
+          }
+
+          setData({
+            jobs: providerData.jobs || [],
+            notifications: providerData.notifications || [],
+            ratings: providerData.ratings || [],
+            monthlyEarnings: providerData.monthlyEarnings || [],
+            profile: providerData.profile
+          });
+          
+          console.log(`[useProviderData] Loaded mock data for provider ${currentProviderId} via fetch`);
+        }
       } else if (dataMode === 'live') {
         // TODO: Implement live data fetching from Supabase
         setData({
@@ -133,7 +152,7 @@ export const useProviderData = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [dataMode, currentProviderId]);
+  }, [dataMode, mockData, currentProviderId]);
 
   // Load data when component mounts or data mode changes
   useEffect(() => {

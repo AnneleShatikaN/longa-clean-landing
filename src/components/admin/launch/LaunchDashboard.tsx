@@ -80,33 +80,7 @@ export const LaunchDashboard: React.FC = () => {
       if (launchMockData) {
         return launchMockData;
       }
-      
-      // Fallback mock data if not in context
-      return {
-        metrics: [
-          { label: 'Active Users', value: 156, change: '+23%', trend: 'up' },
-          { label: 'Services Created', value: 12, change: '+4', trend: 'up' },
-          { label: 'Revenue (24h)', value: 'NAD 2,450', change: '+18%', trend: 'up' },
-          { label: 'System Health', value: '98.7%', change: '+0.3%', trend: 'up' }
-        ],
-        systemHealth: {
-          apiResponseTime: 125,
-          databasePerformance: 96,
-          serverUptime: 99.8,
-          status: 'excellent'
-        },
-        issues: [
-          { id: 1, title: 'Minor API latency detected', severity: 'low', status: 'monitoring' },
-          { id: 2, title: 'All systems operational', severity: 'low', status: 'resolved' }
-        ],
-        launchReadiness: {
-          servicesConfigured: 8,
-          totalServices: 10,
-          usersRegistered: 156,
-          paymentsSetup: true,
-          notificationsEnabled: true
-        }
-      };
+      return null;
     }
 
     // Live data mode - use real data from Supabase
@@ -119,7 +93,7 @@ export const LaunchDashboard: React.FC = () => {
         { 
           label: 'Active Users', 
           value: stats.totalUsers || 0, 
-          change: '+12%', // Could be calculated from historical data
+          change: '+12%', 
           trend: 'up' 
         },
         { 
@@ -449,7 +423,7 @@ export const LaunchDashboard: React.FC = () => {
                       <p className="text-2xl font-bold">
                         {dataMode === 'live' ? 
                           Math.floor(launchData.launchReadiness.usersRegistered * 0.15) : 
-                          '24'
+                          Math.floor((mockData?.launchData?.launchReadiness?.usersRegistered || 0) * 0.15)
                         }
                       </p>
                       <p className="text-sm text-gray-600">New Today</p>
@@ -458,7 +432,7 @@ export const LaunchDashboard: React.FC = () => {
                       <p className="text-2xl font-bold">
                         {dataMode === 'live' ? 
                           Math.floor(launchData.launchReadiness.usersRegistered * 0.65) : 
-                          '102'
+                          Math.floor((mockData?.launchData?.launchReadiness?.usersRegistered || 0) * 0.65)
                         }
                       </p>
                       <p className="text-sm text-gray-600">Active Users</p>

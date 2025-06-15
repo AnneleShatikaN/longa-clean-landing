@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ export const PayoutExport = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [exportableData, setExportableData] = useState<PayoutExportData[]>([]);
+  const [rawPayoutsData, setRawPayoutsData] = useState<any[]>([]);
 
   // Fetch exportable payouts from Supabase
   const fetchExportablePayouts = async (): Promise<PayoutExportData[]> => {
@@ -70,6 +72,9 @@ export const PayoutExport = () => {
         .lte('created_at', toDate);
 
       if (error) throw error;
+
+      // Store raw payouts data for later use
+      setRawPayoutsData(payoutsData || []);
 
       // Fetch provider payment methods separately
       const providerIds = payoutsData?.map(p => p.provider_id).filter(Boolean) || [];
@@ -202,8 +207,8 @@ export const PayoutExport = () => {
       downloadCSV(csvContent, filename);
 
       // Mark as processed if checkbox is checked
-      if (markAsProcessed && payoutsData) {
-        const payoutIds = payoutsData.map(p => p.id);
+      if (markAsProcessed && rawPayoutsData.length > 0) {
+        const payoutIds = rawPayoutsData.map(p => p.id);
         await markPayoutsAsProcessed(payoutIds);
       }
 

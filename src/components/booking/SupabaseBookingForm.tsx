@@ -9,10 +9,13 @@ import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CalendarIcon, Clock, AlertTriangle, Lock, AlertCircle } from 'lucide-react';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import { useSupabaseBookings, BookingData } from '@/contexts/SupabaseBookingContext';
 import { useServices } from '@/contexts/ServiceContext';
+import { useServiceEntitlements } from '@/hooks/useServiceEntitlements';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
 interface SupabaseBookingFormProps {
@@ -26,6 +29,8 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
 }) => {
   const { createBooking, isLoading, checkAvailability } = useSupabaseBookings();
   const { services } = useServices();
+  const { checkAccess } = useServiceEntitlements();
+  const { user } = useAuth();
   
   const [selectedService, setSelectedService] = useState<any>(null);
   const [bookingDate, setBookingDate] = useState<Date>();
@@ -34,6 +39,7 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
   const [emergencyBooking, setEmergencyBooking] = useState(false);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [availabilityChecked, setAvailabilityChecked] = useState(false);
+  const [accessCheck, setAccessCheck] = useState<{allowed: boolean, reason?: string} | null>(null);
 
   // Find selected service
   useEffect(() => {
@@ -43,10 +49,27 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
     }
   }, [serviceId, services]);
 
+  // Check service access when service is selected
+  useEffect(() => {
+    const checkServiceAccess = async () => {
+      if (selectedService && user) {
+        const result = await checkAccess(selectedService.id);
+        setAccessCheck(result);
+      }
+    };
+    
+    checkServiceAccess();
+  }, [selectedService, user, checkAccess]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedService || !bookingDate) {
+    if (!selectedService || !bookingDate || !user) {
+      return;
+    }
+
+    // Final access check before booking
+    if (!accessCheck?.allowed) {
       return;
     }
 
@@ -102,6 +125,49 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
       <Card>
         <CardContent className="pt-6">
           <p className="text-center text-gray-500">Please select a service to book</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show access denied message if user doesn't have access
+  if (accessCheck && !accessCheck.allowed) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5 text-red-500" />
+            Access Denied
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {accessCheck.reason || "This service is not included in your package. Please upgrade to access it."}
+            </AlertDescription>
+          </Alert>
+          
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <h3 className="font-medium mb-2">{selectedService.name}</h3>
+            <p className="text-sm text-gray-600 mb-2">{selectedService.description}</p>
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                <span>{selectedService.duration.hours}h {selectedService.duration.minutes}m</span>
+              </div>
+              <Badge variant="outline">N${selectedService.clientPrice}</Badge>
+            </div>
+          </div>
+          
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-600 mb-4">
+              To book this service, you need to have an active package that includes it.
+            </p>
+            <Button variant="outline" onClick={() => window.location.href = '/subscription-packages'}>
+              View Available Packages
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -288,7 +354,7 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={!bookingDate || isLoading || !availabilityChecked}
+            disabled={!bookingDate || isLoading || !availabilityChecked || !accessCheck?.allowed}
             className="w-full"
           >
             {isLoading ? 'Creating Booking...' : 'Create Booking'}

@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useBookings, Booking } from '@/contexts/BookingContext';
 import { BookingCalendar } from './BookingCalendar';
 import { JobTracker } from './JobTracker';
+import { ServiceDisplayWithEntitlements } from '@/components/ServiceDisplayWithEntitlements';
 import { 
   Calendar, 
   Search, 
@@ -303,7 +304,7 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ userRole, userId
         )}
       </div>
 
-      {/* New Booking Calendar Modal would go here */}
+      {/* New Booking Modal */}
       {showCalendar && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
@@ -314,18 +315,16 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ userRole, userId
                   ✕
                 </Button>
               </div>
-              <BookingCalendar
-                serviceId={1}
-                serviceName="House Cleaning"
-                serviceDuration={120}
-                onBookingConfirm={(booking) => {
-                  console.log('New booking:', booking);
+              <ServiceDisplayWithEntitlements
+                onBookService={(serviceId) => {
+                  console.log('Selected service:', serviceId);
                   setShowCalendar(false);
                   toast({
-                    title: "Booking Requested",
-                    description: "Your booking request has been sent to the provider.",
+                    title: "Service Selected",
+                    description: "Please complete the booking form.",
                   });
                 }}
+                showBookingButton={true}
               />
             </div>
           </div>

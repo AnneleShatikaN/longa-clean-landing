@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import ServiceDisplay from '@/components/ServiceDisplay';
+import { ServiceDisplayWithEntitlements } from '@/components/ServiceDisplayWithEntitlements';
 import { SupabaseBookingForm } from '@/components/booking/SupabaseBookingForm';
 import { RealTimeBookingManager } from '@/components/booking/RealTimeBookingManager';
 
@@ -67,7 +67,7 @@ const OneOffBooking = () => {
                 onBookingCreated={handleBookingCreated}
               />
             ) : (
-              <ServiceDisplay
+              <ServiceDisplayWithEntitlements
                 onBookService={handleServiceSelection}
                 showBookingButton={true}
               />

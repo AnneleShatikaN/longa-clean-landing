@@ -14,6 +14,7 @@ import { AnalyticsDashboard } from '@/components/admin/analytics/AnalyticsDashbo
 import { LaunchDashboard } from '@/components/admin/launch/LaunchDashboard';
 import { SupportSystem } from '@/components/admin/support/SupportSystem';
 import { PendingTransactionApproval } from '@/components/admin/PendingTransactionApproval';
+import { AdminProfileManagement } from '@/components/admin/AdminProfileManagement';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +30,8 @@ import {
   PieChart,
   CreditCard,
   Calendar,
-  Calculator
+  Calculator,
+  UserCog
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -59,7 +61,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-12">
+          <TabsList className="grid w-full grid-cols-12 lg:grid-cols-13">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Home className="h-4 w-4" />
               Overview
@@ -107,6 +109,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="support" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Support
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <UserCog className="h-4 w-4" />
+              Profile
             </TabsTrigger>
           </TabsList>
 
@@ -159,6 +165,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="support">
             <SupportSystem />
+          </TabsContent>
+
+          <TabsContent value="profile">
+            <AdminProfileManagement />
           </TabsContent>
         </Tabs>
       </div>

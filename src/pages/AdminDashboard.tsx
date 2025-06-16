@@ -9,6 +9,7 @@ import { FinancialOverview } from '@/components/admin/FinancialOverview';
 import { PayoutSystemTabs } from '@/components/admin/PayoutSystemTabs';
 import { WeeklyPayouts } from '@/components/admin/WeeklyPayouts';
 import { WeekendSettings } from '@/components/admin/WeekendSettings';
+import { JobPayoutConfiguration } from '@/components/admin/JobPayoutConfiguration';
 import { AnalyticsDashboard } from '@/components/admin/analytics/AnalyticsDashboard';
 import { LaunchDashboard } from '@/components/admin/launch/LaunchDashboard';
 import { SupportSystem } from '@/components/admin/support/SupportSystem';
@@ -27,7 +28,8 @@ import {
   Clock,
   PieChart,
   CreditCard,
-  Calendar
+  Calendar,
+  Calculator
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -57,7 +59,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-11">
+          <TabsList className="grid w-full grid-cols-12">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Home className="h-4 w-4" />
               Overview
@@ -69,6 +71,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="weekly-payouts" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Payouts
+            </TabsTrigger>
+            <TabsTrigger value="payout-config" className="flex items-center gap-2">
+              <Calculator className="h-4 w-4" />
+              Config
             </TabsTrigger>
             <TabsTrigger value="weekend-settings" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
@@ -114,6 +120,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="weekly-payouts">
             <WeeklyPayouts />
+          </TabsContent>
+
+          <TabsContent value="payout-config">
+            <JobPayoutConfiguration />
           </TabsContent>
 
           <TabsContent value="weekend-settings">

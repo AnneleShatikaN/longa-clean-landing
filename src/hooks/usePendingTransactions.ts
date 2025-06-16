@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,6 +74,7 @@ export const usePendingTransactions = () => {
       
       setTransactions(typedTransactions);
     } catch (err: any) {
+      console.error('Error fetching user transactions:', err);
       setError(err.message);
       toast.error('Failed to fetch transactions', err.message);
     } finally {
@@ -132,13 +132,16 @@ export const usePendingTransactions = () => {
         .from('pending_transactions')
         .select(`
           *,
-          user:users(full_name, email),
+          user:users(full_name, email, phone),
           service:services(name),
           package:user_active_packages(*)
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error fetching transactions:', error);
+        throw error;
+      }
       
       // Type assertion to ensure proper typing
       const typedTransactions = (data || []).map(item => ({
@@ -148,8 +151,11 @@ export const usePendingTransactions = () => {
       
       setTransactions(typedTransactions);
     } catch (err: any) {
+      console.error('Error fetching all transactions:', err);
       setError(err.message);
       toast.error('Failed to fetch transactions', err.message);
+      // Set empty array so UI doesn't break
+      setTransactions([]);
     } finally {
       setIsLoading(false);
     }

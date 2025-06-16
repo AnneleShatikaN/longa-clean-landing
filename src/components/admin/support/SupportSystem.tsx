@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,13 +20,16 @@ import {
   ExternalLink,
   Plus,
   AlertTriangle,
-  Shield
+  Shield,
+  Trash2,
+  Eye
 } from 'lucide-react';
 import { useSupportData } from '@/hooks/useSupportData';
 import { useSupportContacts } from '@/hooks/useSupportContacts';
 import { FAQModal } from './FAQModal';
 import { EditableContactCard } from './EditableContactCard';
 import { AddEmergencyContactModal } from './AddEmergencyContactModal';
+import { DocumentManager } from './DocumentManager';
 
 interface Ticket {
   id: string;
@@ -42,6 +46,7 @@ export const SupportSystem: React.FC = () => {
   const { contacts, isLoading: contactsLoading, updateContact, addEmergencyContact } = useSupportContacts();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedFAQ, setSelectedFAQ] = useState(null);
@@ -51,6 +56,8 @@ export const SupportSystem: React.FC = () => {
     category: '',
     priority: 'medium' as const,
   });
+
+  const faqCategories = ['Payments', 'Bookings', 'Accounts', 'Technical', 'General'];
 
   const createTicket = () => {
     if (!newTicket.title || !newTicket.description || !newTicket.category) {
@@ -80,7 +87,6 @@ export const SupportSystem: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Wrapper functions to handle the return values
   const handleSaveFAQ = async (question: string, answer: string, category: string) => {
     await addFAQ(question, answer, category);
   };
@@ -109,35 +115,13 @@ export const SupportSystem: React.FC = () => {
     }
   };
 
-  const filteredFAQs = faqs.filter(faq =>
-    faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    faq.answer.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredFAQs = faqs.filter(faq => {
+    const matchesSearch = faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         faq.answer.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || faq.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
-  const getDocsByCategory = (category: string) => {
-    return docLinks.filter(doc => doc.category === category);
-  };
-
-  const getDocIcon = (fileType: string) => {
-    switch (fileType) {
-      case 'video':
-      case 'external':
-        return <Video className="h-4 w-4" />;
-      default:
-        return <FileText className="h-4 w-4" />;
-    }
-  };
-
-  const handleDocClick = (doc: any) => {
-    if (doc.url.startsWith('http')) {
-      window.open(doc.url, '_blank');
-    } else {
-      // Handle internal links
-      window.open(doc.url, '_blank');
-    }
-  };
-
-  // Filter contacts by type with emergency support
   const getRegularContacts = () => {
     return contacts.filter(contact => 
       !contact.is_emergency && (
@@ -155,63 +139,122 @@ export const SupportSystem: React.FC = () => {
     );
   };
 
-  const getEmergencyContactIcon = (contactType: string) => {
-    if (contactType.includes('security') || contactType.includes('Security')) {
-      return <Shield className="h-5 w-5 text-blue-500" />;
-    }
-    if (contactType.includes('outage') || contactType.includes('Outage')) {
-      return <AlertTriangle className="h-5 w-5 text-red-500" />;
-    }
-    return <Phone className="h-5 w-5 text-yellow-500" />;
-  };
-
-  const getEmergencyContactBgColor = (contactType: string) => {
-    if (contactType.includes('security') || contactType.includes('Security')) {
-      return 'bg-blue-50 border-blue-200';
-    }
-    if (contactType.includes('outage') || contactType.includes('Outage')) {
-      return 'bg-red-50 border-red-200';
-    }
-    return 'bg-yellow-50 border-yellow-200';
-  };
-
-  const getEmergencyContactTextColor = (contactType: string) => {
-    if (contactType.includes('security') || contactType.includes('Security')) {
-      return 'text-blue-800';
-    }
-    if (contactType.includes('outage') || contactType.includes('Outage')) {
-      return 'text-red-800';
-    }
-    return 'text-yellow-800';
-  };
-
-  const getEmergencyContactValueColor = (contactType: string) => {
-    if (contactType.includes('security') || contactType.includes('Security')) {
-      return 'text-blue-600';
-    }
-    if (contactType.includes('outage') || contactType.includes('Outage')) {
-      return 'text-red-600';
-    }
-    return 'text-yellow-600';
-  };
-
   return (
     <TooltipProvider>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Support System</h1>
-            <p className="text-gray-600">Customer support and help center</p>
+            <p className="text-gray-600">Manage customer support content and channels</p>
           </div>
         </div>
 
-        <Tabs defaultValue="tickets" className="space-y-4">
-          <TabsList>
+        <Tabs defaultValue="faqs" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="faqs">FAQ Management</TabsTrigger>
+            <TabsTrigger value="documentation">Documents</TabsTrigger>
             <TabsTrigger value="tickets">Support Tickets</TabsTrigger>
-            <TabsTrigger value="faq">FAQ Management</TabsTrigger>
-            <TabsTrigger value="documentation">Documentation</TabsTrigger>
             <TabsTrigger value="contact">Contact Channels</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="faqs" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center">
+                      <HelpCircle className="h-5 w-5 mr-2" />
+                      FAQ Management
+                    </CardTitle>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Create and manage frequently asked questions for customers
+                    </p>
+                  </div>
+                  <Button onClick={handleAddFAQ}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add FAQ
+                  </Button>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search FAQs..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <SelectTrigger className="w-full sm:w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {faqCategories.map(category => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="text-center py-8">Loading FAQs...</div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredFAQs.map((faq) => (
+                      <div key={faq.id} className="p-4 border rounded-lg hover:bg-gray-50">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-sm sm:text-base">{faq.question}</h4>
+                          <div className="flex items-center space-x-2">
+                            <Badge variant="outline">{faq.category}</Badge>
+                            <span className="text-xs text-gray-500">{faq.views} views</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditFAQ(faq)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => deleteFAQ(faq.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600">{faq.answer}</p>
+                      </div>
+                    ))}
+                    {filteredFAQs.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <HelpCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p>No FAQs found matching your criteria.</p>
+                        <Button onClick={handleAddFAQ} className="mt-4">
+                          Create Your First FAQ
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="documentation" className="space-y-4">
+            <Card>
+              <CardContent className="pt-6">
+                <DocumentManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="tickets" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -308,164 +351,6 @@ export const SupportSystem: React.FC = () => {
                       ))}
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="faq" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <HelpCircle className="h-5 w-5 mr-2" />
-                  FAQ Management
-                </CardTitle>
-                <div className="flex items-center space-x-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Search FAQs..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Button onClick={handleAddFAQ}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add FAQ
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="text-center py-8">Loading FAQs...</div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredFAQs.map((faq) => (
-                      <div key={faq.id} className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium">{faq.question}</h4>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant="outline">{faq.category}</Badge>
-                            <span className="text-xs text-gray-500">{faq.views} views</span>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleEditFAQ(faq)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600">{faq.answer}</p>
-                      </div>
-                    ))}
-                    {filteredFAQs.length === 0 && (
-                      <div className="text-center py-8 text-gray-500">
-                        No FAQs found matching your search.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="documentation" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FileText className="h-5 w-5 mr-2" />
-                    User Guides
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {getDocsByCategory('User Guides').map((doc) => (
-                      <Tooltip key={doc.id}>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            className="w-full justify-start"
-                            onClick={() => handleDocClick(doc)}
-                          >
-                            <div className="flex items-center">
-                              {getDocIcon(doc.file_type)}
-                              <span className="ml-2">{doc.title}</span>
-                              <ExternalLink className="h-3 w-3 ml-auto" />
-                            </div>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>View doc: {doc.description || doc.title}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Video className="h-5 w-5 mr-2" />
-                    Video Tutorials
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {getDocsByCategory('Video Tutorials').map((doc) => (
-                      <Tooltip key={doc.id}>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            className="w-full justify-start"
-                            onClick={() => handleDocClick(doc)}
-                          >
-                            <div className="flex items-center">
-                              {getDocIcon(doc.file_type)}
-                              <span className="ml-2">{doc.title}</span>
-                              <ExternalLink className="h-3 w-3 ml-auto" />
-                            </div>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>View doc: {doc.description || doc.title}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>API Documentation</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {getDocsByCategory('API Documentation').map((doc) => (
-                      <Tooltip key={doc.id}>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            className="w-full justify-start"
-                            onClick={() => handleDocClick(doc)}
-                          >
-                            <div className="flex items-center">
-                              {getDocIcon(doc.file_type)}
-                              <span className="ml-2">{doc.title}</span>
-                              <ExternalLink className="h-3 w-3 ml-auto" />
-                            </div>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>View doc: {doc.description || doc.title}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
             </div>

@@ -151,9 +151,93 @@ export const useSupportData = () => {
     }
   };
 
+  const addDocLink = async (docData: Omit<DocLink, 'id' | 'is_active' | 'sort_order'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('docs_links')
+        .insert([{ ...docData, is_active: true, sort_order: 0 }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setDocLinks(prev => [data, ...prev]);
+      toast({
+        title: "Success",
+        description: "Document added successfully",
+      });
+      return data;
+    } catch (error) {
+      console.error('Error adding document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add document",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const updateDocLink = async (id: string, updates: Partial<DocLink>) => {
+    try {
+      const { data, error } = await supabase
+        .from('docs_links')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setDocLinks(prev => prev.map(doc => doc.id === id ? data : doc));
+      toast({
+        title: "Success",
+        description: "Document updated successfully",
+      });
+      return data;
+    } catch (error) {
+      console.error('Error updating document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update document",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const deleteDocLink = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('docs_links')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setDocLinks(prev => prev.filter(doc => doc.id !== id));
+      toast({
+        title: "Success",
+        description: "Document deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete document",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   const incrementFAQViews = async (id: string) => {
     try {
       await supabase.rpc('increment_faq_views', { faq_id: id });
+      // Update local state
+      setFaqs(prev => prev.map(faq => 
+        faq.id === id ? { ...faq, views: faq.views + 1 } : faq
+      ));
     } catch (error) {
       console.error('Error incrementing FAQ views:', error);
     }
@@ -176,6 +260,9 @@ export const useSupportData = () => {
     addFAQ,
     updateFAQ,
     deleteFAQ,
+    addDocLink,
+    updateDocLink,
+    deleteDocLink,
     incrementFAQViews,
     refetch: () => Promise.all([fetchFAQs(), fetchDocLinks()])
   };

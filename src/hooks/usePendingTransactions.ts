@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +21,18 @@ export interface PendingTransaction {
   approved_at?: string;
   created_at: string;
   updated_at: string;
+  // Related data
+  user?: {
+    full_name: string;
+    email: string;
+    phone: string;
+  };
+  service?: {
+    name: string;
+  };
+  package?: {
+    name?: string;
+  };
 }
 
 export interface CreateTransactionData {
@@ -128,33 +141,62 @@ export const usePendingTransactions = () => {
     setError(null);
 
     try {
-      const { data, error } = await supabase
+      // First fetch the basic transaction data
+      const { data: transactionData, error: transactionError } = await supabase
         .from('pending_transactions')
-        .select(`
-          *,
-          user:users(full_name, email, phone),
-          service:services(name),
-          package:user_active_packages(*)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase error fetching transactions:', error);
-        throw error;
+      if (transactionError) {
+        console.error('Error fetching transactions:', transactionError);
+        throw transactionError;
       }
-      
-      // Type assertion to ensure proper typing
-      const typedTransactions = (data || []).map(item => ({
-        ...item,
-        transaction_type: item.transaction_type as 'subscription' | 'booking'
+
+      if (!transactionData || transactionData.length === 0) {
+        setTransactions([]);
+        return;
+      }
+
+      // Get unique user IDs, service IDs, and package IDs
+      const userIds = [...new Set(transactionData.map(t => t.user_id).filter(Boolean))];
+      const serviceIds = [...new Set(transactionData.map(t => t.service_id).filter(Boolean))];
+      const packageIds = [...new Set(transactionData.map(t => t.package_id).filter(Boolean))];
+
+      // Fetch related data in separate queries
+      const [usersData, servicesData, packagesData] = await Promise.all([
+        userIds.length > 0 ? supabase
+          .from('users')
+          .select('id, full_name, email, phone')
+          .in('id', userIds) : Promise.resolve({ data: [] }),
+        serviceIds.length > 0 ? supabase
+          .from('services')
+          .select('id, name')
+          .in('id', serviceIds) : Promise.resolve({ data: [] }),
+        packageIds.length > 0 ? supabase
+          .from('user_active_packages')
+          .select('id')
+          .in('id', packageIds) : Promise.resolve({ data: [] })
+      ]);
+
+      // Create lookup maps
+      const usersMap = new Map((usersData.data || []).map(u => [u.id, u]));
+      const servicesMap = new Map((servicesData.data || []).map(s => [s.id, s]));
+      const packagesMap = new Map((packagesData.data || []).map(p => [p.id, p]));
+
+      // Combine the data
+      const enrichedTransactions = transactionData.map(transaction => ({
+        ...transaction,
+        transaction_type: transaction.transaction_type as 'subscription' | 'booking',
+        user: transaction.user_id ? usersMap.get(transaction.user_id) : undefined,
+        service: transaction.service_id ? servicesMap.get(transaction.service_id) : undefined,
+        package: transaction.package_id ? packagesMap.get(transaction.package_id) : undefined,
       })) as PendingTransaction[];
-      
-      setTransactions(typedTransactions);
+
+      setTransactions(enrichedTransactions);
     } catch (err: any) {
       console.error('Error fetching all transactions:', err);
       setError(err.message);
       toast.error('Failed to fetch transactions', err.message);
-      // Set empty array so UI doesn't break
       setTransactions([]);
     } finally {
       setIsLoading(false);

@@ -1072,7 +1072,64 @@ export type Database = {
           user_id?: string
           whatsapp_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_pending_transactions_approved_by"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "fk_pending_transactions_approved_by"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_pending_transactions_package_id"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "user_active_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_pending_transactions_service_id"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_popularity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_pending_transactions_service_id"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_search_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_pending_transactions_service_id"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_pending_transactions_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "fk_pending_transactions_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       provider_earnings_summaries: {
         Row: {

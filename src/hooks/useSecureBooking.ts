@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { checkServiceAccess, logServiceUsage } from '@/utils/serviceEntitlements';
 
 export interface SecureBookingData {
   serviceId: string;
@@ -14,22 +15,25 @@ export interface SecureBookingData {
   durationMinutes?: number;
 }
 
+interface AccessValidationResult {
+  allowed: boolean;
+  reason?: string;
+}
+
 export const useSecureBooking = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const validateAccess = async (serviceId: string) => {
+  const validateAccess = async (serviceId: string): Promise<AccessValidationResult> => {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      const { data, error } = await supabase.rpc('validate_booking_access', {
-        p_user_id: user.id,
-        p_service_id: serviceId
-      });
-
-      if (error) throw error;
-      return data;
+      const result = await checkServiceAccess(user.id, serviceId);
+      return {
+        allowed: result.allowed,
+        reason: result.reason
+      };
     } catch (error) {
       console.error('Access validation error:', error);
       throw error;
@@ -47,41 +51,74 @@ export const useSecureBooking = () => {
       if (!accessResult.allowed) {
         toast({
           title: "Booking Not Allowed",
-          description: accessResult.reason,
+          description: accessResult.reason || 'Access denied',
           variant: "destructive",
         });
-        return { success: false, reason: accessResult.reason };
+        return { success: false, reason: accessResult.reason || 'Access denied' };
       }
 
-      // Create booking using secure function
-      const { data, error } = await supabase.rpc('create_validated_booking', {
-        p_service_id: bookingData.serviceId,
-        p_booking_date: bookingData.bookingDate,
-        p_booking_time: bookingData.bookingTime,
-        p_total_amount: bookingData.totalAmount,
-        p_special_instructions: bookingData.specialInstructions,
-        p_emergency_booking: bookingData.emergencyBooking || false,
-        p_duration_minutes: bookingData.durationMinutes
+      // Get service details for duration
+      const { data: service, error: serviceError } = await supabase
+        .from('services')
+        .select('duration_minutes, name')
+        .eq('id', bookingData.serviceId)
+        .single();
+
+      if (serviceError) throw serviceError;
+
+      // Create booking directly
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .insert({
+          client_id: user.id,
+          service_id: bookingData.serviceId,
+          booking_date: bookingData.bookingDate,
+          booking_time: bookingData.bookingTime,
+          total_amount: bookingData.totalAmount,
+          special_instructions: bookingData.specialInstructions,
+          emergency_booking: bookingData.emergencyBooking || false,
+          duration_minutes: bookingData.durationMinutes || service.duration_minutes,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (bookingError) throw bookingError;
+
+      // Get user's active package for logging usage
+      const { data: activePackage } = await supabase
+        .from('user_active_packages')
+        .select('package_id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .gte('expiry_date', new Date().toISOString().split('T')[0])
+        .single();
+
+      // Log service usage if package exists
+      if (activePackage) {
+        await logServiceUsage(
+          user.id,
+          activePackage.package_id,
+          bookingData.serviceId,
+          booking.id
+        );
+      }
+
+      toast({
+        title: "Booking Created",
+        description: `Your booking for ${service.name} has been created successfully.`,
       });
+      
+      return { success: true, bookingId: booking.id };
 
-      if (error) throw error;
-
-      if (data.success) {
-        toast({
-          title: "Booking Created",
-          description: data.message,
-        });
-        return { success: true, bookingId: data.booking_id };
-      } else {
-        toast({
-          title: "Booking Failed",
-          description: data.error,
-          variant: "destructive",
-        });
-        return { success: false, reason: data.error };
-      }
     } catch (error) {
       console.error('Secure booking error:', error);
+      
+      // Check if it's a package access issue
+      if (error instanceof Error && error.message.includes('package')) {
+        return { success: false, reason: 'No active package found' };
+      }
+      
       toast({
         title: "Booking Error",
         description: "Failed to create booking. Please try again.",

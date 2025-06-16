@@ -20,9 +20,11 @@ export interface UserPackage {
 
 export interface ServiceUsage {
   service_id: string;
+  service_name: string;
   used_count: number;
   allowed_count: number;
   package_id: string;
+  cycle_days: number;
 }
 
 export const checkServiceAccess = async (userId: string, serviceId: string): Promise<{
@@ -62,6 +64,15 @@ export const checkServiceAccess = async (userId: string, serviceId: string): Pro
 
     const entitlement = entitlements[0];
 
+    // Get service name
+    const { data: service, error: serviceError } = await supabase
+      .from('services')
+      .select('name')
+      .eq('id', serviceId)
+      .single();
+
+    if (serviceError) throw serviceError;
+
     // Check usage within current cycle
     const cycleStartDate = new Date();
     cycleStartDate.setDate(cycleStartDate.getDate() - entitlement.cycle_days);
@@ -81,9 +92,11 @@ export const checkServiceAccess = async (userId: string, serviceId: string): Pro
 
     const usage: ServiceUsage = {
       service_id: serviceId,
+      service_name: service?.name || 'Unknown Service',
       used_count: usedCount,
       allowed_count: allowedCount,
-      package_id: activePackage.package_id
+      package_id: activePackage.package_id,
+      cycle_days: entitlement.cycle_days
     };
 
     if (usedCount >= allowedCount) {
@@ -141,10 +154,15 @@ export const getUserServiceUsage = async (userId: string): Promise<ServiceUsage[
 
     const activePackage = activePackages[0];
 
-    // Get all entitlements for the package
+    // Get all entitlements for the package with service names
     const { data: entitlements, error: entitlementError } = await supabase
       .from('package_entitlements')
-      .select('*')
+      .select(`
+        *,
+        services!allowed_service_id (
+          name
+        )
+      `)
       .eq('package_id', activePackage.package_id);
 
     if (entitlementError || !entitlements) return [];
@@ -167,9 +185,11 @@ export const getUserServiceUsage = async (userId: string): Promise<ServiceUsage[
       if (!usageError) {
         usageData.push({
           service_id: entitlement.allowed_service_id,
+          service_name: (entitlement as any).services?.name || 'Unknown Service',
           used_count: usageLogs?.length || 0,
           allowed_count: entitlement.quantity_per_cycle,
-          package_id: activePackage.package_id
+          package_id: activePackage.package_id,
+          cycle_days: entitlement.cycle_days
         });
       }
     }

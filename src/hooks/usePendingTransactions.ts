@@ -168,7 +168,7 @@ export const usePendingTransactions = () => {
 
       if (error) throw error;
 
-      const response = data as RpcResponse;
+      const response = data as unknown as RpcResponse;
       if (response.success) {
         toast.success('Transaction approved successfully');
         await fetchAllTransactions();
@@ -198,7 +198,7 @@ export const usePendingTransactions = () => {
 
       if (error) throw error;
 
-      const response = data as RpcResponse;
+      const response = data as unknown as RpcResponse;
       if (response.success) {
         toast.success('Transaction declined');
         await fetchAllTransactions();

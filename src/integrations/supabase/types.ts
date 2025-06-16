@@ -134,6 +134,39 @@ export type Database = {
           },
         ]
       }
+      business_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          created_by: string
+          description: string | null
+          expense_date: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          expense_date?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          expense_date?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       docs_links: {
         Row: {
           category: string
@@ -1803,6 +1836,15 @@ export type Database = {
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_financial_overview: {
+        Args: { start_date?: string; end_date?: string }
+        Returns: {
+          total_revenue: number
+          total_provider_payouts: number
+          total_expenses: number
+          admin_profit: number
+        }[]
       }
       get_geographic_distribution: {
         Args: Record<PropertyKey, never>

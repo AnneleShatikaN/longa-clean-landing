@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminOverview } from '@/components/admin/AdminOverview';
 import ServiceManagement from '@/components/admin/ServiceManagement';
 import { PackageManager } from '@/components/admin/PackageManager';
 import { FinancialManagement } from '@/components/admin/FinancialManagement';
+import { FinancialOverview } from '@/components/admin/FinancialOverview';
 import { PayoutSystemTabs } from '@/components/admin/PayoutSystemTabs';
 import { AnalyticsDashboard } from '@/components/admin/analytics/AnalyticsDashboard';
 import { LaunchDashboard } from '@/components/admin/launch/LaunchDashboard';
@@ -21,7 +21,8 @@ import {
   Rocket, 
   Users, 
   Settings,
-  Clock
+  Clock,
+  PieChart
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -51,10 +52,14 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Home className="h-4 w-4" />
               Overview
+            </TabsTrigger>
+            <TabsTrigger value="financial-overview" className="flex items-center gap-2">
+              <PieChart className="h-4 w-4" />
+              Profit
             </TabsTrigger>
             <TabsTrigger value="services" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -88,6 +93,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="overview">
             <AdminOverview data={{}} isLoading={false} />
+          </TabsContent>
+
+          <TabsContent value="financial-overview">
+            <FinancialOverview />
           </TabsContent>
 
           <TabsContent value="services">

@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useFinancialOverview } from '@/hooks/useFinancialOverview';
-import { Plus, TrendingUp, TrendingDown, DollarSign, Receipt, Trash2 } from 'lucide-react';
+import { useDataMode } from '@/contexts/DataModeContext';
+import { Plus, TrendingUp, TrendingDown, DollarSign, Receipt, Trash2, Database, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 
 const EXPENSE_CATEGORIES = [
@@ -28,6 +29,7 @@ const EXPENSE_CATEGORIES = [
 
 export const FinancialOverview: React.FC = () => {
   const { overview, expenses, isLoading, addExpense, deleteExpense } = useFinancialOverview();
+  const { dataMode, setDataMode } = useDataMode();
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [expenseForm, setExpenseForm] = useState({
     amount: '',
@@ -67,6 +69,11 @@ export const FinancialOverview: React.FC = () => {
     }
   };
 
+  const handleDataModeToggle = () => {
+    const newMode = dataMode === 'live' ? 'mock' : 'live';
+    setDataMode(newMode);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -88,6 +95,41 @@ export const FinancialOverview: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Data Source Toggle */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              Financial Data Source
+            </CardTitle>
+            <Button
+              variant="outline"
+              onClick={handleDataModeToggle}
+              className="flex items-center gap-2"
+            >
+              {dataMode === 'live' ? (
+                <>
+                  <Database className="h-4 w-4" />
+                  Live Database
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4" />
+                  Mock Data
+                </>
+              )}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-600">
+            Currently showing {dataMode === 'live' ? 'real-time database' : 'mock/test'} data. 
+            Click the button above to toggle between live and test data.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Financial Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
@@ -153,136 +195,189 @@ export const FinancialOverview: React.FC = () => {
         </Card>
       </div>
 
-      {/* Expenses Section */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Business Expenses</CardTitle>
-          <Dialog open={isAddExpenseOpen} onOpenChange={setIsAddExpenseOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Expense
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Business Expense</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleAddExpense} className="space-y-4">
-                <div>
-                  <Label htmlFor="amount">Amount (N$)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    value={expenseForm.amount}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
-                    placeholder="0.00"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="category">Category</Label>
-                  <Select 
-                    value={expenseForm.category} 
-                    onValueChange={(value) => setExpenseForm({ ...expenseForm, category: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EXPENSE_CATEGORIES.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+      {/* Additional Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Booking Metrics</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Total Bookings:</span>
+              <span className="font-medium">{overview?.total_bookings || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Completed:</span>
+              <span className="font-medium">{overview?.completed_bookings || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Avg. Booking Value:</span>
+              <span className="font-medium">N${overview?.avg_booking_value?.toFixed(2) || '0.00'}</span>
+            </div>
+          </CardContent>
+        </Card>
 
-                <div>
-                  <Label htmlFor="expense_date">Date</Label>
-                  <Input
-                    id="expense_date"
-                    type="date"
-                    value={expenseForm.expense_date}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })}
-                    required
-                  />
-                </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Package Sales</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Packages Sold:</span>
+              <span className="font-medium">{overview?.total_packages_sold || 0}</span>
+            </div>
+          </CardContent>
+        </Card>
 
-                <div>
-                  <Label htmlFor="description">Description (Optional)</Label>
-                  <Textarea
-                    id="description"
-                    value={expenseForm.description}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
-                    placeholder="Additional details about this expense..."
-                    rows={3}
-                  />
-                </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Profit Margin</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {overview?.total_revenue && overview.total_revenue > 0 
+                ? ((overview.admin_profit / overview.total_revenue) * 100).toFixed(1) 
+                : '0.0'}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              After payouts and expenses
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-                <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setIsAddExpenseOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">Add Expense</Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {expenses.length === 0 ? (
+      {/* Expenses Section - only show in live mode */}
+      {dataMode === 'live' && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Business Expenses</CardTitle>
+            <Dialog open={isAddExpenseOpen} onOpenChange={setIsAddExpenseOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Expense
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Business Expense</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleAddExpense} className="space-y-4">
+                  <div>
+                    <Label htmlFor="amount">Amount (N$)</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      step="0.01"
+                      value={expenseForm.amount}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="category">Category</Label>
+                    <Select 
+                      value={expenseForm.category} 
+                      onValueChange={(value) => setExpenseForm({ ...expenseForm, category: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EXPENSE_CATEGORIES.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="expense_date">Date</Label>
+                    <Input
+                      id="expense_date"
+                      type="date"
+                      value={expenseForm.expense_date}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="description">Description (Optional)</Label>
+                    <Textarea
+                      id="description"
+                      value={expenseForm.description}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                      placeholder="Additional details about this expense..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setIsAddExpenseOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">Add Expense</Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    No expenses recorded yet
-                  </TableCell>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
-              ) : (
-                expenses.map((expense) => (
-                  <TableRow key={expense.id}>
-                    <TableCell>
-                      {format(new Date(expense.expense_date), 'MMM dd, yyyy')}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{expense.category}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {expense.description || '-'}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      N${expense.amount.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteExpense(expense.id)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {expenses.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      No expenses recorded yet
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                ) : (
+                  expenses.map((expense) => (
+                    <TableRow key={expense.id}>
+                      <TableCell>
+                        {format(new Date(expense.expense_date), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{expense.category}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {expense.description || '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        N${expense.amount.toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteExpense(expense.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

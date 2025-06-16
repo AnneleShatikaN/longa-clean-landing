@@ -1,52 +1,135 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Package, Plus, Edit, Trash2, DollarSign, Clock } from 'lucide-react';
-import { PackageForm } from './PackageForm';
+import { Package, Plus, Edit, Trash2, DollarSign, Clock, Users } from 'lucide-react';
+import { EnhancedPackageForm } from './EnhancedPackageForm';
 import { useServices } from '@/contexts/ServiceContext';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+interface PackageInclusion {
+  service_id: string;
+  quantity_per_package: number;
+  provider_fee_per_job: number;
+}
 
 interface PackageData {
   id?: string;
   name: string;
   price: number;
   description?: string;
-  serviceIds: string[];
+  duration_days: number;
+  inclusions: PackageInclusion[];
   createdAt?: string;
+}
+
+interface PackageWithInclusions extends PackageData {
+  package_service_inclusions?: Array<{
+    service_id: string;
+    quantity_per_package: number;
+    provider_fee_per_job: number;
+    service?: {
+      id: string;
+      name: string;
+      client_price: number;
+    };
+  }>;
 }
 
 export const PackageManager: React.FC = () => {
   const { services } = useServices();
   const { dataMode } = useDataMode();
   const { toast } = useToast();
-  const [packages, setPackages] = useState<PackageData[]>([]);
+  const [packages, setPackages] = useState<PackageWithInclusions[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<PackageData | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<PackageWithInclusions | null>(null);
+
+  const fetchPackages = async () => {
+    if (dataMode !== 'live') return;
+    
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('subscription_packages')
+        .select(`
+          *,
+          package_service_inclusions(
+            service_id,
+            quantity_per_package,
+            provider_fee_per_job,
+            service:services(id, name, client_price)
+          )
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPackages(data || []);
+    } catch (error) {
+      console.error('Error fetching packages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch packages",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPackages();
+  }, [dataMode]);
 
   const handleCreatePackage = async (packageData: PackageData) => {
     try {
-      const newPackage: PackageData = {
-        ...packageData,
-        id: Math.random().toString(36).substr(2, 9),
-        createdAt: new Date().toISOString()
-      };
-
       if (dataMode === 'live') {
-        // In live mode, we would save to Supabase
-        // For now, storing in memory since packages aren't in the services table
-        toast({
-          title: "Note",
-          description: "Live mode package creation will be implemented when package storage is configured",
-          variant: "default"
-        });
-      }
+        // Create package in database
+        const { data: newPackage, error: packageError } = await supabase
+          .from('subscription_packages')
+          .insert({
+            name: packageData.name,
+            description: packageData.description,
+            price: packageData.price,
+            duration_days: packageData.duration_days,
+            is_active: true
+          })
+          .select()
+          .single();
 
-      // Add to local state (works for both mock and live mode for now)
-      setPackages(prev => [...prev, newPackage]);
+        if (packageError) throw packageError;
+
+        // Create package inclusions
+        if (packageData.inclusions.length > 0) {
+          const inclusions = packageData.inclusions.map(inclusion => ({
+            package_id: newPackage.id,
+            service_id: inclusion.service_id,
+            quantity_per_package: inclusion.quantity_per_package,
+            provider_fee_per_job: inclusion.provider_fee_per_job
+          }));
+
+          const { error: inclusionsError } = await supabase
+            .from('package_service_inclusions')
+            .insert(inclusions);
+
+          if (inclusionsError) throw inclusionsError;
+        }
+
+        await fetchPackages();
+      } else {
+        // Mock mode - add to local state
+        const newPackage: PackageWithInclusions = {
+          ...packageData,
+          id: Math.random().toString(36).substr(2, 9),
+          createdAt: new Date().toISOString()
+        };
+        setPackages(prev => [...prev, newPackage]);
+      }
       
       toast({
         title: "Success",
@@ -64,19 +147,22 @@ export const PackageManager: React.FC = () => {
     }
   };
 
-  const getServicesByIds = (serviceIds: string[]) => {
-    return services.filter(service => serviceIds.includes(service.id));
+  const getServicesByIds = (inclusions: PackageInclusion[]) => {
+    return inclusions.map(inclusion => {
+      const service = services.find(s => s.id === inclusion.service_id);
+      return {
+        ...inclusion,
+        service
+      };
+    }).filter(item => item.service);
   };
 
-  const calculateTotalDuration = (serviceIds: string[]) => {
-    const packageServices = getServicesByIds(serviceIds);
-    const totalMinutes = packageServices.reduce((total, service) => {
-      return total + (service.duration.hours * 60) + service.duration.minutes;
+  const calculateTotalValue = (packageItem: PackageWithInclusions) => {
+    const inclusions = packageItem.package_service_inclusions || packageItem.inclusions || [];
+    return inclusions.reduce((total, inclusion) => {
+      const service = inclusion.service || services.find(s => s.id === inclusion.service_id);
+      return total + (service?.client_price || 0) * inclusion.quantity_per_package;
     }, 0);
-    
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return { hours, minutes };
   };
 
   return (
@@ -84,7 +170,7 @@ export const PackageManager: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Package Management</h2>
-          <p className="text-gray-600">Create and manage service packages</p>
+          <p className="text-gray-600">Create and manage service packages with custom provider fees</p>
         </div>
         <Button onClick={() => setIsFormOpen(true)} className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
@@ -95,8 +181,9 @@ export const PackageManager: React.FC = () => {
       {/* Packages Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {packages.map((pkg) => {
-          const packageServices = getServicesByIds(pkg.serviceIds);
-          const totalDuration = calculateTotalDuration(pkg.serviceIds);
+          const inclusions = pkg.package_service_inclusions || pkg.inclusions || [];
+          const totalValue = calculateTotalValue(pkg);
+          const savings = totalValue - pkg.price;
           
           return (
             <Card key={pkg.id} className="hover:shadow-md transition-shadow">
@@ -112,10 +199,11 @@ export const PackageManager: React.FC = () => {
                         <DollarSign className="h-3 w-3" />
                         N${pkg.price}
                       </Badge>
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {totalDuration.hours}h {totalDuration.minutes}m
-                      </Badge>
+                      {savings > 0 && (
+                        <Badge variant="outline" className="text-green-600">
+                          Save N${savings.toFixed(0)}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -135,20 +223,35 @@ export const PackageManager: React.FC = () => {
                 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">Duration:</span>
+                    <span className="text-gray-500">{pkg.duration_days} days</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">Included Services:</span>
-                    <span className="text-gray-500">{packageServices.length} services</span>
+                    <span className="text-gray-500">{inclusions.length} services</span>
                   </div>
                   
                   <div className="space-y-2">
-                    {packageServices.slice(0, 3).map((service) => (
-                      <div key={service.id} className="flex items-center justify-between text-sm">
-                        <span className="truncate">{service.name}</span>
-                        <span className="text-gray-500">N${service.clientPrice}</span>
-                      </div>
-                    ))}
-                    {packageServices.length > 3 && (
+                    {inclusions.slice(0, 3).map((inclusion, index) => {
+                      const service = inclusion.service || services.find(s => s.id === inclusion.service_id);
+                      return (
+                        <div key={index} className="flex items-center justify-between text-sm">
+                          <span className="truncate">{service?.name || 'Unknown Service'}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {inclusion.quantity_per_package}x
+                            </Badge>
+                            <span className="text-gray-500 text-xs">
+                              N${inclusion.provider_fee_per_job}/job
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {inclusions.length > 3 && (
                       <div className="text-sm text-gray-500">
-                        +{packageServices.length - 3} more services
+                        +{inclusions.length - 3} more services
                       </div>
                     )}
                   </div>
@@ -158,13 +261,13 @@ export const PackageManager: React.FC = () => {
           );
         })}
 
-        {packages.length === 0 && (
+        {packages.length === 0 && !isLoading && (
           <Card className="col-span-full">
             <CardContent className="text-center py-12">
               <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No packages created yet</h3>
               <p className="text-gray-600 mb-4">
-                Create your first package by combining multiple services with special pricing.
+                Create your first package by combining multiple services with special pricing and custom provider fees.
               </p>
               <Button onClick={() => setIsFormOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -181,7 +284,7 @@ export const PackageManager: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Create New Package</DialogTitle>
           </DialogHeader>
-          <PackageForm
+          <EnhancedPackageForm
             onClose={() => setIsFormOpen(false)}
             onSave={handleCreatePackage}
           />

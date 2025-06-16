@@ -671,19 +671,61 @@ export type Database = {
             foreignKeyName: "package_entitlements_package_id_fkey"
             columns: ["package_id"]
             isOneToOne: false
+            referencedRelation: "subscription_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      package_service_inclusions: {
+        Row: {
+          created_at: string
+          id: string
+          package_id: string
+          provider_fee_per_job: number
+          quantity_per_package: number
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          package_id: string
+          provider_fee_per_job: number
+          quantity_per_package?: number
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          package_id?: string
+          provider_fee_per_job?: number
+          quantity_per_package?: number
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_service_inclusions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_service_inclusions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
             referencedRelation: "analytics_service_popularity"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "package_entitlements_package_id_fkey"
-            columns: ["package_id"]
+            foreignKeyName: "package_service_inclusions_service_id_fkey"
+            columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "service_search_analytics"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "package_entitlements_package_id_fkey"
-            columns: ["package_id"]
+            foreignKeyName: "package_service_inclusions_service_id_fkey"
+            columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
             referencedColumns: ["id"]
@@ -1129,6 +1171,13 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pending_transactions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_packages"
+            referencedColumns: ["id"]
+          },
         ]
       }
       provider_earnings_summaries: {
@@ -1414,6 +1463,57 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_packages: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_days: number
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_packages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "subscription_packages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_contacts: {
         Row: {
           availability_hours: string | null
@@ -1658,21 +1758,7 @@ export type Database = {
             foreignKeyName: "user_active_packages_package_id_fkey"
             columns: ["package_id"]
             isOneToOne: false
-            referencedRelation: "analytics_service_popularity"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_active_packages_package_id_fkey"
-            columns: ["package_id"]
-            isOneToOne: false
-            referencedRelation: "service_search_analytics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_active_packages_package_id_fkey"
-            columns: ["package_id"]
-            isOneToOne: false
-            referencedRelation: "services"
+            referencedRelation: "subscription_packages"
             referencedColumns: ["id"]
           },
         ]
@@ -1902,6 +1988,19 @@ export type Database = {
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_enhanced_financial_overview: {
+        Args: { start_date?: string; end_date?: string }
+        Returns: {
+          total_revenue: number
+          total_provider_payouts: number
+          total_expenses: number
+          admin_profit: number
+          total_bookings: number
+          completed_bookings: number
+          total_packages_sold: number
+          avg_booking_value: number
+        }[]
       }
       get_financial_overview: {
         Args: { start_date?: string; end_date?: string }

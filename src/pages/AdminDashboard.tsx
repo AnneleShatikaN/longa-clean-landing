@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminOverview } from '@/components/admin/AdminOverview';
@@ -16,7 +17,20 @@ import { PendingTransactionApproval } from '@/components/admin/PendingTransactio
 import { AdminProfileManagement } from '@/components/admin/AdminProfileManagement';
 import { AdminSettings } from '@/components/admin/AdminSettings';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarInset,
+} from '@/components/ui/sidebar';
 import { useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -37,6 +51,7 @@ import {
 const AdminDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('overview');
 
   if (!user || user.role !== 'admin') {
     return (
@@ -52,134 +67,191 @@ const AdminDashboard = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2">Manage your platform and business operations</p>
+  const menuItems = [
+    {
+      id: 'overview',
+      title: 'Overview',
+      icon: Home,
+      description: 'Dashboard overview'
+    },
+    {
+      id: 'financial-overview',
+      title: 'Profit',
+      icon: PieChart,
+      description: 'Financial overview'
+    },
+    {
+      id: 'weekly-payouts',
+      title: 'Payouts',
+      icon: CreditCard,
+      description: 'Weekly payouts'
+    },
+    {
+      id: 'payout-config',
+      title: 'Config',
+      icon: Calculator,
+      description: 'Payout configuration'
+    },
+    {
+      id: 'weekend-settings',
+      title: 'Weekend',
+      icon: Calendar,
+      description: 'Weekend settings'
+    },
+    {
+      id: 'services',
+      title: 'Services',
+      icon: Settings,
+      description: 'Service management'
+    },
+    {
+      id: 'packages',
+      title: 'Packages',
+      icon: Package,
+      description: 'Package management'
+    },
+    {
+      id: 'payments',
+      title: 'Payments',
+      icon: Clock,
+      description: 'Pending payments'
+    },
+    {
+      id: 'finance',
+      title: 'Finance',
+      icon: DollarSign,
+      description: 'Financial management'
+    },
+    {
+      id: 'analytics',
+      title: 'Analytics',
+      icon: BarChart3,
+      description: 'Analytics dashboard'
+    },
+    {
+      id: 'launch',
+      title: 'Launch',
+      icon: Rocket,
+      description: 'Launch dashboard'
+    },
+    {
+      id: 'support',
+      title: 'Support',
+      icon: Users,
+      description: 'Support system'
+    },
+    {
+      id: 'admin-settings',
+      title: 'Settings',
+      icon: Settings,
+      description: 'Admin settings'
+    },
+    {
+      id: 'profile',
+      title: 'Profile',
+      icon: UserCog,
+      description: 'Profile management'
+    }
+  ];
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return <AdminOverview data={{}} isLoading={false} />;
+      case 'financial-overview':
+        return <FinancialOverview />;
+      case 'weekly-payouts':
+        return <WeeklyPayouts />;
+      case 'payout-config':
+        return <JobPayoutConfiguration />;
+      case 'weekend-settings':
+        return <WeekendSettings />;
+      case 'services':
+        return <ServiceManagement />;
+      case 'packages':
+        return <PackageManager />;
+      case 'payments':
+        return <PendingTransactionApproval />;
+      case 'finance':
+        return (
+          <div className="space-y-6">
+            <FinancialManagement />
+            <PayoutSystemTabs />
+          </div>
+        );
+      case 'analytics':
+        return <AnalyticsDashboard />;
+      case 'launch':
+        return <LaunchDashboard />;
+      case 'support':
+        return <SupportSystem />;
+      case 'admin-settings':
+        return <AdminSettings />;
+      case 'profile':
+        return <AdminProfileManagement />;
+      default:
+        return <AdminOverview data={{}} isLoading={false} />;
+    }
+  };
+
+  const AppSidebar = () => (
+    <Sidebar>
+      <SidebarHeader className="border-b border-sidebar-border p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Settings className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Longa Admin</p>
+            <p className="text-xs text-muted-foreground">Management Panel</p>
+          </div>
         </div>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {menuItems.map((item) => (
+                <SidebarMenuItem key={item.id}>
+                  <SidebarMenuButton
+                    isActive={activeTab === item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    tooltip={item.description}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  );
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-13 lg:grid-cols-14">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <Home className="h-4 w-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="financial-overview" className="flex items-center gap-2">
-              <PieChart className="h-4 w-4" />
-              Profit
-            </TabsTrigger>
-            <TabsTrigger value="weekly-payouts" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              Payouts
-            </TabsTrigger>
-            <TabsTrigger value="payout-config" className="flex items-center gap-2">
-              <Calculator className="h-4 w-4" />
-              Config
-            </TabsTrigger>
-            <TabsTrigger value="weekend-settings" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Weekend
-            </TabsTrigger>
-            <TabsTrigger value="services" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Services
-            </TabsTrigger>
-            <TabsTrigger value="packages" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Packages
-            </TabsTrigger>
-            <TabsTrigger value="payments" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Payments
-            </TabsTrigger>
-            <TabsTrigger value="finance" className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Finance
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger value="launch" className="flex items-center gap-2">
-              <Rocket className="h-4 w-4" />
-              Launch
-            </TabsTrigger>
-            <TabsTrigger value="support" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Support
-            </TabsTrigger>
-            <TabsTrigger value="admin-settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Settings
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center gap-2">
-              <UserCog className="h-4 w-4" />
-              Profile
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview">
-            <AdminOverview data={{}} isLoading={false} />
-          </TabsContent>
-
-          <TabsContent value="financial-overview">
-            <FinancialOverview />
-          </TabsContent>
-
-          <TabsContent value="weekly-payouts">
-            <WeeklyPayouts />
-          </TabsContent>
-
-          <TabsContent value="payout-config">
-            <JobPayoutConfiguration />
-          </TabsContent>
-
-          <TabsContent value="weekend-settings">
-            <WeekendSettings />
-          </TabsContent>
-
-          <TabsContent value="services">
-            <ServiceManagement />
-          </TabsContent>
-
-          <TabsContent value="packages">
-            <PackageManager />
-          </TabsContent>
-
-          <TabsContent value="payments">
-            <PendingTransactionApproval />
-          </TabsContent>
-
-          <TabsContent value="finance">
-            <div className="space-y-6">
-              <FinancialManagement />
-              <PayoutSystemTabs />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="analytics">
-            <AnalyticsDashboard />
-          </TabsContent>
-
-          <TabsContent value="launch">
-            <LaunchDashboard />
-          </TabsContent>
-
-          <TabsContent value="support">
-            <SupportSystem />
-          </TabsContent>
-
-          <TabsContent value="admin-settings">
-            <AdminSettings />
-          </TabsContent>
-
-          <TabsContent value="profile">
-            <AdminProfileManagement />
-          </TabsContent>
-        </Tabs>
-      </div>
+  return (
+    <div className="min-h-screen bg-background">
+      <SidebarProvider>
+        <div className="flex w-full min-h-screen">
+          <AppSidebar />
+          <SidebarInset className="flex-1">
+            <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
+              <SidebarTrigger className="-ml-1" />
+              <div className="flex-1">
+                <h1 className="text-lg font-semibold">Admin Dashboard</h1>
+                <p className="text-sm text-muted-foreground">
+                  Manage your platform and business operations
+                </p>
+              </div>
+            </header>
+            <main className="flex-1 overflow-auto p-6">
+              {renderContent()}
+            </main>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
     </div>
   );
 };

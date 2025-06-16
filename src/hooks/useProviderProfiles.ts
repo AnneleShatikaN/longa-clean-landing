@@ -55,7 +55,7 @@ export const useProviderProfiles = () => {
 
       const typedProviders = (data || []).map(provider => ({
         ...provider,
-        bio: provider.bio || `Experienced ${provider.role} providing quality services in ${provider.current_work_location || 'Windhoek'}.`
+        bio: `Experienced ${provider.role} providing quality services in ${provider.current_work_location || 'Windhoek'}.`
       })) as ProviderProfile[];
 
       setProviders(typedProviders);
@@ -84,7 +84,7 @@ export const useProviderProfiles = () => {
 
       return {
         ...data,
-        bio: data.bio || `Experienced provider offering quality services in ${data.current_work_location || 'Windhoek'}.`
+        bio: `Experienced provider offering quality services in ${data.current_work_location || 'Windhoek'}.`
       } as ProviderProfile;
     } catch (error) {
       console.error('Error fetching provider:', error);

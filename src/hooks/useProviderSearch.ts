@@ -57,7 +57,7 @@ export const useProviderSearch = () => {
 
       const enhancedProviders = (data || []).map(provider => ({
         ...provider,
-        bio: provider.bio || `Experienced provider offering quality services in ${provider.current_work_location || 'Windhoek'}.`,
+        bio: `Experienced provider offering quality services in ${provider.current_work_location || 'Windhoek'}.`,
         available: true, // You can implement real availability checking
         distance_km: 0 // Placeholder for distance calculation
       })) as ProviderSearchResult[];

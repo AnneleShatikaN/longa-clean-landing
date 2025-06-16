@@ -79,7 +79,6 @@ export const usePendingTransactions = () => {
 
       if (error) throw error;
       
-      // Type assertion to ensure proper typing
       const typedTransactions = (data || []).map(item => ({
         ...item,
         transaction_type: item.transaction_type as 'subscription' | 'booking'
@@ -141,7 +140,7 @@ export const usePendingTransactions = () => {
     setError(null);
 
     try {
-      // First fetch the basic transaction data
+      // First fetch the basic transaction data without any joins
       const { data: transactionData, error: transactionError } = await supabase
         .from('pending_transactions')
         .select('*')
@@ -157,12 +156,12 @@ export const usePendingTransactions = () => {
         return;
       }
 
-      // Get unique user IDs, service IDs, and package IDs
+      // Get unique user IDs, service IDs, and package IDs for separate queries
       const userIds = [...new Set(transactionData.map(t => t.user_id).filter(Boolean))];
       const serviceIds = [...new Set(transactionData.map(t => t.service_id).filter(Boolean))];
       const packageIds = [...new Set(transactionData.map(t => t.package_id).filter(Boolean))];
 
-      // Fetch related data in separate queries
+      // Fetch related data in separate queries to avoid relationship conflicts
       const [usersData, servicesData, packagesData] = await Promise.all([
         userIds.length > 0 ? supabase
           .from('users')
@@ -178,12 +177,12 @@ export const usePendingTransactions = () => {
           .in('id', packageIds) : Promise.resolve({ data: [] })
       ]);
 
-      // Create lookup maps
+      // Create lookup maps for efficient data combination
       const usersMap = new Map((usersData.data || []).map(u => [u.id, u]));
       const servicesMap = new Map((servicesData.data || []).map(s => [s.id, s]));
       const packagesMap = new Map((packagesData.data || []).map(p => [p.id, p]));
 
-      // Combine the data
+      // Combine the data manually
       const enrichedTransactions = transactionData.map(transaction => ({
         ...transaction,
         transaction_type: transaction.transaction_type as 'subscription' | 'booking',

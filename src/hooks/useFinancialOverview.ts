@@ -77,9 +77,18 @@ export const useFinancialOverview = () => {
     expense_date: string;
   }) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
       const { error } = await supabase
         .from('business_expenses')
-        .insert([expense]);
+        .insert([{
+          ...expense,
+          created_by: user.id
+        }]);
 
       if (error) throw error;
 

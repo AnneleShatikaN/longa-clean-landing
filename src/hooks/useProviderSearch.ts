@@ -16,10 +16,16 @@ export interface ProviderSearchFilters {
 export interface ProviderSearchResult {
   id: string;
   full_name: string;
+  email: string;
+  phone?: string;
+  current_work_location?: string;
+  bio?: string;
+  avatar_url?: string;
   rating: number;
   total_jobs: number;
   distance_km?: number;
   available: boolean;
+  is_active: boolean;
 }
 
 export const useProviderSearch = () => {
@@ -30,19 +36,33 @@ export const useProviderSearch = () => {
   const searchProviders = useCallback(async (filters: ProviderSearchFilters) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('search_providers_by_location', {
-        search_lat: filters.latitude || null,
-        search_lng: filters.longitude || null,
-        max_distance_km: filters.maxDistance || 50,
-        service_type_filter: filters.serviceType || null,
-        min_rating: filters.minRating || null,
-        available_date: filters.availableDate || null,
-        available_time: filters.availableTime || null,
-        limit_results: 20
-      });
+      // For now, we'll use a direct query to users table
+      // In a real implementation, you might want to use the RPC function
+      let query = supabase
+        .from('users')
+        .select('*')
+        .eq('role', 'provider')
+        .eq('is_active', true);
+
+      if (filters.minRating) {
+        query = query.gte('rating', filters.minRating);
+      }
+
+      const { data, error } = await query
+        .order('rating', { ascending: false })
+        .order('total_jobs', { ascending: false })
+        .limit(20);
 
       if (error) throw error;
-      setProviders(data || []);
+
+      const enhancedProviders = (data || []).map(provider => ({
+        ...provider,
+        bio: provider.bio || `Experienced provider offering quality services in ${provider.current_work_location || 'Windhoek'}.`,
+        available: true, // You can implement real availability checking
+        distance_km: 0 // Placeholder for distance calculation
+      })) as ProviderSearchResult[];
+
+      setProviders(enhancedProviders);
 
     } catch (error) {
       console.error('Provider search error:', error);

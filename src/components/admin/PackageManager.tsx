@@ -69,7 +69,14 @@ export const PackageManager: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPackages(data || []);
+      
+      // Transform the data to match our interface
+      const transformedPackages = (data || []).map(pkg => ({
+        ...pkg,
+        inclusions: pkg.package_service_inclusions || []
+      }));
+      
+      setPackages(transformedPackages);
     } catch (error) {
       console.error('Error fetching packages:', error);
       toast({
@@ -160,7 +167,9 @@ export const PackageManager: React.FC = () => {
   const calculateTotalValue = (packageItem: PackageWithInclusions) => {
     const inclusions = packageItem.package_service_inclusions || packageItem.inclusions || [];
     return inclusions.reduce((total, inclusion) => {
-      const service = inclusion.service || services.find(s => s.id === inclusion.service_id);
+      const service = 'service' in inclusion && inclusion.service 
+        ? inclusion.service 
+        : services.find(s => s.id === inclusion.service_id);
       return total + (service?.client_price || 0) * inclusion.quantity_per_package;
     }, 0);
   };
@@ -234,7 +243,9 @@ export const PackageManager: React.FC = () => {
                   
                   <div className="space-y-2">
                     {inclusions.slice(0, 3).map((inclusion, index) => {
-                      const service = inclusion.service || services.find(s => s.id === inclusion.service_id);
+                      const service = 'service' in inclusion && inclusion.service 
+                        ? inclusion.service 
+                        : services.find(s => s.id === inclusion.service_id);
                       return (
                         <div key={index} className="flex items-center justify-between text-sm">
                           <span className="truncate">{service?.name || 'Unknown Service'}</span>

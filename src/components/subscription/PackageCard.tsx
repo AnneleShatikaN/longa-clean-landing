@@ -72,13 +72,14 @@ export const PackageCard: React.FC<PackageCardProps> = ({
         </CardContent>
       </Card>
 
-      <PaymentFlow
-        isOpen={showPaymentFlow}
-        onClose={() => setShowPaymentFlow(false)}
-        transactionData={getTransactionData()}
-        title="Subscribe to Package"
-        description={`Subscribe to ${name} and start accessing premium services.`}
-      />
+      {showPaymentFlow && (
+        <PaymentFlow
+          amount={price}
+          packageId={id}
+          transactionType="subscription"
+          onPaymentSubmitted={() => setShowPaymentFlow(false)}
+        />
+      )}
     </>
   );
 };

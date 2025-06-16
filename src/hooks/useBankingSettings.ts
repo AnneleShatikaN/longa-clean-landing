@@ -37,9 +37,9 @@ export const useBankingSettings = () => {
 
       settings?.forEach((setting) => {
         if (setting.key === 'banking_details') {
-          setBankingDetails(setting.value as BankingDetails);
+          setBankingDetails(setting.value as unknown as BankingDetails);
         } else if (setting.key === 'payment_instructions') {
-          setPaymentInstructions(setting.value as PaymentInstructions);
+          setPaymentInstructions(setting.value as unknown as PaymentInstructions);
         }
       });
     } catch (error) {

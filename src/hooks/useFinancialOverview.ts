@@ -8,6 +8,10 @@ export interface FinancialOverview {
   total_provider_payouts: number;
   total_expenses: number;
   admin_profit: number;
+  total_bookings: number;
+  completed_bookings: number;
+  total_packages_sold: number;
+  avg_booking_value: number;
 }
 
 export interface BusinessExpense {
@@ -29,7 +33,7 @@ export const useFinancialOverview = () => {
   const fetchFinancialOverview = async (startDate?: string, endDate?: string) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('get_financial_overview', {
+      const { data, error } = await supabase.rpc('get_enhanced_financial_overview', {
         start_date: startDate || null,
         end_date: endDate || null
       });

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Home, LogIn, UserPlus, User, Shield, Briefcase, Eye, EyeOff, AlertCircle, MapPin } from "lucide-react";
+import { Home, LogIn, UserPlus, User, Briefcase, Eye, EyeOff, AlertCircle, MapPin, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +37,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -155,15 +157,21 @@ const Auth = () => {
         });
 
         if (result.success) {
+          // Show success message for all signups
+          setShowSuccessMessage(true);
+          
           // Show email verification prompt for provider signups
           if (formData.role === 'provider') {
-            setShowEmailVerification(true);
+            setTimeout(() => {
+              setShowSuccessMessage(false);
+              setShowEmailVerification(true);
+            }, 3000);
           } else {
-            toast({
-              title: "Account created!",
-              description: "You can now sign in with your credentials.",
-            });
-            setMode('login');
+            // For clients, show success and switch to login after a delay
+            setTimeout(() => {
+              setShowSuccessMessage(false);
+              setMode('login');
+            }, 4000);
           }
         }
       } else if (mode === 'forgot-password') {
@@ -185,7 +193,7 @@ const Auth = () => {
     switch (role) {
       case 'client': return <User className="w-4 h-4" />;
       case 'provider': return <Briefcase className="w-4 h-4" />;
-      case 'admin': return <Shield className="w-4 h-4" />;
+      case 'admin': return null; // Admin role is no longer available
     }
   };
 
@@ -233,6 +241,18 @@ const Auth = () => {
         }}
         email={formData.email}
       />
+
+      {/* Success Message Alert */}
+      {showSuccessMessage && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4">
+          <Alert className="bg-green-50 border-green-200 text-green-800">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="font-medium">
+              🎉 Success! Please check your email to verify your account before logging in.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       {/* Header */}
       <div className="absolute top-6 left-6">
@@ -350,12 +370,12 @@ const Auth = () => {
                 </div>
               )}
 
-              {/* Role selection only for signup */}
+              {/* Role selection only for signup - Admin removed */}
               {mode === 'signup' && (
                 <div className="space-y-2">
-                  <Label className="text-gray-700">Role</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['client', 'provider', 'admin'] as UserRole[]).map((role) => (
+                  <Label className="text-gray-700">I want to</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['client', 'provider'] as UserRole[]).map((role) => (
                       <button
                         key={role}
                         type="button"
@@ -368,7 +388,9 @@ const Auth = () => {
                       >
                         <div className="flex flex-col items-center space-y-1">
                           {getRoleIcon(role)}
-                          <span className="text-xs font-medium capitalize">{role}</span>
+                          <span className="text-xs font-medium">
+                            {role === 'client' ? 'Book Services' : 'Provide Services'}
+                          </span>
                         </div>
                       </button>
                     ))}

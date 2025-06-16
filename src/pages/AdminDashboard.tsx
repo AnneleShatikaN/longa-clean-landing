@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminOverview } from '@/components/admin/AdminOverview';
-import { ServiceManagement } from '@/components/admin/ServiceManagement';
+import ServiceManagement from '@/components/admin/ServiceManagement';
 import { PackageManager } from '@/components/admin/PackageManager';
 import { FinancialManagement } from '@/components/admin/FinancialManagement';
 import { PayoutSystemTabs } from '@/components/admin/PayoutSystemTabs';
@@ -87,7 +87,7 @@ const AdminDashboard = () => {
           </TabsList>
 
           <TabsContent value="overview">
-            <AdminOverview />
+            <AdminOverview data={{}} isLoading={false} />
           </TabsContent>
 
           <TabsContent value="services">

@@ -31,6 +31,13 @@ export interface CreateTransactionData {
   booking_details?: any;
 }
 
+interface RpcResponse {
+  success: boolean;
+  error?: string;
+  message?: string;
+  transaction_type?: string;
+}
+
 export const usePendingTransactions = () => {
   const { user } = useAuth();
   const { toast } = useEnhancedToast();
@@ -59,7 +66,14 @@ export const usePendingTransactions = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTransactions(data || []);
+      
+      // Type assertion to ensure proper typing
+      const typedTransactions = (data || []).map(item => ({
+        ...item,
+        transaction_type: item.transaction_type as 'subscription' | 'booking'
+      })) as PendingTransaction[];
+      
+      setTransactions(typedTransactions);
     } catch (err: any) {
       setError(err.message);
       toast.error('Failed to fetch transactions', err.message);
@@ -125,7 +139,14 @@ export const usePendingTransactions = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTransactions(data || []);
+      
+      // Type assertion to ensure proper typing
+      const typedTransactions = (data || []).map(item => ({
+        ...item,
+        transaction_type: item.transaction_type as 'subscription' | 'booking'
+      })) as PendingTransaction[];
+      
+      setTransactions(typedTransactions);
     } catch (err: any) {
       setError(err.message);
       toast.error('Failed to fetch transactions', err.message);
@@ -147,12 +168,13 @@ export const usePendingTransactions = () => {
 
       if (error) throw error;
 
-      if (data.success) {
+      const response = data as RpcResponse;
+      if (response.success) {
         toast.success('Transaction approved successfully');
         await fetchAllTransactions();
         return true;
       } else {
-        throw new Error(data.error);
+        throw new Error(response.error || 'Unknown error');
       }
     } catch (err: any) {
       setError(err.message);
@@ -176,12 +198,13 @@ export const usePendingTransactions = () => {
 
       if (error) throw error;
 
-      if (data.success) {
+      const response = data as RpcResponse;
+      if (response.success) {
         toast.success('Transaction declined');
         await fetchAllTransactions();
         return true;
       } else {
-        throw new Error(data.error);
+        throw new Error(response.error || 'Unknown error');
       }
     } catch (err: any) {
       setError(err.message);

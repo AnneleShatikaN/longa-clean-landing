@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminOverview } from '@/components/admin/AdminOverview';
@@ -15,6 +14,7 @@ import { LaunchDashboard } from '@/components/admin/launch/LaunchDashboard';
 import { SupportSystem } from '@/components/admin/support/SupportSystem';
 import { PendingTransactionApproval } from '@/components/admin/PendingTransactionApproval';
 import { AdminProfileManagement } from '@/components/admin/AdminProfileManagement';
+import { AdminSettings } from '@/components/admin/AdminSettings';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
@@ -61,7 +61,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-12 lg:grid-cols-13">
+          <TabsList className="grid w-full grid-cols-13 lg:grid-cols-14">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Home className="h-4 w-4" />
               Overview
@@ -109,6 +109,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="support" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Support
+            </TabsTrigger>
+            <TabsTrigger value="admin-settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Settings
             </TabsTrigger>
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <UserCog className="h-4 w-4" />
@@ -165,6 +169,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="support">
             <SupportSystem />
+          </TabsContent>
+
+          <TabsContent value="admin-settings">
+            <AdminSettings />
           </TabsContent>
 
           <TabsContent value="profile">

@@ -978,6 +978,63 @@ export type Database = {
           },
         ]
       }
+      pending_transactions: {
+        Row: {
+          admin_notes: string | null
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          booking_details: Json | null
+          created_at: string | null
+          id: string
+          package_id: string | null
+          payment_proof_url: string | null
+          reference_number: string | null
+          service_id: string | null
+          status: string
+          transaction_type: string
+          updated_at: string | null
+          user_id: string
+          whatsapp_number: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          booking_details?: Json | null
+          created_at?: string | null
+          id?: string
+          package_id?: string | null
+          payment_proof_url?: string | null
+          reference_number?: string | null
+          service_id?: string | null
+          status?: string
+          transaction_type: string
+          updated_at?: string | null
+          user_id: string
+          whatsapp_number?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          booking_details?: Json | null
+          created_at?: string | null
+          id?: string
+          package_id?: string | null
+          payment_proof_url?: string | null
+          reference_number?: string | null
+          service_id?: string | null
+          status?: string
+          transaction_type?: string
+          updated_at?: string | null
+          user_id?: string
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
       provider_earnings_summaries: {
         Row: {
           document_url: string | null
@@ -1698,6 +1755,10 @@ export type Database = {
       }
     }
     Functions: {
+      approve_pending_transaction: {
+        Args: { transaction_id: string; admin_notes_param?: string }
+        Returns: Json
+      }
       calculate_enhanced_payout: {
         Args: {
           service_id: string
@@ -1723,6 +1784,10 @@ export type Database = {
           duration_minutes: number
         }
         Returns: boolean
+      }
+      decline_pending_transaction: {
+        Args: { transaction_id: string; admin_notes_param?: string }
+        Returns: Json
       }
       get_analytics_summary: {
         Args: Record<PropertyKey, never>

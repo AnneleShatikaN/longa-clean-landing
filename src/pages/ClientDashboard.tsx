@@ -6,13 +6,14 @@ import { ServiceUsageTracker } from '@/components/client/ServiceUsageTracker';
 import { PackagePrompt } from '@/components/client/PackagePrompt';
 import { BookingManager } from '@/components/booking/BookingManager';
 import { RealTimeBookingManager } from '@/components/booking/RealTimeBookingManager';
+import { PendingTransactionsDisplay } from '@/components/client/PendingTransactionsDisplay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { useServiceEntitlements } from '@/hooks/useServiceEntitlements';
-import { Calendar, Package, Settings, User, Home } from 'lucide-react';
+import { Calendar, Package, Settings, User, Home, Clock } from 'lucide-react';
 
 const ClientDashboard = () => {
   const { user } = useAuth();
@@ -72,7 +73,7 @@ const ClientDashboard = () => {
         </div>
 
         <Tabs defaultValue="services" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="services" className="flex items-center gap-2">
               <Home className="h-4 w-4" />
               Services
@@ -80,6 +81,10 @@ const ClientDashboard = () => {
             <TabsTrigger value="bookings" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               My Bookings
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Pending
             </TabsTrigger>
             <TabsTrigger value="packages" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
@@ -112,6 +117,10 @@ const ClientDashboard = () => {
 
           <TabsContent value="bookings" className="space-y-6">
             <BookingManager userRole="client" userId={parseInt(user.id)} />
+          </TabsContent>
+
+          <TabsContent value="pending" className="space-y-6">
+            <PendingTransactionsDisplay />
           </TabsContent>
 
           <TabsContent value="packages" className="space-y-6">

@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calendar, Filter, CreditCard, Phone } from 'lucide-react';
+import { Calendar, Filter, CreditCard, Phone, Star } from 'lucide-react';
 import { format, subDays, startOfWeek, addDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,7 +17,9 @@ interface ProviderPayout {
   providerName: string;
   phoneNumber: string;
   jobCount: number;
+  weekendJobCount: number;
   totalOwed: number;
+  weekendBonus: number;
   jobs: PayoutJob[];
 }
 
@@ -26,6 +28,8 @@ interface PayoutJob {
   bookingDate: string;
   serviceName: string;
   amount: number;
+  weekendBonus: number;
+  isWeekendJob: boolean;
   clientName: string;
   isPaid: boolean;
 }
@@ -69,10 +73,11 @@ export const WeeklyPayouts: React.FC = () => {
           booking_date,
           total_amount,
           provider_payout,
+          is_weekend_job,
           service:services(name),
           provider:users!bookings_provider_id_fkey(id, full_name, phone),
           client:users!bookings_client_id_fkey(full_name),
-          payouts(id, status)
+          payouts(id, status, weekend_bonus)
         `)
         .eq('status', 'completed')
         .gte('booking_date', dateRange.from)
@@ -89,6 +94,7 @@ export const WeeklyPayouts: React.FC = () => {
 
         const providerId = booking.provider.id;
         const isPaid = booking.payouts?.some(payout => payout.status === 'completed') || false;
+        const weekendBonus = booking.payouts?.[0]?.weekend_bonus || 0;
         
         if (!providerMap.has(providerId)) {
           providerMap.set(providerId, {
@@ -96,7 +102,9 @@ export const WeeklyPayouts: React.FC = () => {
             providerName: booking.provider.full_name || 'Unknown Provider',
             phoneNumber: booking.provider.phone || 'No phone',
             jobCount: 0,
+            weekendJobCount: 0,
             totalOwed: 0,
+            weekendBonus: 0,
             jobs: []
           });
         }
@@ -104,8 +112,13 @@ export const WeeklyPayouts: React.FC = () => {
         const provider = providerMap.get(providerId)!;
         provider.jobCount++;
         
+        if (booking.is_weekend_job) {
+          provider.weekendJobCount++;
+        }
+        
         if (!isPaid) {
           provider.totalOwed += booking.provider_payout || 0;
+          provider.weekendBonus += weekendBonus;
         }
 
         provider.jobs.push({
@@ -113,6 +126,8 @@ export const WeeklyPayouts: React.FC = () => {
           bookingDate: booking.booking_date,
           serviceName: booking.service?.name || 'Unknown Service',
           amount: booking.provider_payout || 0,
+          weekendBonus,
+          isWeekendJob: booking.is_weekend_job || false,
           clientName: booking.client?.full_name || 'Unknown Client',
           isPaid
         });
@@ -182,6 +197,7 @@ export const WeeklyPayouts: React.FC = () => {
             p.jobs.some(j => j.id === jobId)
           )?.providerId,
           amount: booking?.amount || 0,
+          weekend_bonus: booking?.weekendBonus || 0,
           payout_type: 'manual',
           status: 'completed',
           processed_at: new Date().toISOString()
@@ -216,8 +232,9 @@ export const WeeklyPayouts: React.FC = () => {
     }
   };
 
-  const openWhatsApp = (phoneNumber: string, providerName: string, amount: number) => {
-    const message = `Hi ${providerName}, your payout of N$${amount.toFixed(2)} for services completed this week is ready. Please confirm your payment details.`;
+  const openWhatsApp = (phoneNumber: string, providerName: string, amount: number, weekendBonus: number) => {
+    const bonusText = weekendBonus > 0 ? ` (including N$${weekendBonus.toFixed(2)} weekend bonus)` : '';
+    const message = `Hi ${providerName}, your payout of N$${amount.toFixed(2)}${bonusText} for services completed this week is ready. Please confirm your payment details.`;
     const url = `https://wa.me/${phoneNumber.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -225,6 +242,11 @@ export const WeeklyPayouts: React.FC = () => {
   const totalSelected = selectedProviders.reduce((sum, providerId) => {
     const provider = providerPayouts.find(p => p.providerId === providerId);
     return sum + (provider?.totalOwed || 0);
+  }, 0);
+
+  const totalWeekendBonus = selectedProviders.reduce((sum, providerId) => {
+    const provider = providerPayouts.find(p => p.providerId === providerId);
+    return sum + (provider?.weekendBonus || 0);
   }, 0);
 
   return (
@@ -272,13 +294,20 @@ export const WeeklyPayouts: React.FC = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm text-gray-600">
-                  {selectedProviders.length} provider(s) selected
-                </span>
-                <span className="ml-4 font-medium">
-                  Total: N${totalSelected.toFixed(2)}
-                </span>
+              <div className="space-y-1">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-600">
+                    {selectedProviders.length} provider(s) selected
+                  </span>
+                  <span className="font-medium">
+                    Total: N${totalSelected.toFixed(2)}
+                  </span>
+                  {totalWeekendBonus > 0 && (
+                    <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                      Weekend Bonus: N${totalWeekendBonus.toFixed(2)}
+                    </Badge>
+                  )}
+                </div>
               </div>
               <Button 
                 onClick={() => markJobsAsPaid(selectedProviders)}
@@ -324,6 +353,7 @@ export const WeeklyPayouts: React.FC = () => {
                   <TableHead>Phone Number</TableHead>
                   <TableHead>Jobs Completed</TableHead>
                   <TableHead>Amount Owed</TableHead>
+                  <TableHead>Weekend Bonus</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -341,7 +371,15 @@ export const WeeklyPayouts: React.FC = () => {
                       />
                     </TableCell>
                     <TableCell className="font-medium">
-                      {provider.providerName}
+                      <div className="flex items-center gap-2">
+                        {provider.providerName}
+                        {provider.weekendJobCount > 0 && (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                            <Star className="h-3 w-3 mr-1" />
+                            {provider.weekendJobCount} weekend
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -353,7 +391,8 @@ export const WeeklyPayouts: React.FC = () => {
                             onClick={() => openWhatsApp(
                               provider.phoneNumber, 
                               provider.providerName, 
-                              provider.totalOwed
+                              provider.totalOwed,
+                              provider.weekendBonus
                             )}
                             className="h-6 w-6 p-0"
                           >
@@ -362,11 +401,29 @@ export const WeeklyPayouts: React.FC = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{provider.jobCount}</TableCell>
+                    <TableCell>
+                      <div className="text-center">
+                        <div className="font-medium">{provider.jobCount}</div>
+                        {provider.weekendJobCount > 0 && (
+                          <div className="text-xs text-orange-600">
+                            ({provider.weekendJobCount} weekend)
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="font-medium">
                       <span className={provider.totalOwed > 0 ? 'text-red-600' : 'text-green-600'}>
                         N${provider.totalOwed.toFixed(2)}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      {provider.weekendBonus > 0 ? (
+                        <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                          +N${provider.weekendBonus.toFixed(2)}
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {provider.totalOwed > 0 ? (

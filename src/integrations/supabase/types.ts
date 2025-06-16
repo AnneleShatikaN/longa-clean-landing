@@ -20,6 +20,7 @@ export type Database = {
           duration_minutes: number | null
           emergency_booking: boolean | null
           id: string
+          is_weekend_job: boolean | null
           location_town: string | null
           modification_history: Json | null
           progress_photos: string[] | null
@@ -44,6 +45,7 @@ export type Database = {
           duration_minutes?: number | null
           emergency_booking?: boolean | null
           id?: string
+          is_weekend_job?: boolean | null
           location_town?: string | null
           modification_history?: Json | null
           progress_photos?: string[] | null
@@ -68,6 +70,7 @@ export type Database = {
           duration_minutes?: number | null
           emergency_booking?: boolean | null
           id?: string
+          is_weekend_job?: boolean | null
           location_town?: string | null
           modification_history?: Json | null
           progress_photos?: string[] | null
@@ -906,6 +909,7 @@ export type Database = {
           status: string | null
           tax_withheld: number | null
           urgency_level: string | null
+          weekend_bonus: number | null
         }
         Insert: {
           amount: number
@@ -932,6 +936,7 @@ export type Database = {
           status?: string | null
           tax_withheld?: number | null
           urgency_level?: string | null
+          weekend_bonus?: number | null
         }
         Update: {
           amount?: number
@@ -958,6 +963,7 @@ export type Database = {
           status?: string | null
           tax_withheld?: number | null
           urgency_level?: string | null
+          weekend_bonus?: number | null
         }
         Relationships: [
           {
@@ -1793,11 +1799,14 @@ export type Database = {
         Returns: Json
       }
       calculate_enhanced_payout: {
-        Args: {
-          service_id: string
-          client_price: number
-          is_emergency?: boolean
-        }
+        Args:
+          | { service_id: string; client_price: number; is_emergency?: boolean }
+          | {
+              service_id: string
+              client_price: number
+              is_emergency?: boolean
+              is_weekend?: boolean
+            }
         Returns: {
           gross_amount: number
           platform_commission: number
@@ -1893,6 +1902,10 @@ export type Database = {
       increment_faq_views: {
         Args: { faq_id: string }
         Returns: undefined
+      }
+      is_weekend_in_namibian_timezone: {
+        Args: { check_date: string }
+        Returns: boolean
       }
       perform_financial_reconciliation: {
         Args: { start_date: string; end_date: string }

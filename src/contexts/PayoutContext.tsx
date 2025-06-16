@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { PayoutData, payoutSchema } from '@/schemas/validation';
 import { calculatePayout, ServiceFinancials } from '@/utils/financialCalculations';
@@ -12,6 +11,7 @@ export interface Payout {
   platformCommission: number;
   incomeTax: number;
   withholdingTax: number;
+  weekendBonus: number;
   netPayout: number;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   payoutDate?: string;
@@ -27,6 +27,7 @@ export interface Payout {
   failureReason?: string;
   retryCount: number;
   scheduledDate?: string;
+  isWeekendJob?: boolean;
 }
 
 export interface PayoutExport {
@@ -146,6 +147,7 @@ export const PayoutProvider = ({ children }: { children: ReactNode }) => {
         platformCommission: calculation.platformCommission,
         incomeTax: calculation.incomeTax,
         withholdingTax: calculation.withholdingTax,
+        weekendBonus: calculation.weekendBonus,
         netPayout: calculation.netPayout,
         paymentMethod: 'bank_transfer', // Default, can be updated
         type: 'weekly_auto', // Default type
@@ -155,7 +157,8 @@ export const PayoutProvider = ({ children }: { children: ReactNode }) => {
         updatedAt: new Date().toISOString(),
         approved: false,
         retryCount: 0,
-        urgencyLevel: payoutData.isEmergency ? 'emergency' : 'normal'
+        urgencyLevel: payoutData.isEmergency ? 'emergency' : 'normal',
+        isWeekendJob: payoutData.isWeekend
       };
 
       dispatch({ type: 'ADD_PAYOUT', payload: newPayout });

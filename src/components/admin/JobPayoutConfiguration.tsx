@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -50,13 +49,19 @@ export const JobPayoutConfiguration: React.FC = () => {
 
       if (error) throw error;
 
-      setServices(data || []);
+      // Cast service_type to proper type and ensure it matches our interface
+      const typedServices: Service[] = (data || []).map(service => ({
+        ...service,
+        service_type: service.service_type as 'one-off' | 'subscription'
+      }));
+
+      setServices(typedServices);
       
       // Convert to payout configs
-      const configs: PayoutConfig[] = (data || []).map(service => ({
+      const configs: PayoutConfig[] = typedServices.map(service => ({
         serviceId: service.id,
         serviceName: service.name,
-        serviceType: service.service_type as 'one-off' | 'subscription',
+        serviceType: service.service_type,
         clientPrice: service.client_price,
         providerFee: service.provider_fee,
         commissionPercentage: service.commission_percentage

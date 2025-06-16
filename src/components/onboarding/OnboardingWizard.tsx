@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -92,12 +91,6 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   };
 
   if (!isOpen) return null;
-
-  const getTransactionData = () => ({
-    transaction_type: 'subscription' as const,
-    package_id: selectedPackage || '',
-    amount: 299 // This should come from package data
-  });
 
   return (
     <>
@@ -255,7 +248,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             <div className="flex justify-between pt-4">
               <Button
                 variant="outline"
-                onClick={currentStep === 0 ? onClose : handlePrevious}
+                onClick={currentStep === 0 ? onClose : () => setCurrentStep(currentStep - 1)}
                 className="flex items-center gap-2"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -263,7 +256,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               </Button>
 
               <Button
-                onClick={currentStep === steps.length - 1 ? handleComplete : handleNext}
+                onClick={currentStep === steps.length - 1 ? onComplete : () => setCurrentStep(currentStep + 1)}
                 className="flex items-center gap-2"
               >
                 {currentStep === steps.length - 1 ? 'Get Started' : 'Next'}
@@ -275,13 +268,14 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
       </div>
 
       {/* Payment Flow */}
-      <PaymentFlow
-        isOpen={showPaymentFlow}
-        onClose={() => setShowPaymentFlow(false)}
-        transactionData={getTransactionData()}
-        title="Subscribe to Package"
-        description="Complete your payment to activate your service package and start booking."
-      />
+      {showPaymentFlow && (
+        <PaymentFlow
+          amount={299}
+          packageId={selectedPackage || ''}
+          transactionType="subscription"
+          onPaymentSubmitted={() => setShowPaymentFlow(false)}
+        />
+      )}
     </>
   );
 };

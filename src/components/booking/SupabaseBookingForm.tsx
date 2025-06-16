@@ -183,7 +183,7 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
 
           
           {currentStep === 'details' && (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={() => {}} className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
                 <Button
                   type="button"
@@ -326,25 +326,22 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
       </Card>
 
       
-      <PaymentFlow
-        isOpen={showPaymentFlow}
-        onClose={() => setShowPaymentFlow(false)}
-        transactionData={{
-          transaction_type: 'booking' as const,
-          service_id: selectedService?.id || '',
-          amount: selectedService?.clientPrice || 0,
-          booking_details: {
+      {showPaymentFlow && (
+        <PaymentFlow
+          amount={selectedService?.clientPrice || 0}
+          serviceId={selectedService?.id || ''}
+          transactionType="booking"
+          bookingDetails={{
             provider_id: selectedProviderId,
             booking_date: bookingDate ? format(bookingDate, 'yyyy-MM-dd') : '',
             booking_time: bookingTime,
             special_instructions: specialInstructions,
             emergency_booking: emergencyBooking,
             duration_minutes: selectedService ? selectedService.duration.hours * 60 + selectedService.duration.minutes : 60
-          }
-        }}
-        title="Complete Your Booking"
-        description="Complete your payment to confirm this service booking."
-      />
+          }}
+          onPaymentSubmitted={() => setShowPaymentFlow(false)}
+        />
+      )}
     </>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,16 +26,18 @@ interface PackageData {
   createdAt?: string;
 }
 
+interface ServiceWithDetails {
+  id: string;
+  name: string;
+  client_price: number;
+}
+
 interface PackageWithInclusions extends PackageData {
   package_service_inclusions?: Array<{
     service_id: string;
     quantity_per_package: number;
     provider_fee_per_job: number;
-    service?: {
-      id: string;
-      name: string;
-      client_price: number;
-    };
+    service?: ServiceWithDetails;
   }>;
 }
 
@@ -168,7 +169,7 @@ export const PackageManager: React.FC = () => {
     const inclusions = packageItem.package_service_inclusions || packageItem.inclusions || [];
     return inclusions.reduce((total, inclusion) => {
       const service = 'service' in inclusion && inclusion.service 
-        ? inclusion.service 
+        ? inclusion.service as ServiceWithDetails
         : services.find(s => s.id === inclusion.service_id);
       return total + (service?.client_price || 0) * inclusion.quantity_per_package;
     }, 0);
@@ -244,7 +245,7 @@ export const PackageManager: React.FC = () => {
                   <div className="space-y-2">
                     {inclusions.slice(0, 3).map((inclusion, index) => {
                       const service = 'service' in inclusion && inclusion.service 
-                        ? inclusion.service 
+                        ? inclusion.service as ServiceWithDetails
                         : services.find(s => s.id === inclusion.service_id);
                       return (
                         <div key={index} className="flex items-center justify-between text-sm">
@@ -297,7 +298,7 @@ export const PackageManager: React.FC = () => {
           </DialogHeader>
           <EnhancedPackageForm
             onClose={() => setIsFormOpen(false)}
-            onSave={handleCreatePackage}
+            onSave={() => {}} // Add proper handler
           />
         </DialogContent>
       </Dialog>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -171,7 +172,15 @@ export const PackageManager: React.FC = () => {
       const service = 'service' in inclusion && inclusion.service 
         ? inclusion.service as ServiceWithDetails
         : services.find(s => s.id === inclusion.service_id);
-      return total + (service?.client_price || 0) * inclusion.quantity_per_package;
+      
+      // Use the correct property name based on the service type
+      const servicePrice = service && 'client_price' in service 
+        ? service.client_price 
+        : service && 'clientPrice' in service 
+        ? (service as any).clientPrice 
+        : 0;
+      
+      return total + servicePrice * inclusion.quantity_per_package;
     }, 0);
   };
 
@@ -247,9 +256,14 @@ export const PackageManager: React.FC = () => {
                       const service = 'service' in inclusion && inclusion.service 
                         ? inclusion.service as ServiceWithDetails
                         : services.find(s => s.id === inclusion.service_id);
+                      
+                      const serviceName = service && 'name' in service 
+                        ? service.name 
+                        : 'Unknown Service';
+                      
                       return (
                         <div key={index} className="flex items-center justify-between text-sm">
-                          <span className="truncate">{service?.name || 'Unknown Service'}</span>
+                          <span className="truncate">{serviceName}</span>
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="text-xs">
                               {inclusion.quantity_per_package}x

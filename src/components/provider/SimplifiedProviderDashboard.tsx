@@ -1,17 +1,19 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, X, MapPin, Clock, DollarSign, User, ArrowLeft } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { CheckCircle, X, MapPin, Clock, DollarSign, User, ArrowLeft, UserCheck, UserX } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 export const SimplifiedProviderDashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isAvailable, setAvailability } = useNotifications();
   const [currentJob, setCurrentJob] = useState<any>(null);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [myJobs, setMyJobs] = useState<any[]>([]);
@@ -115,6 +117,34 @@ export const SimplifiedProviderDashboard = () => {
             <p className="text-lg text-green-600 mt-2">Welcome back!</p>
           </div>
 
+          {/* Availability Status Card */}
+          <Card className={`border-2 ${isAvailable ? 'border-green-200 bg-green-100' : 'border-red-200 bg-red-100'}`}>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {isAvailable ? (
+                    <UserCheck className="h-8 w-8 text-green-600" />
+                  ) : (
+                    <UserX className="h-8 w-8 text-red-600" />
+                  )}
+                  <div>
+                    <div className="text-xl font-bold">
+                      {isAvailable ? 'Available' : 'Unavailable'}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {isAvailable ? 'Receiving job assignments' : 'Not receiving jobs'}
+                    </div>
+                  </div>
+                </div>
+                <Switch
+                  checked={isAvailable}
+                  onCheckedChange={setAvailability}
+                  className="data-[state=checked]:bg-green-600 scale-150"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Quick Stats */}
           <div className="grid grid-cols-2 gap-4">
             <Card className="bg-blue-100 border-blue-200">
@@ -136,14 +166,17 @@ export const SimplifiedProviderDashboard = () => {
             <Button 
               onClick={() => setView('available')}
               className="w-full h-20 text-xl bg-blue-600 hover:bg-blue-700"
-              disabled={availableJobs.length === 0}
+              disabled={availableJobs.length === 0 || !isAvailable}
             >
               <div className="text-center">
                 <div>View New Jobs</div>
-                {availableJobs.length > 0 && (
+                {availableJobs.length > 0 && isAvailable && (
                   <Badge className="bg-red-500 text-white mt-1">
                     {availableJobs.length} waiting
                   </Badge>
+                )}
+                {!isAvailable && (
+                  <div className="text-sm mt-1 opacity-75">Turn on availability to receive jobs</div>
                 )}
               </div>
             </Button>
@@ -177,6 +210,18 @@ export const SimplifiedProviderDashboard = () => {
                     <DollarSign className="h-5 w-5" />
                     N${myJobs[0].total_amount}
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Availability Notice */}
+          {!isAvailable && (
+            <Card className="border-orange-200 bg-orange-50">
+              <CardContent className="p-4 text-center">
+                <div className="text-orange-800 font-medium mb-2">You're currently unavailable</div>
+                <div className="text-sm text-orange-600">
+                  Turn on availability above to start receiving job assignments
                 </div>
               </CardContent>
             </Card>

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,12 +17,15 @@ interface NotificationContextType {
   messages: MessageRow[];
   supportTickets: SupportTicketRow[];
   isLoading: boolean;
+  isAvailable: boolean;
+  setAvailability: (available: boolean) => Promise<void>;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   updatePreferences: (type: string, preferences: Partial<NotificationPreferencesRow>) => Promise<void>;
   sendMessage: (recipientId: string, content: string, bookingId?: string) => Promise<void>;
   createSupportTicket: (subject: string, description: string, category: string, priority?: string) => Promise<void>;
   refreshNotifications: () => Promise<void>;
+  sendJobAssignmentNotification: (providerId: string, jobDetails: any, urgency: 'emergency' | 'priority' | 'standard') => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -34,10 +36,114 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [supportTickets, setSupportTickets] = useState<SupportTicketRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAvailable, setIsAvailableState] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
 
   const unreadCount = notifications.filter(n => !n.read && n.channel === 'in_app').length;
+
+  // Set provider availability
+  const setAvailability = async (available: boolean) => {
+    if (!user?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ is_available: available })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Error updating availability:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update availability status.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setIsAvailableState(available);
+      
+      toast({
+        title: available ? "Now Available" : "Now Unavailable",
+        description: available 
+          ? "You will receive job assignments" 
+          : "You won't receive new job assignments",
+      });
+    } catch (error) {
+      console.error('Error updating availability:', error);
+    }
+  };
+
+  // Send job assignment notification with urgency levels
+  const sendJobAssignmentNotification = async (
+    providerId: string, 
+    jobDetails: any, 
+    urgency: 'emergency' | 'priority' | 'standard'
+  ) => {
+    try {
+      const urgencyConfig = {
+        emergency: {
+          title: '🚨 EMERGENCY JOB ASSIGNED',
+          priority: 'urgent',
+          channels: ['in_app', 'sms', 'email']
+        },
+        priority: {
+          title: '⚡ Priority Job Assigned',
+          priority: 'high',
+          channels: ['in_app', 'sms']
+        },
+        standard: {
+          title: 'Job Assigned to You',
+          priority: 'normal',
+          channels: ['in_app']
+        }
+      };
+
+      const config = urgencyConfig[urgency];
+      const message = `${jobDetails.serviceName} - ${jobDetails.date} at ${jobDetails.time}\nLocation: ${jobDetails.location}\nPayment: N$${jobDetails.amount}`;
+
+      // Send notifications through multiple channels based on urgency
+      for (const channel of config.channels) {
+        await supabase.from('notifications').insert({
+          user_id: providerId,
+          type: 'job_assigned',
+          channel,
+          title: config.title,
+          message,
+          priority: config.priority,
+          data: {
+            booking_id: jobDetails.id,
+            urgency,
+            service_name: jobDetails.serviceName,
+            client_name: jobDetails.clientName,
+            amount: jobDetails.amount,
+            location: jobDetails.location,
+            date: jobDetails.date,
+            time: jobDetails.time
+          }
+        });
+      }
+
+      // For emergency jobs, also trigger immediate SMS/email via edge functions
+      if (urgency === 'emergency') {
+        try {
+          await supabase.functions.invoke('send-sms-notification', {
+            body: {
+              to: jobDetails.providerPhone,
+              message: `🚨 EMERGENCY JOB: ${jobDetails.serviceName} assigned to you. Check app immediately.`,
+              notification_type: 'emergency_assignment'
+            }
+          });
+        } catch (error) {
+          console.error('Failed to send emergency SMS:', error);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error sending job assignment notification:', error);
+    }
+  };
 
   // Fetch user notifications
   const fetchNotifications = async () => {
@@ -324,6 +430,17 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         fetchMessages(),
         fetchSupportTickets()
       ]);
+
+      // Get user availability status
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_available')
+        .eq('id', user.id)
+        .single();
+      
+      if (userData) {
+        setIsAvailableState(userData.is_available ?? true);
+      }
     } catch (error) {
       console.error('Error refreshing notifications:', error);
     } finally {
@@ -351,13 +468,25 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             const newNotification = payload.new as NotificationRow;
             setNotifications(prev => [newNotification, ...prev]);
             
-            // Show toast for in-app notifications
+            // Show toast for in-app notifications with urgency handling
             if (newNotification.channel === 'in_app') {
+              const isUrgent = newNotification.priority === 'urgent' || newNotification.priority === 'high';
+              
               toast({
                 title: newNotification.title,
                 description: newNotification.message,
-                duration: 5000,
+                duration: isUrgent ? 10000 : 5000,
+                variant: newNotification.priority === 'urgent' ? 'destructive' : 'default',
               });
+
+              // Voice notification for job assignments
+              if (newNotification.type === 'job_assigned' && 'speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(
+                  `New job assignment: ${newNotification.title}`
+                );
+                utterance.rate = 0.8;
+                speechSynthesis.speak(utterance);
+              }
             }
           } else if (payload.eventType === 'UPDATE') {
             setNotifications(prev =>
@@ -423,12 +552,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     messages,
     supportTickets,
     isLoading,
+    isAvailable,
+    setAvailability,
     markAsRead,
     markAllAsRead,
     updatePreferences,
     sendMessage,
     createSupportTicket,
-    refreshNotifications
+    refreshNotifications,
+    sendJobAssignmentNotification
   };
 
   return (

@@ -8,12 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { useServiceEntitlements } from '@/hooks/useServiceEntitlements';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
-import { Package, Calendar, User, ShoppingBag, Home, Star, Clock, MapPin, ArrowRight } from 'lucide-react';
+import { Package, Calendar, User, ShoppingBag, Home, Star, Clock, MapPin, ArrowRight, Repeat } from 'lucide-react';
 import { DashboardOverview } from '@/components/client/DashboardOverview';
 import { MyPackageTab } from '@/components/client/MyPackageTab';
 import { MyServicesTab } from '@/components/client/MyServicesTab';
 import { BookingsTab } from '@/components/client/BookingsTab';
 import { ProfileTab } from '@/components/client/ProfileTab';
+import { RecurringBookingsTab } from '@/components/client/RecurringBookingsTab';
 
 const ClientDashboard = () => {
   const { user } = useAuth();
@@ -68,7 +69,7 @@ const ClientDashboard = () => {
 
         {/* Mobile-First Tabs */}
         <Tabs defaultValue="dashboard" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex flex-col items-center gap-1 py-2 text-xs">
               <Home className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -90,6 +91,10 @@ const ClientDashboard = () => {
             <TabsTrigger value="bookings" className="flex flex-col items-center gap-1 py-2 text-xs">
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">Bookings</span>
+            </TabsTrigger>
+            <TabsTrigger value="recurring" className="flex flex-col items-center gap-1 py-2 text-xs">
+              <Repeat className="h-4 w-4" />
+              <span className="hidden sm:inline">Recurring</span>
             </TabsTrigger>
             <TabsTrigger value="profile" className="flex flex-col items-center gap-1 py-2 text-xs">
               <User className="h-4 w-4" />
@@ -154,6 +159,10 @@ const ClientDashboard = () => {
 
           <TabsContent value="bookings" className="space-y-4">
             <BookingsTab />
+          </TabsContent>
+
+          <TabsContent value="recurring" className="space-y-4">
+            <RecurringBookingsTab />
           </TabsContent>
 
           <TabsContent value="profile" className="space-y-4">

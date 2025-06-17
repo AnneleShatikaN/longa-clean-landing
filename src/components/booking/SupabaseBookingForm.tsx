@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,8 +17,10 @@ import { useServiceEntitlements } from '@/hooks/useServiceEntitlements';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSecureBooking } from '@/hooks/useSecureBooking';
 import { useRealTimeNotifications } from '@/hooks/useRealTimeNotifications';
+import { useRecurringBookings } from '@/hooks/useRecurringBookings';
 import { PaymentFlow } from '@/components/payment/PaymentFlow';
 import { ProviderSelection } from '@/components/providers/ProviderSelection';
+import { RecurringBookingForm } from '@/components/booking/RecurringBookingForm';
 import { cn } from '@/lib/utils';
 
 interface SupabaseBookingFormProps {
@@ -33,6 +36,7 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
   const { checkAccess } = useServiceEntitlements();
   const { user } = useAuth();
   const { createSecureBooking, validateAccess, isLoading } = useSecureBooking();
+  const { createRecurringSchedule } = useRecurringBookings();
   
   useRealTimeNotifications();
   
@@ -45,6 +49,12 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
   const [accessCheck, setAccessCheck] = useState<{allowed: boolean, reason?: string} | null>(null);
   const [showPaymentFlow, setShowPaymentFlow] = useState(false);
   const [currentStep, setCurrentStep] = useState<'provider' | 'details' | 'payment'>('provider');
+  
+  // Recurring booking states
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState<'weekly' | 'bi-weekly' | 'monthly'>('weekly');
+  const [preferredDay, setPreferredDay] = useState(1); // Monday by default
+  const [recurringEndDate, setRecurringEndDate] = useState<string>();
 
   useEffect(() => {
     if (serviceId) {
@@ -76,25 +86,48 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
       return;
     }
 
-    const result = await createSecureBooking({
-      serviceId: selectedService.id,
-      bookingDate: format(bookingDate, 'yyyy-MM-dd'),
-      bookingTime: bookingTime,
-      totalAmount: selectedService.clientPrice,
-      specialInstructions: specialInstructions || undefined,
-      emergencyBooking,
-      durationMinutes: selectedService.duration.hours * 60 + selectedService.duration.minutes
-    });
+    try {
+      // Create the initial booking
+      const result = await createSecureBooking({
+        serviceId: selectedService.id,
+        bookingDate: format(bookingDate, 'yyyy-MM-dd'),
+        bookingTime: bookingTime,
+        totalAmount: selectedService.clientPrice,
+        specialInstructions: specialInstructions || undefined,
+        emergencyBooking,
+        durationMinutes: selectedService.duration.hours * 60 + selectedService.duration.minutes
+      });
 
-    if (result.success) {
-      onBookingCreated?.();
-      setSelectedProviderId('');
-      setBookingDate(undefined);
-      setSpecialInstructions('');
-      setEmergencyBooking(false);
-      setCurrentStep('provider');
-    } else if (result.reason === 'No active package found' || result.reason === 'Service not included in package') {
-      setShowPaymentFlow(true);
+      if (result.success && result.booking) {
+        // If recurring is enabled, create the recurring schedule
+        if (isRecurring && result.booking.id) {
+          await createRecurringSchedule({
+            parent_booking_id: result.booking.id,
+            service_id: selectedService.id,
+            frequency: recurringFrequency,
+            day_of_week: preferredDay,
+            booking_time: bookingTime,
+            start_date: format(bookingDate, 'yyyy-MM-dd'),
+            end_date: recurringEndDate,
+            special_instructions: specialInstructions,
+            emergency_booking: emergencyBooking,
+            duration_minutes: selectedService.duration.hours * 60 + selectedService.duration.minutes,
+            location_town: 'windhoek' // Default location
+          });
+        }
+
+        onBookingCreated?.();
+        setSelectedProviderId('');
+        setBookingDate(undefined);
+        setSpecialInstructions('');
+        setEmergencyBooking(false);
+        setIsRecurring(false);
+        setCurrentStep('provider');
+      } else if (result.reason === 'No active package found' || result.reason === 'Service not included in package') {
+        setShowPaymentFlow(true);
+      }
+    } catch (error) {
+      console.error('Error creating booking:', error);
     }
   };
 
@@ -183,7 +216,7 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
 
           
           {currentStep === 'details' && (
-            <form onSubmit={() => {}} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
                 <Button
                   type="button"
@@ -254,6 +287,18 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
                 </select>
               </div>
 
+              {/* Recurring Booking Form */}
+              <RecurringBookingForm
+                isRecurring={isRecurring}
+                onRecurringChange={setIsRecurring}
+                frequency={recurringFrequency}
+                onFrequencyChange={setRecurringFrequency}
+                preferredDay={preferredDay}
+                onPreferredDayChange={setPreferredDay}
+                endDate={recurringEndDate}
+                onEndDateChange={setRecurringEndDate}
+              />
+
               <div className="space-y-2">
                 <Label htmlFor="instructions">Special Instructions (Optional)</Label>
                 <Textarea
@@ -295,6 +340,12 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
                     <span>Time:</span>
                     <span>{bookingTime}</span>
                   </div>
+                  {isRecurring && (
+                    <div className="flex justify-between">
+                      <span>Recurring:</span>
+                      <span>{recurringFrequency}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>Duration:</span>
                     <span>{selectedService?.duration.hours}h {selectedService?.duration.minutes}m</span>
@@ -318,7 +369,10 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
                 disabled={!bookingDate || isLoading || !selectedProviderId}
                 className="w-full"
               >
-                {isLoading ? 'Creating Booking...' : (accessCheck?.allowed ? 'Create Booking' : 'Proceed to Payment')}
+                {isLoading ? 'Creating Booking...' : (
+                  isRecurring ? 'Create Recurring Booking' : 
+                  accessCheck?.allowed ? 'Create Booking' : 'Proceed to Payment'
+                )}
               </Button>
             </form>
           )}

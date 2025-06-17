@@ -1,11 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardNavigation } from '@/components/common/DashboardNavigation';
+import { SimplifiedProviderDashboard } from '@/components/provider/SimplifiedProviderDashboard';
 import ProviderOverviewTab from '@/components/provider/ProviderOverviewTab';
 import ProviderJobsTab from '@/components/provider/ProviderJobsTab';
 import ProviderPayoutsTab from '@/components/provider/ProviderPayoutsTab';
 import ProviderProfileTab from '@/components/provider/ProviderProfileTab';
+import { Button } from '@/components/ui/button';
 import { useProviderData } from '@/hooks/useProviderData';
 import { useToast } from '@/hooks/use-toast';
 

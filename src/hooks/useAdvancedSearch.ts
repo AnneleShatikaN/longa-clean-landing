@@ -49,7 +49,7 @@ export const useAdvancedSearch = () => {
   ) => {
     setIsLoading(true);
     try {
-      // Use a more robust search approach that handles missing RPC functions
+      // Get services with real analytics
       let query = supabase
         .from('services')
         .select(`
@@ -64,7 +64,7 @@ export const useAdvancedSearch = () => {
         `)
         .eq('is_active', true);
 
-      // Apply filters safely
+      // Apply filters
       if (filters.query && filters.query.trim()) {
         query = query.or(`name.ilike.%${filters.query}%,description.ilike.%${filters.query}%`);
       }
@@ -97,30 +97,69 @@ export const useAdvancedSearch = () => {
       // Apply pagination
       query = query.range(page * pageSize, (page + 1) * pageSize - 1);
 
-      const { data, error, count } = await query;
+      const { data: serviceData, error, count } = await query;
 
       if (error) throw error;
 
-      // Transform data to match expected format
-      const transformedResults: SearchResult[] = (data || []).map(item => ({
-        id: item.id,
-        name: item.name,
-        description: item.description || '',
-        service_type: item.service_type,
-        client_price: item.client_price,
-        duration_minutes: item.duration_minutes,
-        tags: item.tags || [],
-        avg_rating: 0, // Default since we don't have analytics yet
-        total_bookings: 0, // Default since we don't have analytics yet
-        search_rank: 1 // Default ranking
-      }));
+      // Get real analytics for these services
+      const serviceIds = serviceData?.map(s => s.id) || [];
+      let analyticsData: any[] = [];
 
-      setResults(transformedResults);
-      setTotalCount(count || transformedResults.length);
+      if (serviceIds.length > 0) {
+        // Get booking statistics
+        const { data: bookingStats } = await supabase
+          .from('bookings')
+          .select('service_id, rating, status')
+          .in('service_id', serviceIds);
 
-      // Track search analytics if query exists
+        // Calculate analytics for each service
+        analyticsData = serviceIds.map(serviceId => {
+          const serviceBookings = bookingStats?.filter(b => b.service_id === serviceId) || [];
+          const completedBookings = serviceBookings.filter(b => b.status === 'completed');
+          const ratingsData = completedBookings.filter(b => b.rating && b.rating > 0);
+          
+          const avgRating = ratingsData.length > 0 
+            ? ratingsData.reduce((sum, b) => sum + (b.rating || 0), 0) / ratingsData.length 
+            : 0;
+
+          return {
+            service_id: serviceId,
+            avg_rating: Math.round(avgRating * 10) / 10,
+            total_bookings: serviceBookings.length
+          };
+        });
+      }
+
+      // Transform data to match expected format with real analytics
+      const transformedResults: SearchResult[] = (serviceData || []).map(item => {
+        const analytics = analyticsData.find(a => a.service_id === item.id);
+        
+        return {
+          id: item.id,
+          name: item.name,
+          description: item.description || '',
+          service_type: item.service_type,
+          client_price: item.client_price,
+          duration_minutes: item.duration_minutes,
+          tags: item.tags || [],
+          avg_rating: analytics?.avg_rating || 0,
+          total_bookings: analytics?.total_bookings || 0,
+          search_rank: 1 // Default ranking
+        };
+      });
+
+      // Filter by minimum rating if specified
+      let filteredResults = transformedResults;
+      if (filters.minRating !== undefined) {
+        filteredResults = transformedResults.filter(r => r.avg_rating >= filters.minRating!);
+      }
+
+      setResults(filteredResults);
+      setTotalCount(count || filteredResults.length);
+
+      // Track search analytics - ensure it doesn't fail silently
       if (filters.query) {
-        await trackSearchAnalytics(filters, transformedResults.length);
+        await trackSearchAnalytics(filters, filteredResults.length);
       }
 
     } catch (error) {
@@ -144,10 +183,10 @@ export const useAdvancedSearch = () => {
     }
 
     try {
-      // Simple suggestion system using service names
-      const { data, error } = await supabase
+      // Get service name suggestions with real popularity data
+      const { data: serviceData, error } = await supabase
         .from('services')
-        .select('name, tags')
+        .select('id, name, tags')
         .eq('is_active', true)
         .or(`name.ilike.%${partialQuery}%`)
         .limit(10);
@@ -156,17 +195,29 @@ export const useAdvancedSearch = () => {
 
       const suggestions: SearchSuggestion[] = [];
       
-      // Add service name suggestions
-      data?.forEach(service => {
-        if (service.name.toLowerCase().includes(partialQuery.toLowerCase())) {
-          suggestions.push({
-            suggestion: service.name,
-            category: 'service',
-            popularity: 1
-          });
-        }
-      });
+      if (serviceData) {
+        // Get booking counts for popularity
+        const serviceIds = serviceData.map(s => s.id);
+        const { data: bookingCounts } = await supabase
+          .from('bookings')
+          .select('service_id')
+          .in('service_id', serviceIds);
 
+        // Add service name suggestions with real popularity
+        serviceData.forEach(service => {
+          if (service.name.toLowerCase().includes(partialQuery.toLowerCase())) {
+            const bookingCount = bookingCounts?.filter(b => b.service_id === service.id).length || 0;
+            suggestions.push({
+              suggestion: service.name,
+              category: 'service',
+              popularity: bookingCount
+            });
+          }
+        });
+      }
+
+      // Sort by popularity (booking count)
+      suggestions.sort((a, b) => b.popularity - a.popularity);
       setSuggestions(suggestions.slice(0, 10));
     } catch (error) {
       console.error('Suggestions error:', error);
@@ -178,7 +229,7 @@ export const useAdvancedSearch = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Only track if the table exists
+      // Ensure search analytics are properly tracked
       const { error } = await supabase.from('search_analytics').insert({
         user_id: user?.id,
         search_query: filters.query,
@@ -193,12 +244,13 @@ export const useAdvancedSearch = () => {
         session_id: crypto.randomUUID()
       });
 
-      // Don't throw error if table doesn't exist
-      if (error && !error.message.includes('relation "search_analytics" does not exist')) {
-        console.error('Analytics tracking error:', error);
+      if (error) {
+        console.error('Search analytics tracking failed:', error);
+        // Don't throw error, just log it so search doesn't fail
       }
     } catch (error) {
-      console.error('Analytics tracking error:', error);
+      console.error('Search analytics tracking error:', error);
+      // Don't throw error, just log it so search doesn't fail
     }
   };
 
@@ -206,7 +258,7 @@ export const useAdvancedSearch = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Only track if the table exists
+      // Track click with proper error handling
       const { error } = await supabase.from('user_behavior_events').insert({
         user_id: user?.id,
         event_type: 'search_result_click',
@@ -216,12 +268,13 @@ export const useAdvancedSearch = () => {
         session_id: crypto.randomUUID()
       });
 
-      // Don't throw error if table doesn't exist
-      if (error && !error.message.includes('relation "user_behavior_events" does not exist')) {
-        console.error('Click tracking error:', error);
+      if (error) {
+        console.error('Click tracking failed:', error);
+        // Don't throw error, just log it
       }
     } catch (error) {
       console.error('Click tracking error:', error);
+      // Don't throw error, just log it
     }
   };
 

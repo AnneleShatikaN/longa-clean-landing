@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star, MapPin, MessageCircle, Calendar, Briefcase } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProviderProfileProps {
   id: string;
@@ -22,6 +23,15 @@ interface ProviderProfileProps {
   isSelected?: boolean;
 }
 
+interface ProviderReview {
+  id: string;
+  rating: number;
+  review: string;
+  booking_date: string;
+  client_name: string;
+  service_name: string;
+}
+
 export const ProviderProfile: React.FC<ProviderProfileProps> = ({
   id,
   full_name,
@@ -37,6 +47,72 @@ export const ProviderProfile: React.FC<ProviderProfileProps> = ({
   onCheckAvailability,
   isSelected = false
 }) => {
+  const [realRating, setRealRating] = useState(rating);
+  const [realTotalJobs, setRealTotalJobs] = useState(total_jobs);
+  const [recentReviews, setRecentReviews] = useState<ProviderReview[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+
+  useEffect(() => {
+    const fetchRealProviderData = async () => {
+      setIsLoadingReviews(true);
+      try {
+        // Get real completed bookings with ratings and reviews
+        const { data: bookingData, error } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            rating,
+            review,
+            booking_date,
+            status,
+            services!inner(name),
+            users!bookings_client_id_fkey(full_name)
+          `)
+          .eq('provider_id', id)
+          .eq('status', 'completed')
+          .not('rating', 'is', null)
+          .order('booking_date', { ascending: false })
+          .limit(5);
+
+        if (error) {
+          console.error('Error fetching provider reviews:', error);
+          return;
+        }
+
+        if (bookingData) {
+          // Calculate real rating and job count
+          const completedJobs = bookingData.length;
+          const avgRating = completedJobs > 0 
+            ? bookingData.reduce((sum, booking) => sum + (booking.rating || 0), 0) / completedJobs
+            : 0;
+
+          setRealRating(Math.round(avgRating * 10) / 10);
+          setRealTotalJobs(completedJobs);
+
+          // Format reviews
+          const reviews: ProviderReview[] = bookingData
+            .filter(booking => booking.review && booking.review.trim().length > 0)
+            .map(booking => ({
+              id: booking.id,
+              rating: booking.rating || 0,
+              review: booking.review || '',
+              booking_date: new Date(booking.booking_date).toLocaleDateString(),
+              client_name: booking.users?.full_name || 'Anonymous',
+              service_name: booking.services?.name || 'Service'
+            }));
+
+          setRecentReviews(reviews);
+        }
+      } catch (error) {
+        console.error('Error fetching real provider data:', error);
+      } finally {
+        setIsLoadingReviews(false);
+      }
+    };
+
+    fetchRealProviderData();
+  }, [id]);
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
@@ -47,6 +123,21 @@ export const ProviderProfile: React.FC<ProviderProfileProps> = ({
       const message = encodeURIComponent(`Hello ${full_name}, I'm interested in booking your services through Longa.`);
       window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
     }
+  };
+
+  const renderStars = (rating: number) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <Star
+          key={i}
+          className={`h-4 w-4 ${
+            i <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+          }`}
+        />
+      );
+    }
+    return stars;
   };
 
   return (
@@ -80,13 +171,21 @@ export const ProviderProfile: React.FC<ProviderProfileProps> = ({
               )}
               
               <div className="flex items-center gap-1">
-                <Star className="h-4 w-4 fill-current text-yellow-400" />
-                <span className="font-medium">{rating.toFixed(1)}</span>
+                {realRating > 0 ? (
+                  <>
+                    <div className="flex items-center">
+                      {renderStars(Math.round(realRating))}
+                    </div>
+                    <span className="font-medium">{realRating.toFixed(1)}</span>
+                  </>
+                ) : (
+                  <span className="text-gray-400">No ratings yet</span>
+                )}
               </div>
               
               <div className="flex items-center gap-1">
                 <Briefcase className="h-4 w-4" />
-                <span>{total_jobs} jobs</span>
+                <span>{realTotalJobs} jobs</span>
               </div>
             </div>
             
@@ -94,6 +193,11 @@ export const ProviderProfile: React.FC<ProviderProfileProps> = ({
               <Badge variant={isAvailable ? "default" : "secondary"}>
                 {isAvailable ? "Available" : "Busy"}
               </Badge>
+              {realRating >= 4.5 && realTotalJobs >= 10 && (
+                <Badge variant="outline" className="text-green-600 border-green-200">
+                  Top Rated
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -102,6 +206,27 @@ export const ProviderProfile: React.FC<ProviderProfileProps> = ({
       <CardContent className="space-y-4">
         {bio && (
           <p className="text-sm text-gray-600 leading-relaxed">{bio}</p>
+        )}
+
+        {/* Recent Reviews Section */}
+        {recentReviews.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-gray-900">Recent Reviews</h4>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {recentReviews.slice(0, 2).map((review) => (
+                <div key={review.id} className="bg-gray-50 p-2 rounded text-xs">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="flex">
+                      {renderStars(review.rating)}
+                    </div>
+                    <span className="font-medium">{review.client_name}</span>
+                    <span className="text-gray-500">• {review.service_name}</span>
+                  </div>
+                  <p className="text-gray-700 line-clamp-2">"{review.review}"</p>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
         
         <div className="flex gap-2">

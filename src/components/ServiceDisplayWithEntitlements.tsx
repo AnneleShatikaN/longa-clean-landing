@@ -9,12 +9,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LocationSelector } from '@/components/location/LocationSelector';
 import { ProviderListModal } from '@/components/providers/ProviderListModal';
-import { Clock, DollarSign, Package, ShoppingBag, Users, MapPin, Eye } from 'lucide-react';
+import { Clock, DollarSign, Package, ShoppingBag, Users, MapPin, Eye, Star } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ServiceDisplayWithEntitlementsProps {
   onBookService: (serviceId: string) => void;
   showBookingButton?: boolean;
   allowIndividualBooking?: boolean;
+}
+
+interface ServiceAnalytics {
+  service_id: string;
+  avg_rating: number;
+  total_bookings: number;
+  provider_count: number;
 }
 
 export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlementsProps> = ({
@@ -27,6 +35,8 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
   const { services: locationServices, isLoading: locationLoading, getServicesByLocation } = useLocationServices();
   const { selectedLocation } = useLocation();
   const [selectedServiceForProviders, setSelectedServiceForProviders] = useState<{id: string, name: string} | null>(null);
+  const [serviceAnalytics, setServiceAnalytics] = useState<Record<string, ServiceAnalytics>>({});
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   
   const hasActivePackage = serviceUsage.length > 0;
 
@@ -34,6 +44,70 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
   useEffect(() => {
     getServicesByLocation(selectedLocation);
   }, [selectedLocation, getServicesByLocation]);
+
+  // Fetch real analytics data for services
+  useEffect(() => {
+    const fetchServiceAnalytics = async () => {
+      if (locationServices.length === 0) return;
+      
+      setAnalyticsLoading(true);
+      try {
+        const serviceIds = locationServices.map(service => service.id);
+        
+        // Get real booking statistics
+        const { data: bookingStats } = await supabase
+          .from('bookings')
+          .select(`
+            service_id,
+            rating,
+            status,
+            services!inner(name)
+          `)
+          .in('service_id', serviceIds);
+
+        // Get provider counts per service
+        const { data: providerStats } = await supabase
+          .from('users')
+          .select('id, service_coverage_areas')
+          .eq('role', 'provider')
+          .eq('is_active', true);
+
+        // Calculate analytics for each service
+        const analytics: Record<string, ServiceAnalytics> = {};
+        
+        for (const service of locationServices) {
+          const serviceBookings = bookingStats?.filter(b => b.service_id === service.id) || [];
+          const completedBookings = serviceBookings.filter(b => b.status === 'completed');
+          
+          // Calculate average rating from completed bookings with ratings
+          const ratingsData = completedBookings.filter(b => b.rating && b.rating > 0);
+          const avgRating = ratingsData.length > 0 
+            ? ratingsData.reduce((sum, b) => sum + (b.rating || 0), 0) / ratingsData.length 
+            : 0;
+
+          // Count providers that can serve this location
+          const availableProviders = providerStats?.filter(provider => 
+            provider.service_coverage_areas?.includes(selectedLocation)
+          ) || [];
+
+          analytics[service.id] = {
+            service_id: service.id,
+            avg_rating: Math.round(avgRating * 10) / 10, // Round to 1 decimal
+            total_bookings: serviceBookings.length,
+            provider_count: availableProviders.length
+          };
+        }
+        
+        setServiceAnalytics(analytics);
+      } catch (error) {
+        console.error('Error fetching service analytics:', error);
+      } finally {
+        setAnalyticsLoading(false);
+      }
+    };
+
+    fetchServiceAnalytics();
+  }, [locationServices, selectedLocation]);
 
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -128,6 +202,7 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
             const usage = getServiceUsage(service.id);
             const canBook = canBookService(service.id);
             const isPackageService = usage !== undefined;
+            const analytics = serviceAnalytics[service.id];
 
             return (
               <Card key={service.id} className="relative">
@@ -164,9 +239,26 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
                     </div>
                     <div className="flex items-center gap-1">
                       <Users className="h-4 w-4" />
-                      <span>{service.provider_count} providers</span>
+                      <span>
+                        {analyticsLoading ? '...' : analytics?.provider_count || 0} providers
+                      </span>
                     </div>
                   </div>
+
+                  {/* Real Analytics Display */}
+                  {analytics && (
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      {analytics.avg_rating > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <span>{analytics.avg_rating.toFixed(1)}</span>
+                        </div>
+                      )}
+                      {analytics.total_bookings > 0 && (
+                        <span>{analytics.total_bookings} booking{analytics.total_bookings !== 1 ? 's' : ''}</span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Package Usage Display */}
                   {isPackageService && (

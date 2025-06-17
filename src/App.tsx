@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -21,11 +22,8 @@ import AdminDashboard from '@/pages/AdminDashboard';
 import AdminSetup from '@/pages/AdminSetup';
 import NotFound from '@/pages/NotFound';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import NotificationSystem from '@/components/NotificationSystem';
 
 import ProviderProfile from '@/pages/ProviderProfile';
-
-
 
 function App() {
   return (
@@ -53,9 +51,7 @@ function App() {
                             path="/notifications"
                             element={
                               <ProtectedRoute allowedRoles={['client', 'provider', 'admin']}>
-                                <AuthenticatedLayout>
-                                  <NotificationCenter />
-                                </AuthenticatedLayout>
+                                <NotificationCenter />
                               </ProtectedRoute>
                             }
                           />
@@ -63,21 +59,17 @@ function App() {
                             path="/notification-center"
                             element={
                               <ProtectedRoute allowedRoles={['client', 'provider', 'admin']}>
-                                <AuthenticatedLayout>
-                                  <NotificationCenter />
-                                </AuthenticatedLayout>
+                                <NotificationCenter />
                               </ProtectedRoute>
                             }
                           />
                           
-                          {/* Protected Routes with Notifications */}
+                          {/* Protected Routes */}
                           <Route
                             path="/client-dashboard"
                             element={
                               <ProtectedRoute allowedRoles={['client']}>
-                                <AuthenticatedLayout>
-                                  <ClientDashboard />
-                                </AuthenticatedLayout>
+                                <ClientDashboard />
                               </ProtectedRoute>
                             }
                           />
@@ -85,9 +77,7 @@ function App() {
                             path="/dashboard/client"
                             element={
                               <ProtectedRoute allowedRoles={['client']}>
-                                <AuthenticatedLayout>
-                                  <ClientDashboard />
-                                </AuthenticatedLayout>
+                                <ClientDashboard />
                               </ProtectedRoute>
                             }
                           />
@@ -95,9 +85,7 @@ function App() {
                             path="/provider-dashboard"
                             element={
                               <ProtectedRoute allowedRoles={['provider']}>
-                                <AuthenticatedLayout>
-                                  <ProviderDashboard />
-                                </AuthenticatedLayout>
+                                <ProviderDashboard />
                               </ProtectedRoute>
                             }
                           />
@@ -105,9 +93,7 @@ function App() {
                             path="/dashboard/provider"
                             element={
                               <ProtectedRoute allowedRoles={['provider']}>
-                                <AuthenticatedLayout>
-                                  <ProviderDashboard />
-                                </AuthenticatedLayout>
+                                <ProviderDashboard />
                               </ProtectedRoute>
                             }
                           />
@@ -115,9 +101,7 @@ function App() {
                             path="/admin-dashboard"
                             element={
                               <ProtectedRoute allowedRoles={['admin']}>
-                                <AuthenticatedLayout>
-                                  <AdminDashboard />
-                                </AuthenticatedLayout>
+                                <AdminDashboard />
                               </ProtectedRoute>
                             }
                           />
@@ -125,9 +109,7 @@ function App() {
                             path="/dashboard/admin"
                             element={
                               <ProtectedRoute allowedRoles={['admin']}>
-                                <AuthenticatedLayout>
-                                  <AdminDashboard />
-                                </AuthenticatedLayout>
+                                <AdminDashboard />
                               </ProtectedRoute>
                             }
                           />
@@ -135,9 +117,7 @@ function App() {
                             path="/admin-setup"
                             element={
                               <ProtectedRoute allowedRoles={['admin']}>
-                                <AuthenticatedLayout>
-                                  <AdminSetup />
-                                </AuthenticatedLayout>
+                                <AdminSetup />
                               </ProtectedRoute>
                             }
                           />

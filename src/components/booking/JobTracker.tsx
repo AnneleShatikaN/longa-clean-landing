@@ -235,7 +235,7 @@ export const JobTracker: React.FC<JobTrackerProps> = ({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <file-text className="h-5 w-5" />
+              <FileText className="h-5 w-5" />
               Service Documentation
             </CardTitle>
           </CardHeader>

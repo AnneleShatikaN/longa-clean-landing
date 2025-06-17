@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { BookingData, BookingUpdate, bookingSchema, bookingUpdateSchema } from '@/schemas/validation';
 
@@ -27,6 +28,10 @@ export interface Booking {
   progressPhotos?: string[];
   qualityScore?: number;
   emergencyBooking?: boolean;
+  visitNotes?: string;
+  beforePhotos?: string[];
+  afterPhotos?: string[];
+  issuesFound?: string[];
   modificationHistory?: {
     date: string;
     field: string;

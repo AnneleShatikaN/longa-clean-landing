@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBankingSettings } from '@/hooks/useBankingSettings';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 
 const BookingConfirmation = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { bookings } = useSupabaseBookings();
-  const { bankingDetails, paymentInstructions, isLoading: bankingLoading } = useBankingSettings();
+  const { settings, isLoading: settingsLoading } = useGlobalSettings();
   const [searchParams] = useSearchParams();
   const bookingId = searchParams.get('booking_id');
   const [booking, setBooking] = useState<any>(null);
@@ -54,6 +54,10 @@ const BookingConfirmation = () => {
     );
   }
 
+  // Get dynamic settings
+  const bankingDetails = settings.banking_details;
+  const paymentInstructions = settings.payment_instructions;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -82,12 +86,12 @@ const BookingConfirmation = () => {
               Booking Submitted Successfully!
             </h1>
             <p className="text-gray-600 text-lg mb-4">
-              Your booking is pending payment confirmation
+              Your booking is pending payment and admin approval
             </p>
             <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
               <p className="text-sm text-yellow-800">
-                <strong>Next Step:</strong> Complete payment using the instructions below. 
-                Once payment is verified by our admin team, your booking will be confirmed and a provider will be assigned.
+                <strong>Next Steps:</strong> Complete payment using the instructions below. 
+                Once payment is verified by our admin team, your booking will be approved and a provider will be assigned.
               </p>
             </div>
           </CardContent>
@@ -156,7 +160,7 @@ const BookingConfirmation = () => {
 
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Provider Assignment:</strong> A provider will be assigned automatically after payment confirmation based on your location and time.
+                  <strong>Provider Assignment:</strong> A provider will be assigned automatically after payment confirmation and admin approval based on your location and time.
                 </p>
               </div>
             </div>
@@ -165,7 +169,7 @@ const BookingConfirmation = () => {
             <div className="border-t pt-4 mt-6">
               <h3 className="font-medium text-lg mb-3">Payment Instructions</h3>
               
-              {bankingLoading ? (
+              {settingsLoading ? (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600">Loading payment instructions...</p>
                 </div>
@@ -174,6 +178,15 @@ const BookingConfirmation = () => {
                   <p className="text-sm text-yellow-800 mb-2">
                     <strong>Bank Transfer Details:</strong>
                   </p>
+                  
+                  {/* Show custom payment instructions if available */}
+                  {paymentInstructions?.clientPaymentInstructions && (
+                    <p className="text-sm text-yellow-800 mb-3">
+                      {paymentInstructions.clientPaymentInstructions}
+                    </p>
+                  )}
+                  
+                  {/* Banking details */}
                   {bankingDetails ? (
                     <div className="space-y-1 text-sm">
                       <p><strong>Business Name:</strong> {bankingDetails.businessName}</p>
@@ -181,6 +194,9 @@ const BookingConfirmation = () => {
                       <p><strong>Account Number:</strong> {bankingDetails.accountNumber}</p>
                       <p><strong>Branch Code:</strong> {bankingDetails.branchCode}</p>
                       <p><strong>Account Type:</strong> {bankingDetails.accountType}</p>
+                      {bankingDetails.swiftCode && (
+                        <p><strong>SWIFT Code:</strong> {bankingDetails.swiftCode}</p>
+                      )}
                       <p><strong>Reference:</strong> {booking.id.slice(0, 8)}</p>
                       <p><strong>Amount:</strong> N${booking.total_amount}</p>
                     </div>
@@ -194,6 +210,7 @@ const BookingConfirmation = () => {
                     </div>
                   )}
                   
+                  {/* WhatsApp contact for proof of payment */}
                   {paymentInstructions?.whatsappNumber && (
                     <div className="mt-3 pt-3 border-t border-yellow-300">
                       <p className="text-sm text-yellow-800 mb-1">
@@ -204,7 +221,7 @@ const BookingConfirmation = () => {
                   )}
                   
                   <p className="text-xs text-yellow-700 mt-3">
-                    Please complete payment within 24 hours. Your booking will be confirmed once payment is verified by our admin team.
+                    Please complete payment within 24 hours. Your booking will be approved once payment is verified by our admin team.
                   </p>
                 </div>
               )}

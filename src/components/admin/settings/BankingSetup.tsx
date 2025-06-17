@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,9 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Save, Building, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 
 export const BankingSetup = () => {
   const { toast } = useToast();
+  const { settings, updateSetting, isLoading } = useGlobalSettings();
   
   const [bankingDetails, setBankingDetails] = useState({
     businessName: 'Longa Services',
@@ -18,13 +20,43 @@ export const BankingSetup = () => {
     accountNumber: '',
     branchCode: '',
     swiftCode: '',
-    accountType: 'Business Current',
-    payoutInstructions: 'Please transfer funds to the account below within 2 business days of service completion.',
-    clientPaymentInstructions: 'Please deposit payment to our business account and send proof of payment via WhatsApp.'
+    accountType: 'Business Current'
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  const [paymentInstructions, setPaymentInstructions] = useState({
+    payoutInstructions: 'Please transfer funds to the account below within 2 business days of service completion.',
+    clientPaymentInstructions: 'Please deposit payment to our business account and send proof of payment via WhatsApp.',
+    whatsappNumber: ''
+  });
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load existing settings
+  useEffect(() => {
+    if (settings.banking_details) {
+      setBankingDetails(prev => ({
+        ...prev,
+        ...settings.banking_details
+      }));
+    }
+    
+    if (settings.payment_instructions) {
+      setPaymentInstructions(prev => ({
+        ...prev,
+        ...settings.payment_instructions
+      }));
+    }
+  }, [settings]);
+
+  const handleBankingChange = (field: string, value: string) => {
     setBankingDetails(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleInstructionsChange = (field: string, value: string) => {
+    setPaymentInstructions(prev => ({
       ...prev,
       [field]: value
     }));
@@ -32,21 +64,44 @@ export const BankingSetup = () => {
 
   const saveBankingDetails = async () => {
     try {
-      // Here you would save to Supabase or your database
-      console.log('Saving banking details:', bankingDetails);
+      setIsSaving(true);
       
-      toast({
-        title: "Banking Details Saved",
-        description: "Your banking information has been updated successfully.",
-      });
+      // Save banking details
+      const bankingSuccess = await updateSetting('banking_details', bankingDetails);
+      
+      // Save payment instructions
+      const instructionsSuccess = await updateSetting('payment_instructions', paymentInstructions);
+      
+      if (bankingSuccess && instructionsSuccess) {
+        toast({
+          title: "Banking Details Saved",
+          description: "Your banking information and payment instructions have been updated successfully.",
+        });
+      } else {
+        throw new Error('Failed to save settings');
+      }
     } catch (error) {
+      console.error('Error saving banking details:', error);
       toast({
         title: "Save Failed",
         description: "Failed to save banking details. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-gray-600">Loading banking settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -68,7 +123,7 @@ export const BankingSetup = () => {
               <Input
                 id="businessName"
                 value={bankingDetails.businessName}
-                onChange={(e) => handleInputChange('businessName', e.target.value)}
+                onChange={(e) => handleBankingChange('businessName', e.target.value)}
                 placeholder="Your business name"
               />
             </div>
@@ -78,7 +133,7 @@ export const BankingSetup = () => {
               <Input
                 id="bankName"
                 value={bankingDetails.bankName}
-                onChange={(e) => handleInputChange('bankName', e.target.value)}
+                onChange={(e) => handleBankingChange('bankName', e.target.value)}
                 placeholder="e.g., Bank Windhoek"
               />
             </div>
@@ -88,7 +143,7 @@ export const BankingSetup = () => {
               <Input
                 id="accountNumber"
                 value={bankingDetails.accountNumber}
-                onChange={(e) => handleInputChange('accountNumber', e.target.value)}
+                onChange={(e) => handleBankingChange('accountNumber', e.target.value)}
                 placeholder="Your account number"
               />
             </div>
@@ -98,7 +153,7 @@ export const BankingSetup = () => {
               <Input
                 id="branchCode"
                 value={bankingDetails.branchCode}
-                onChange={(e) => handleInputChange('branchCode', e.target.value)}
+                onChange={(e) => handleBankingChange('branchCode', e.target.value)}
                 placeholder="Branch code"
               />
             </div>
@@ -108,7 +163,7 @@ export const BankingSetup = () => {
               <Input
                 id="swiftCode"
                 value={bankingDetails.swiftCode}
-                onChange={(e) => handleInputChange('swiftCode', e.target.value)}
+                onChange={(e) => handleBankingChange('swiftCode', e.target.value)}
                 placeholder="For international transfers"
               />
             </div>
@@ -118,7 +173,7 @@ export const BankingSetup = () => {
               <Input
                 id="accountType"
                 value={bankingDetails.accountType}
-                onChange={(e) => handleInputChange('accountType', e.target.value)}
+                onChange={(e) => handleBankingChange('accountType', e.target.value)}
                 placeholder="e.g., Business Current"
               />
             </div>
@@ -138,8 +193,8 @@ export const BankingSetup = () => {
             <Label htmlFor="payoutInstructions">Provider Payout Instructions</Label>
             <Textarea
               id="payoutInstructions"
-              value={bankingDetails.payoutInstructions}
-              onChange={(e) => handleInputChange('payoutInstructions', e.target.value)}
+              value={paymentInstructions.payoutInstructions}
+              onChange={(e) => handleInstructionsChange('payoutInstructions', e.target.value)}
               placeholder="Instructions shown to providers about how they'll receive payments"
               rows={3}
             />
@@ -152,8 +207,8 @@ export const BankingSetup = () => {
             <Label htmlFor="clientPaymentInstructions">Client Payment Instructions</Label>
             <Textarea
               id="clientPaymentInstructions"
-              value={bankingDetails.clientPaymentInstructions}
-              onChange={(e) => handleInputChange('clientPaymentInstructions', e.target.value)}
+              value={paymentInstructions.clientPaymentInstructions}
+              onChange={(e) => handleInstructionsChange('clientPaymentInstructions', e.target.value)}
               placeholder="Instructions shown to clients about how to make payments"
               rows={3}
             />
@@ -161,13 +216,30 @@ export const BankingSetup = () => {
               This message will be shown to clients explaining how to make payments for services.
             </p>
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="whatsappNumber">WhatsApp Number for Payment Proof</Label>
+            <Input
+              id="whatsappNumber"
+              value={paymentInstructions.whatsappNumber}
+              onChange={(e) => handleInstructionsChange('whatsappNumber', e.target.value)}
+              placeholder="e.g., +264 81 123 4567"
+            />
+            <p className="text-xs text-gray-500">
+              WhatsApp number where clients should send proof of payment.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={saveBankingDetails} className="flex items-center gap-2">
+        <Button 
+          onClick={saveBankingDetails} 
+          className="flex items-center gap-2"
+          disabled={isSaving}
+        >
           <Save className="h-4 w-4" />
-          Save Banking Details
+          {isSaving ? 'Saving...' : 'Save Banking Details'}
         </Button>
       </div>
     </div>

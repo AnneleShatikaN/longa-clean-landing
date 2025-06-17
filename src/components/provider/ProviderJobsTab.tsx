@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-export const ProviderJobsTab: React.FC = () => {
+const ProviderJobsTab: React.FC = () => {
   const { getAvailableJobs, acceptBooking } = useSupabaseBookings();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -173,3 +173,6 @@ export const ProviderJobsTab: React.FC = () => {
     </div>
   );
 };
+
+export { ProviderJobsTab };
+export default ProviderJobsTab;

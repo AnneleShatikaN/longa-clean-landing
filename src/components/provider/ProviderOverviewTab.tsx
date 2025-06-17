@@ -147,3 +147,6 @@ export const ProviderOverviewTab: React.FC = () => {
     </div>
   );
 };
+
+export { ProviderOverviewTab };
+export default ProviderOverviewTab;

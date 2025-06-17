@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, MapPin, User, Info, DollarSign } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, MapPin, Info, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -96,6 +96,15 @@ const OneOffBooking = () => {
       return;
     }
 
+    if (!selectedService.client_price || selectedService.client_price <= 0) {
+      toast({
+        title: "Pricing Error",
+        description: "Service pricing is not available. Please contact support.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const selectedDate = new Date(bookingDate);
     const today = startOfDay(new Date());
     
@@ -121,8 +130,8 @@ const OneOffBooking = () => {
       });
 
       toast({
-        title: "Booking Created!",
-        description: "Your service booking has been submitted successfully.",
+        title: "Booking Request Submitted!",
+        description: "Your booking request has been submitted. You'll receive payment instructions shortly.",
       });
 
       // Navigate to confirmation page with booking ID
@@ -173,8 +182,8 @@ const OneOffBooking = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Service Not Found</h1>
-          <p className="text-gray-600 mb-6">The selected service could not be found.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Loading Service...</h1>
+          <p className="text-gray-600 mb-6">Please wait while we load the service details.</p>
           <Button onClick={() => navigate('/client-dashboard')}>
             Back to Dashboard
           </Button>
@@ -182,6 +191,9 @@ const OneOffBooking = () => {
       </div>
     );
   }
+
+  // Check if service has valid pricing
+  const hasValidPricing = selectedService.client_price && selectedService.client_price > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
@@ -209,25 +221,40 @@ const OneOffBooking = () => {
             <CardTitle className="text-xl font-bold">Book a Service</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Service Display with Enhanced Pricing */}
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">{selectedService?.name}</h3>
-                <p className="text-blue-800 text-sm mb-3">{selectedService?.description}</p>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2 text-sm text-blue-700">
-                    <Clock className="h-4 w-4" />
-                    <span>{Math.floor((selectedService?.duration_minutes || 180) / 60)}h {(selectedService?.duration_minutes || 180) % 60}m</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-blue-900" />
-                    <div className="text-2xl font-bold text-blue-900">
-                      N${selectedService?.client_price}
-                    </div>
+            {/* Service Display with Pricing */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">{selectedService?.name}</h3>
+              <p className="text-blue-800 text-sm mb-3">{selectedService?.description}</p>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-sm text-blue-700">
+                  <Clock className="h-4 w-4" />
+                  <span>{Math.floor((selectedService?.duration_minutes || 180) / 60)}h {(selectedService?.duration_minutes || 180) % 60}m</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-blue-900" />
+                  <div className="text-2xl font-bold text-blue-900">
+                    {hasValidPricing ? `N$${selectedService.client_price}` : 'Price on Request'}
                   </div>
                 </div>
               </div>
+            </div>
 
+            {/* Pricing Alert if invalid */}
+            {!hasValidPricing && (
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-6">
+                <p className="text-yellow-800 text-sm">
+                  <strong>Note:</strong> Pricing for this service is not available online. Please contact our team for a quote.
+                </p>
+                <Button 
+                  className="mt-2" 
+                  onClick={() => navigate('/client-dashboard')}
+                >
+                  Contact Support
+                </Button>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Client Location */}
               <div className="space-y-3">
                 <Label htmlFor="location" className="flex items-center gap-2 text-base">
@@ -349,15 +376,29 @@ const OneOffBooking = () => {
                   </div>
                   <div className="flex justify-between font-medium border-t pt-2 text-lg">
                     <span>Total Amount:</span>
-                    <span className="text-blue-900">N${selectedService?.client_price}</span>
+                    <span className="text-blue-900">
+                      {hasValidPricing ? `N$${selectedService.client_price}` : 'Contact for Quote'}
+                    </span>
                   </div>
                 </div>
+              </div>
+
+              {/* Payment Process Information */}
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <h4 className="font-medium mb-2 text-yellow-900">Next Steps After Booking</h4>
+                <ol className="text-sm text-yellow-800 space-y-1">
+                  <li>1. Your booking request will be submitted</li>
+                  <li>2. You'll receive detailed payment instructions</li>
+                  <li>3. Complete payment via bank transfer</li>
+                  <li>4. Admin will verify payment and approve booking</li>
+                  <li>5. Provider will be assigned and contact you</li>
+                </ol>
               </div>
 
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={!bookingDate || isSubmitting}
+                disabled={!bookingDate || isSubmitting || !hasValidPricing}
                 className="w-full bg-blue-900 hover:bg-blue-800 text-white"
                 style={{ 
                   fontSize: '16px', 
@@ -365,8 +406,14 @@ const OneOffBooking = () => {
                   borderRadius: '8px'
                 }}
               >
-                {isSubmitting ? 'Creating Booking...' : 'Confirm Booking'}
+                {isSubmitting ? 'Submitting Request...' : 'Submit Booking Request'}
               </Button>
+
+              {!hasValidPricing && (
+                <p className="text-center text-sm text-gray-600">
+                  Please contact support for pricing on this service
+                </p>
+              )}
             </form>
           </CardContent>
         </Card>

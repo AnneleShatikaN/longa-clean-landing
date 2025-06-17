@@ -26,6 +26,14 @@ import NotificationSystem from '@/components/NotificationSystem';
 
 import ProviderProfile from '@/pages/ProviderProfile';
 
+// Component to conditionally render NotificationSystem for authenticated routes
+const AuthenticatedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <>
+    <NotificationSystem />
+    {children}
+  </>
+);
+
 function App() {
   return (
     <Router>
@@ -39,22 +47,23 @@ function App() {
                     <SupabaseBookingProvider>
                       <div className="min-h-screen bg-gray-50">
                         <Toaster />
-                        <NotificationSystem />
                         <Routes>
                           <Route path="/" element={<Index />} />
                           <Route path="/auth" element={<Auth />} />
                           <Route path="/search" element={<Search />} />
                           <Route path="/subscription-packages" element={<SubscriptionPackages />} />
                           <Route path="/one-off-booking" element={<OneOffBooking />} />
-                          <Route path="/notification-center" element={<NotificationCenter />} />
+                          <Route path="/notification-center" element={<AuthenticatedLayout><NotificationCenter /></AuthenticatedLayout>} />
                           <Route path="/provider/:providerId" element={<ProviderProfile />} />
                           
-                          {/* Protected Routes */}
+                          {/* Protected Routes with Notifications */}
                           <Route
                             path="/client-dashboard"
                             element={
                               <ProtectedRoute allowedRoles={['client']}>
-                                <ClientDashboard />
+                                <AuthenticatedLayout>
+                                  <ClientDashboard />
+                                </AuthenticatedLayout>
                               </ProtectedRoute>
                             }
                           />
@@ -62,7 +71,9 @@ function App() {
                             path="/provider-dashboard"
                             element={
                               <ProtectedRoute allowedRoles={['provider']}>
-                                <ProviderDashboard />
+                                <AuthenticatedLayout>
+                                  <ProviderDashboard />
+                                </AuthenticatedLayout>
                               </ProtectedRoute>
                             }
                           />
@@ -70,7 +81,9 @@ function App() {
                             path="/admin-dashboard"
                             element={
                               <ProtectedRoute allowedRoles={['admin']}>
-                                <AdminDashboard />
+                                <AuthenticatedLayout>
+                                  <AdminDashboard />
+                                </AuthenticatedLayout>
                               </ProtectedRoute>
                             }
                           />
@@ -78,7 +91,9 @@ function App() {
                             path="/admin-setup"
                             element={
                               <ProtectedRoute allowedRoles={['admin']}>
-                                <AdminSetup />
+                                <AuthenticatedLayout>
+                                  <AdminSetup />
+                                </AuthenticatedLayout>
                               </ProtectedRoute>
                             }
                           />

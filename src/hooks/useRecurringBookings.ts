@@ -33,26 +33,29 @@ export const useRecurringBookings = () => {
     try {
       setIsLoading(true);
       
-      // Fetch recurring bookings with a simplified query
       const { data: bookings, error } = await supabase
         .from('bookings')
-        .select('id, service_id, booking_time, booking_date, special_instructions, emergency_booking, duration_minutes, location_town, created_at')
+        .select(`
+          id,
+          service_id,
+          booking_time,
+          booking_date,
+          special_instructions,
+          emergency_booking,
+          duration_minutes,
+          location_town,
+          created_at
+        `)
         .eq('client_id', user.id);
 
       if (error) throw error;
       
-      // Filter and transform manually
-      const recurringBookings = bookings?.filter((booking: any) => {
-        // We'll use a simple check for now since we may not have the recurring fields in types yet
-        return booking.id; // For now, just return all bookings as a placeholder
-      }) || [];
-      
-      // Transform to our interface format
-      const schedules: RecurringSchedule[] = recurringBookings.map((booking: any) => ({
+      // Transform to our interface format (simulating recurring bookings)
+      const schedules: RecurringSchedule[] = (bookings || []).map((booking: any) => ({
         id: booking.id,
         parent_booking_id: booking.id,
         service_id: booking.service_id,
-        frequency: 'weekly' as const, // Default values since we might not have the data yet
+        frequency: 'weekly' as const,
         day_of_week: 1,
         booking_time: booking.booking_time,
         start_date: booking.booking_date,
@@ -94,24 +97,15 @@ export const useRecurringBookings = () => {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      // For now, we'll use a direct SQL approach to update the booking
-      const { error: updateError } = await supabase.rpc('sql', {
-        query: `
-          UPDATE bookings 
-          SET 
-            special_instructions = $1
-          WHERE id = $2 AND client_id = $3
-        `,
-        params: [
-          scheduleData.special_instructions || '',
-          scheduleData.parent_booking_id,
-          user.id
-        ]
-      });
-
-      if (updateError) {
-        console.error('Update error:', updateError);
-        // Continue with the rest of the function even if this fails
+      // Update the original booking with special instructions if provided
+      if (scheduleData.special_instructions) {
+        await supabase
+          .from('bookings')
+          .update({ 
+            special_instructions: scheduleData.special_instructions 
+          })
+          .eq('id', scheduleData.parent_booking_id)
+          .eq('client_id', user.id);
       }
 
       // Generate future bookings manually
@@ -175,7 +169,7 @@ export const useRecurringBookings = () => {
 
   const cancelRecurringSchedule = async (scheduleId: string) => {
     try {
-      // For now, we'll just delete the booking since we don't have the recurring fields in types
+      // Delete the booking since we don't have actual recurring schedules table
       const { error } = await supabase
         .from('bookings')
         .delete()

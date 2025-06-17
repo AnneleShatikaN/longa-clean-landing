@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,16 +10,37 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-const ProviderJobsTab: React.FC = () => {
+interface ProviderJobsTabProps {
+  availableJobs?: any[];
+  myJobs?: any[];
+  onAcceptJob?: (jobId: string) => Promise<void>;
+  onDeclineJob?: (jobId: string) => Promise<void>;
+  onCompleteJob?: (jobId: string) => Promise<void>;
+  isAvailable?: boolean;
+}
+
+const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
+  availableJobs: propAvailableJobs,
+  myJobs: propMyJobs,
+  onAcceptJob: propOnAcceptJob,
+  onDeclineJob: propOnDeclineJob,
+  onCompleteJob: propOnCompleteJob,
+  isAvailable = true
+}) => {
   const { getAvailableJobs, acceptBooking } = useSupabaseBookings();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [availableJobs, setAvailableJobs] = useState([]);
+  const [availableJobs, setAvailableJobs] = useState(propAvailableJobs || []);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchAvailableJobs();
-  }, []);
+    if (propAvailableJobs) {
+      setAvailableJobs(propAvailableJobs);
+      setIsLoading(false);
+    } else {
+      fetchAvailableJobs();
+    }
+  }, [propAvailableJobs]);
 
   const fetchAvailableJobs = async () => {
     setIsLoading(true);
@@ -54,12 +76,16 @@ const ProviderJobsTab: React.FC = () => {
 
   const handleAcceptJob = async (bookingId: string) => {
     try {
-      await acceptBooking(bookingId);
-      toast({
-        title: "Job Accepted",
-        description: "You have accepted this job successfully.",
-      });
-      fetchAvailableJobs(); // Refresh jobs after accepting
+      if (propOnAcceptJob) {
+        await propOnAcceptJob(bookingId);
+      } else {
+        await acceptBooking(bookingId);
+        toast({
+          title: "Job Accepted",
+          description: "You have accepted this job successfully.",
+        });
+        fetchAvailableJobs(); // Refresh jobs after accepting
+      }
     } catch (error) {
       console.error('Error accepting job:', error);
       toast({
@@ -174,5 +200,4 @@ const ProviderJobsTab: React.FC = () => {
   );
 };
 
-export { ProviderJobsTab };
 export default ProviderJobsTab;

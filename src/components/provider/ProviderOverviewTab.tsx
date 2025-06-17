@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,19 @@ import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { supabase } from '@/integrations/supabase/client';
 import { UnverifiedProviderMessage } from './UnverifiedProviderMessage';
 
-export const ProviderOverviewTab: React.FC = () => {
+interface ProviderOverviewTabProps {
+  profile?: any;
+  stats?: {
+    totalEarnings: number;
+    pendingPayouts: number;
+    thisWeekEarnings: number;
+    availableJobs: number;
+    completedJobs: number;
+    averageRating: number;
+  };
+}
+
+export const ProviderOverviewTab: React.FC<ProviderOverviewTabProps> = ({ profile, stats }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { bookings } = useSupabaseBookings();
@@ -45,13 +58,20 @@ export const ProviderOverviewTab: React.FC = () => {
   const fetchProviderData = async () => {
     if (!user) return;
 
-    // Calculate total jobs and earnings from bookings
-    const providerBookings = bookings.filter(booking => booking.provider_id === user.id);
-    const completedProviderBookings = providerBookings.filter(booking => booking.status === 'completed');
+    // Use passed stats if available, otherwise calculate from bookings
+    if (stats) {
+      setTotalJobs(stats.availableJobs + stats.completedJobs);
+      setCompletedJobs(stats.completedJobs);
+      setTotalEarnings(stats.totalEarnings);
+    } else {
+      // Calculate total jobs and earnings from bookings
+      const providerBookings = bookings.filter(booking => booking.provider_id === user.id);
+      const completedProviderBookings = providerBookings.filter(booking => booking.status === 'completed');
 
-    setTotalJobs(providerBookings.length);
-    setCompletedJobs(completedProviderBookings.length);
-    setTotalEarnings(completedProviderBookings.reduce((sum, booking) => sum + (booking.total_amount || 0), 0));
+      setTotalJobs(providerBookings.length);
+      setCompletedJobs(completedProviderBookings.length);
+      setTotalEarnings(completedProviderBookings.reduce((sum, booking) => sum + (booking.total_amount || 0), 0));
+    }
   };
 
   const isVerified = verificationStatus === 'verified';
@@ -148,5 +168,4 @@ export const ProviderOverviewTab: React.FC = () => {
   );
 };
 
-export { ProviderOverviewTab };
 export default ProviderOverviewTab;

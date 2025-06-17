@@ -21,27 +21,31 @@ export const SimplifiedDashboardOverview = () => {
   // Service cards data - elegant 1x3 grid
   const serviceCards = [
     {
-      id: 1,
+      id: '1',
       name: 'Deep House Cleaning',
       description: 'Complete deep cleaning service for your home',
       price: 'N$600',
       duration: '3h'
     },
     {
-      id: 2,
+      id: '2',
       name: 'Garden Maintenance',
       description: 'Professional garden care and landscaping',
       price: 'N$400',
       duration: '2h'
     },
     {
-      id: 3,
+      id: '3',
       name: 'Home Repairs',
       description: 'General home maintenance and repair services',
       price: 'N$500',
       duration: '2.5h'
     }
   ];
+
+  const handleBookService = (serviceId: string) => {
+    navigate(`/one-off-booking?service_id=${serviceId}`);
+  };
 
   return (
     <div className="space-y-6" style={{ background: 'linear-gradient(to right, #e6f0fa, #fff)', padding: '20px', borderRadius: '8px' }}>
@@ -75,7 +79,7 @@ export const SimplifiedDashboardOverview = () => {
                   padding: '10px',
                   fontSize: '16px'
                 }}
-                onClick={() => navigate('/search')}
+                onClick={() => handleBookService(service.id)}
               >
                 Book Now
               </Button>

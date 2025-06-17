@@ -328,6 +328,15 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
     if (!user) throw new Error('User not authenticated');
 
     try {
+      // Check if provider is verified before accepting
+      const { data: isVerified } = await supabase.rpc('is_provider_verified', {
+        provider_id: user.id
+      });
+
+      if (!isVerified) {
+        throw new Error('You must complete verification before accepting bookings');
+      }
+
       // Check for conflicts first
       const { data: booking } = await supabase
         .from('bookings')
@@ -435,6 +444,17 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
 
   const getAvailableJobs = async (): Promise<BookingWithRelations[]> => {
     try {
+      // First check if user is verified
+      if (user?.role === 'provider') {
+        const { data: isVerified } = await supabase.rpc('is_provider_verified', {
+          provider_id: user.id
+        });
+
+        if (!isVerified) {
+          return []; // Return empty array for unverified providers
+        }
+      }
+
       const { data, error } = await supabase
         .from('bookings')
         .select(`

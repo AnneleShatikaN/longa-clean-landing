@@ -15,7 +15,13 @@ export interface UserProfile {
   total_jobs: number;
   created_at: string;
   updated_at: string;
-  current_work_location?: string; // Add the new property
+  current_work_location?: string;
+  verification_status?: string;
+  verification_submitted_at?: string;
+  verified_at?: string;
+  verification_notes?: string;
+  background_check_consent?: boolean;
+  banking_details_verified?: boolean;
   // Additional properties for compatibility
   address?: string;
   profilePicture?: string;

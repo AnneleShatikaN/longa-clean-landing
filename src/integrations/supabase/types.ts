@@ -1180,6 +1180,163 @@ export type Database = {
           },
         ]
       }
+      provider_banking_details: {
+        Row: {
+          account_holder_name: string
+          account_number: string
+          account_type: string | null
+          bank_name: string
+          created_at: string | null
+          id: string
+          is_primary: boolean | null
+          provider_id: string
+          routing_number: string | null
+          swift_code: string | null
+          updated_at: string | null
+          verification_status: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          account_holder_name: string
+          account_number: string
+          account_type?: string | null
+          bank_name: string
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          provider_id: string
+          routing_number?: string | null
+          swift_code?: string | null
+          updated_at?: string | null
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          account_holder_name?: string
+          account_number?: string
+          account_type?: string | null
+          bank_name?: string
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          provider_id?: string
+          routing_number?: string | null
+          swift_code?: string | null
+          updated_at?: string | null
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_banking_details_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_banking_details_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_banking_details_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_banking_details_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_documents: {
+        Row: {
+          document_name: string
+          document_type: string
+          file_path: string
+          file_size: number | null
+          id: string
+          is_active: boolean | null
+          mime_type: string | null
+          provider_id: string
+          rejection_reason: string | null
+          uploaded_at: string | null
+          verification_status: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          document_name: string
+          document_type: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          is_active?: boolean | null
+          mime_type?: string | null
+          provider_id: string
+          rejection_reason?: string | null
+          uploaded_at?: string | null
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          document_name?: string
+          document_type?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          is_active?: boolean | null
+          mime_type?: string | null
+          provider_id?: string
+          rejection_reason?: string | null
+          uploaded_at?: string | null
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_documents_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_documents_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_documents_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_documents_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_earnings_summaries: {
         Row: {
           document_url: string | null
@@ -1294,6 +1451,86 @@ export type Database = {
           {
             foreignKeyName: "provider_payment_methods_provider_id_fkey"
             columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_references: {
+        Row: {
+          company_name: string | null
+          contacted_at: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          provider_id: string
+          reference_email: string | null
+          reference_name: string
+          reference_phone: string
+          relationship: string
+          verification_status: string | null
+          verified_at: string | null
+          verified_by: string | null
+          years_known: number | null
+        }
+        Insert: {
+          company_name?: string | null
+          contacted_at?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          provider_id: string
+          reference_email?: string | null
+          reference_name: string
+          reference_phone: string
+          relationship: string
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          years_known?: number | null
+        }
+        Update: {
+          company_name?: string | null
+          contacted_at?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          provider_id?: string
+          reference_email?: string | null
+          reference_name?: string
+          reference_phone?: string
+          relationship?: string
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          years_known?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_references_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_references_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_references_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_references_verified_by_fkey"
+            columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1820,6 +2057,8 @@ export type Database = {
       users: {
         Row: {
           avatar_url: string | null
+          background_check_consent: boolean | null
+          banking_details_verified: boolean | null
           created_at: string | null
           current_work_location: string | null
           email: string
@@ -1833,9 +2072,16 @@ export type Database = {
           service_coverage_areas: string[] | null
           total_jobs: number | null
           updated_at: string | null
+          verification_documents: Json | null
+          verification_notes: string | null
+          verification_status: string | null
+          verification_submitted_at: string | null
+          verified_at: string | null
         }
         Insert: {
           avatar_url?: string | null
+          background_check_consent?: boolean | null
+          banking_details_verified?: boolean | null
           created_at?: string | null
           current_work_location?: string | null
           email: string
@@ -1849,9 +2095,16 @@ export type Database = {
           service_coverage_areas?: string[] | null
           total_jobs?: number | null
           updated_at?: string | null
+          verification_documents?: Json | null
+          verification_notes?: string | null
+          verification_status?: string | null
+          verification_submitted_at?: string | null
+          verified_at?: string | null
         }
         Update: {
           avatar_url?: string | null
+          background_check_consent?: boolean | null
+          banking_details_verified?: boolean | null
           created_at?: string | null
           current_work_location?: string | null
           email?: string
@@ -1865,6 +2118,11 @@ export type Database = {
           service_coverage_areas?: string[] | null
           total_jobs?: number | null
           updated_at?: string | null
+          verification_documents?: Json | null
+          verification_notes?: string | null
+          verification_status?: string | null
+          verification_submitted_at?: string | null
+          verified_at?: string | null
         }
         Relationships: []
       }
@@ -2098,6 +2356,10 @@ export type Database = {
         Args: { faq_id: string }
         Returns: undefined
       }
+      is_provider_verified: {
+        Args: { provider_id: string }
+        Returns: boolean
+      }
       is_weekend_in_namibian_timezone: {
         Args: { check_date: string }
         Returns: boolean
@@ -2240,6 +2502,10 @@ export type Database = {
           api_key?: string
           new_status?: string
         }
+        Returns: Json
+      }
+      update_provider_verification_status: {
+        Args: { provider_id: string; new_status: string; admin_notes?: string }
         Returns: Json
       }
       update_support_contact: {

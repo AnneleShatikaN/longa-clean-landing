@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { UserProfile } from '@/types/user';
+import { UserProfile, UserRole } from '@/types/user';
 import { toast } from 'sonner';
 
 interface AuthContextType {
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         full_name: data.full_name,
         name: data.full_name, // Map full_name to name
         phone: data.phone,
-        role: data.role,
+        role: data.role as UserRole, // Properly cast role to UserRole type
         avatar_url: data.avatar_url,
         is_active: data.is_active,
         rating: data.rating,

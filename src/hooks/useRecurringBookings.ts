@@ -21,27 +21,6 @@ interface RecurringSchedule {
   created_at: string;
 }
 
-// Extended booking type with recurring fields
-interface ExtendedBooking {
-  id: string;
-  client_id: string;
-  service_id: string;
-  booking_date: string;
-  booking_time: string;
-  total_amount: number;
-  special_instructions?: string;
-  emergency_booking: boolean;
-  duration_minutes: number;
-  location_town: string;
-  created_at: string;
-  is_recurring?: boolean;
-  recurring_frequency?: string;
-  recurring_day_of_week?: number;
-  recurring_end_date?: string;
-  is_auto_scheduled?: boolean;
-  recurring_parent_id?: string;
-}
-
 export const useRecurringBookings = () => {
   const [recurringSchedules, setRecurringSchedules] = useState<RecurringSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,7 +32,8 @@ export const useRecurringBookings = () => {
 
     try {
       setIsLoading(true);
-      // Query bookings with recurring flags using raw query to avoid type issues
+      // For now, we'll fetch from bookings table with recurring flags
+      // This is a simplified approach until the recurring_booking_schedules table types are available
       const { data, error } = await supabase
         .from('bookings')
         .select('*')
@@ -64,16 +44,16 @@ export const useRecurringBookings = () => {
 
       if (error) throw error;
       
-      // Transform and type assert the data
-      const schedules = (data as ExtendedBooking[]).map(booking => ({
+      // Transform the booking data to match our RecurringSchedule interface
+      const schedules: RecurringSchedule[] = (data || []).map(booking => ({
         id: booking.id,
         parent_booking_id: booking.id,
         service_id: booking.service_id,
-        frequency: (booking.recurring_frequency || 'weekly') as 'weekly' | 'bi-weekly' | 'monthly',
-        day_of_week: booking.recurring_day_of_week || 1,
+        frequency: (booking as any).recurring_frequency || 'weekly',
+        day_of_week: (booking as any).recurring_day_of_week || 1,
         booking_time: booking.booking_time,
         start_date: booking.booking_date,
-        end_date: booking.recurring_end_date,
+        end_date: (booking as any).recurring_end_date,
         is_active: true,
         special_instructions: booking.special_instructions,
         emergency_booking: booking.emergency_booking,
@@ -111,28 +91,20 @@ export const useRecurringBookings = () => {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      // Update the parent booking to mark it as recurring using raw update
-      const { error: updateError } = await supabase.rpc('sql', {
-        query: `
-          UPDATE bookings 
-          SET 
-            is_recurring = true,
-            recurring_frequency = $1,
-            recurring_day_of_week = $2,
-            recurring_end_date = $3
-          WHERE id = $4
-        `,
-        params: [
-          scheduleData.frequency,
-          scheduleData.day_of_week,
-          scheduleData.end_date,
-          scheduleData.parent_booking_id
-        ]
-      });
+      // Update the parent booking to mark it as recurring
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({
+          is_recurring: true,
+          recurring_frequency: scheduleData.frequency,
+          recurring_day_of_week: scheduleData.day_of_week,
+          recurring_end_date: scheduleData.end_date
+        } as any)
+        .eq('id', scheduleData.parent_booking_id);
 
       if (updateError) throw updateError;
 
-      // Generate next recurring dates manually
+      // Generate future bookings manually (simplified approach)
       const nextDates = getNextRecurringDates(
         new Date(scheduleData.start_date),
         scheduleData.frequency,
@@ -145,35 +117,32 @@ export const useRecurringBookings = () => {
       // Create future bookings one by one
       for (const nextDate of nextDates) {
         if (nextDate > new Date() && bookingsCreated < 12) {
-          // Use raw insert to avoid type issues
-          const { error } = await supabase.rpc('sql', {
-            query: `
-              INSERT INTO bookings (
-                client_id, service_id, booking_date, booking_time,
-                special_instructions, emergency_booking, duration_minutes,
-                location_town, is_recurring, recurring_parent_id,
-                recurring_frequency, recurring_day_of_week, is_auto_scheduled,
-                status, total_amount
-              ) 
-              SELECT 
-                $1, $2, $3, $4, $5, $6, $7, $8, true, $9, $10, $11, true, 'pending',
-                COALESCE(s.client_price, 0)
-              FROM services s WHERE s.id = $2
-            `,
-            params: [
-              user.id,
-              scheduleData.service_id,
-              nextDate.toISOString().split('T')[0],
-              scheduleData.booking_time,
-              scheduleData.special_instructions,
-              scheduleData.emergency_booking,
-              scheduleData.duration_minutes,
-              scheduleData.location_town,
-              scheduleData.parent_booking_id,
-              scheduleData.frequency,
-              scheduleData.day_of_week
-            ]
-          });
+          // Get service details first
+          const { data: serviceData } = await supabase
+            .from('services')
+            .select('client_price')
+            .eq('id', scheduleData.service_id)
+            .single();
+
+          const { error } = await supabase
+            .from('bookings')
+            .insert({
+              client_id: user.id,
+              service_id: scheduleData.service_id,
+              booking_date: nextDate.toISOString().split('T')[0],
+              booking_time: scheduleData.booking_time,
+              special_instructions: scheduleData.special_instructions,
+              emergency_booking: scheduleData.emergency_booking,
+              duration_minutes: scheduleData.duration_minutes,
+              location_town: scheduleData.location_town,
+              is_recurring: true,
+              recurring_parent_id: scheduleData.parent_booking_id,
+              recurring_frequency: scheduleData.frequency,
+              recurring_day_of_week: scheduleData.day_of_week,
+              is_auto_scheduled: true,
+              status: 'pending',
+              total_amount: serviceData?.client_price || 0
+            } as any);
 
           if (!error) {
             bookingsCreated++;
@@ -201,19 +170,16 @@ export const useRecurringBookings = () => {
 
   const cancelRecurringSchedule = async (scheduleId: string) => {
     try {
-      // Cancel using raw SQL to avoid type issues
-      const { error } = await supabase.rpc('sql', {
-        query: `
-          UPDATE bookings 
-          SET 
-            is_recurring = false,
-            recurring_frequency = null,
-            recurring_day_of_week = null,
-            recurring_end_date = null
-          WHERE id = $1
-        `,
-        params: [scheduleId]
-      });
+      // Cancel by updating the booking flags
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          is_recurring: false,
+          recurring_frequency: null,
+          recurring_day_of_week: null,
+          recurring_end_date: null
+        } as any)
+        .eq('id', scheduleId);
 
       if (error) throw error;
 

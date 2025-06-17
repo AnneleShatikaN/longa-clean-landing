@@ -2319,6 +2319,7 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean | null
+          is_available: boolean | null
           password_hash: string
           phone: string | null
           rating: number | null
@@ -2342,6 +2343,7 @@ export type Database = {
           full_name: string
           id?: string
           is_active?: boolean | null
+          is_available?: boolean | null
           password_hash: string
           phone?: string | null
           rating?: number | null
@@ -2365,6 +2367,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean | null
+          is_available?: boolean | null
           password_hash?: string
           phone?: string | null
           rating?: number | null

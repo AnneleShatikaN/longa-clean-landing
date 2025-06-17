@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useServices } from '@/contexts/ServiceContext';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { useToast } from '@/hooks/use-toast';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
 
 const OneOffBooking = () => {
@@ -19,6 +20,7 @@ const OneOffBooking = () => {
   const { services } = useServices();
   const { createBooking } = useSupabaseBookings();
   const { toast } = useToast();
+  const { settings, isLoading: settingsLoading } = useGlobalSettings();
   const [searchParams] = useSearchParams();
   
   const [selectedService, setSelectedService] = useState<any>(null);
@@ -99,7 +101,7 @@ const OneOffBooking = () => {
     if (!selectedService.client_price || selectedService.client_price <= 0) {
       toast({
         title: "Pricing Error",
-        description: "Service pricing is not available. Please contact support.",
+        description: "Service pricing is not available. Please try again or contact support.",
         variant: "destructive",
       });
       return;
@@ -192,8 +194,8 @@ const OneOffBooking = () => {
     );
   }
 
-  // Check if service has valid pricing
-  const hasValidPricing = selectedService.client_price && selectedService.client_price > 0;
+  // Get payment instructions from settings
+  const paymentInstructions = settings.payment_instructions;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
@@ -233,26 +235,11 @@ const OneOffBooking = () => {
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-5 w-5 text-blue-900" />
                   <div className="text-2xl font-bold text-blue-900">
-                    {hasValidPricing ? `N$${selectedService.client_price}` : 'Price on Request'}
+                    N${selectedService.client_price}
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* Pricing Alert if invalid */}
-            {!hasValidPricing && (
-              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-6">
-                <p className="text-yellow-800 text-sm">
-                  <strong>Note:</strong> Pricing for this service is not available online. Please contact our team for a quote.
-                </p>
-                <Button 
-                  className="mt-2" 
-                  onClick={() => navigate('/client-dashboard')}
-                >
-                  Contact Support
-                </Button>
-              </div>
-            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Client Location */}
@@ -350,7 +337,7 @@ const OneOffBooking = () => {
                 />
               </div>
 
-              {/* Enhanced Booking Summary */}
+              {/* Booking Summary */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <h4 className="font-medium mb-3 text-blue-900">Booking Summary</h4>
                 <div className="space-y-2 text-sm">
@@ -376,9 +363,7 @@ const OneOffBooking = () => {
                   </div>
                   <div className="flex justify-between font-medium border-t pt-2 text-lg">
                     <span>Total Amount:</span>
-                    <span className="text-blue-900">
-                      {hasValidPricing ? `N$${selectedService.client_price}` : 'Contact for Quote'}
-                    </span>
+                    <span className="text-blue-900">N${selectedService.client_price}</span>
                   </div>
                 </div>
               </div>
@@ -393,12 +378,24 @@ const OneOffBooking = () => {
                   <li>4. Admin will verify payment and approve booking</li>
                   <li>5. Provider will be assigned and contact you</li>
                 </ol>
+                
+                {/* Show payment instructions preview if available */}
+                {!settingsLoading && paymentInstructions?.clientPaymentInstructions && (
+                  <div className="mt-3 pt-3 border-t border-yellow-300">
+                    <p className="text-sm text-yellow-800 mb-1">
+                      <strong>Payment Instructions:</strong>
+                    </p>
+                    <p className="text-xs text-yellow-700">
+                      {paymentInstructions.clientPaymentInstructions}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={!bookingDate || isSubmitting || !hasValidPricing}
+                disabled={!bookingDate || isSubmitting || !selectedService.client_price}
                 className="w-full bg-blue-900 hover:bg-blue-800 text-white"
                 style={{ 
                   fontSize: '16px', 
@@ -408,12 +405,6 @@ const OneOffBooking = () => {
               >
                 {isSubmitting ? 'Submitting Request...' : 'Submit Booking Request'}
               </Button>
-
-              {!hasValidPricing && (
-                <p className="text-center text-sm text-gray-600">
-                  Please contact support for pricing on this service
-                </p>
-              )}
             </form>
           </CardContent>
         </Card>

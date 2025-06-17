@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, MapPin, User } from 'lucide-react';
@@ -18,7 +17,7 @@ const OneOffBooking = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { services } = useServices();
-  const { bookings, refreshBookings } = useSupabaseBookings();
+  const { bookings, createBooking } = useSupabaseBookings();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   
@@ -86,31 +85,19 @@ const OneOffBooking = () => {
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert({
-          client_id: user.id,
-          service_id: selectedService.id,
-          booking_date: bookingDate,
-          booking_time: bookingTime,
-          total_amount: selectedService.clientPrice,
-          special_instructions: specialInstructions || null,
-          location_town: clientLocation.toLowerCase(),
-          duration_minutes: selectedService.duration_minutes || 180,
-          status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      await createBooking({
+        serviceId: selectedService.id,
+        bookingDate: bookingDate,
+        bookingTime: bookingTime,
+        specialInstructions: specialInstructions,
+        durationMinutes: selectedService.duration_minutes || 180,
+        locationTown: clientLocation.toLowerCase(),
+      });
 
       toast({
         title: "Booking Created!",
         description: "Your service booking has been submitted successfully. You will be notified when a provider accepts your booking.",
       });
-
-      // Refresh bookings data
-      await refreshBookings();
 
       // Navigate back to dashboard
       navigate('/client-dashboard');
@@ -194,7 +181,7 @@ const OneOffBooking = () => {
                     <span>{Math.floor((selectedService.duration_minutes || 180) / 60)}h {(selectedService.duration_minutes || 180) % 60}m</span>
                   </div>
                   <div className="text-2xl font-bold text-blue-600">
-                    N${selectedService.clientPrice}
+                    N${selectedService.client_price}
                   </div>
                 </div>
 
@@ -313,7 +300,7 @@ const OneOffBooking = () => {
                     </div>
                     <div className="flex justify-between font-medium border-t pt-2">
                       <span>Total:</span>
-                      <span>N${selectedService.clientPrice}</span>
+                      <span>N${selectedService.client_price}</span>
                     </div>
                   </div>
                 </div>

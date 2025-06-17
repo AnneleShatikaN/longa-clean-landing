@@ -98,11 +98,11 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
         durationMinutes: selectedService.duration.hours * 60 + selectedService.duration.minutes
       });
 
-      if (result.success && result.booking) {
+      if (result.success && result.bookingId) {
         // If recurring is enabled, create the recurring schedule
-        if (isRecurring && result.booking.id) {
+        if (isRecurring && result.bookingId) {
           await createRecurringSchedule({
-            parent_booking_id: result.booking.id,
+            parent_booking_id: result.bookingId,
             service_id: selectedService.id,
             frequency: recurringFrequency,
             day_of_week: preferredDay,

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -142,7 +141,7 @@ export const NotificationPreferences = () => {
                     <div className="flex items-center gap-2">
                       <h4 className="font-medium text-gray-900">{notificationType.label}</h4>
                       {notificationType.critical && (
-                        <Shield className="h-4 w-4 text-orange-500" title="Critical notification" />
+                        <Shield className="h-4 w-4 text-orange-500" />
                       )}
                     </div>
                     <p className="text-sm text-gray-600">{notificationType.description}</p>

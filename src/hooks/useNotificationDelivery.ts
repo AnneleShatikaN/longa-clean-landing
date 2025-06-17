@@ -35,7 +35,7 @@ export const useNotificationDelivery = () => {
         });
       }
 
-      if (response.error) {
+      if (response?.error) {
         throw new Error(response.error.message);
       }
 
@@ -65,7 +65,7 @@ export const useNotificationDelivery = () => {
       let query = supabase
         .from('notification_delivery_log')
         .select('*')
-        .order('attempted_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (notificationId) {
         query = query.eq('notification_id', notificationId);
@@ -78,7 +78,19 @@ export const useNotificationDelivery = () => {
         return;
       }
 
-      setDeliveryLog(data || []);
+      // Map the database response to our DeliveryAttempt interface
+      const mappedData: DeliveryAttempt[] = (data || []).map(item => ({
+        id: item.id,
+        notification_id: item.notification_id || '',
+        channel: item.channel as 'email' | 'sms' | 'push' | 'in_app',
+        delivery_status: item.delivery_status as 'pending' | 'sent' | 'delivered' | 'failed',
+        attempted_at: item.created_at || new Date().toISOString(),
+        delivered_at: item.delivered_at || undefined,
+        error_message: item.error_message || undefined,
+        retry_count: item.attempt_count || 0
+      }));
+
+      setDeliveryLog(mappedData);
     } catch (error) {
       console.error('Error fetching delivery log:', error);
     }
@@ -120,7 +132,12 @@ export const useNotificationDelivery = () => {
         .eq('user_id', userId)
         .eq('type', type);
 
-      const userPrefs = preferences?.[0] || {};
+      const userPrefs = preferences?.[0] || {
+        email_enabled: true,
+        sms_enabled: false,
+        push_enabled: true,
+        in_app_enabled: true
+      };
 
       // For critical notifications, implement fallback strategy
       if (urgency === 'emergency' || urgency === 'high') {
@@ -168,16 +185,16 @@ export const useNotificationDelivery = () => {
               notification_id: notification.id,
               channel,
               delivery_status: 'sent',
-              attempted_at: new Date().toISOString()
+              created_at: new Date().toISOString()
             });
 
-          } catch (channelError) {
+          } catch (channelError: any) {
             // Log failed attempt
             await supabase.from('notification_delivery_log').insert({
               notification_id: notification.id,
               channel,
               delivery_status: 'failed',
-              attempted_at: new Date().toISOString(),
+              created_at: new Date().toISOString(),
               error_message: channelError.message
             });
 

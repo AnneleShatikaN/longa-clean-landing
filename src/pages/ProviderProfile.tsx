@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star, MapPin, Calendar, Clock, ArrowLeft, MessageCircle } from 'lucide-react';
 import { useProviderProfiles } from '@/hooks/useProviderProfiles';
-import { RatingSystem } from '@/components/RatingSystem';
+import RatingSystem from '@/components/RatingSystem';
 import { supabase } from '@/integrations/supabase/client';
 
 const ProviderProfile = () => {

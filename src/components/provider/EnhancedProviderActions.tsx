@@ -6,10 +6,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle, X, Clock, AlertCircle } from 'lucide-react';
 import { LoadingState, ErrorState } from '@/components/common/ErrorBoundaryWrapper';
 
+type BookingStatus = 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+
 interface ProviderActionsProps {
   jobId: string;
-  currentStatus: string;
-  onStatusChange: (newStatus: string) => void;
+  currentStatus: BookingStatus;
+  onStatusChange: (newStatus: BookingStatus) => void;
 }
 
 export const EnhancedProviderActions: React.FC<ProviderActionsProps> = ({
@@ -21,7 +23,7 @@ export const EnhancedProviderActions: React.FC<ProviderActionsProps> = ({
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAction = async (action: string, newStatus: string) => {
+  const handleAction = async (action: string, newStatus: BookingStatus) => {
     setIsLoading(action);
     setError(null);
 

@@ -19,10 +19,10 @@ interface Booking {
   total_amount: number;
   service: {
     name: string;
-  };
+  } | null;
   provider?: {
     full_name: string;
-  };
+  } | null;
   location_town?: string;
 }
 
@@ -59,7 +59,19 @@ export const ImprovedBookingsTab: React.FC = () => {
 
       if (error) throw error;
 
-      setBookings(data || []);
+      // Safely handle the data with proper type checking
+      const processedBookings: Booking[] = (data || []).map(booking => ({
+        id: booking.id,
+        booking_date: booking.booking_date,
+        booking_time: booking.booking_time,
+        status: booking.status,
+        total_amount: booking.total_amount,
+        location_town: booking.location_town,
+        service: booking.service,
+        provider: booking.provider
+      }));
+
+      setBookings(processedBookings);
     } catch (err: any) {
       setError(err.message);
       console.error('Error fetching bookings:', err);
@@ -164,7 +176,7 @@ export const ImprovedBookingsTab: React.FC = () => {
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-xl font-semibold">{booking.service?.name}</h3>
+                    <h3 className="text-xl font-semibold">{booking.service?.name || 'Unknown Service'}</h3>
                     <Badge className={getStatusColor(booking.status)}>
                       {booking.status}
                     </Badge>

@@ -59,7 +59,7 @@ export const ImprovedBookingsTab: React.FC = () => {
 
       if (error) throw error;
 
-      // Safely handle the data with proper type checking
+      // Safely process the data with proper type handling
       const processedBookings: Booking[] = (data || []).map(booking => ({
         id: booking.id,
         booking_date: booking.booking_date,
@@ -67,8 +67,12 @@ export const ImprovedBookingsTab: React.FC = () => {
         status: booking.status,
         total_amount: booking.total_amount,
         location_town: booking.location_town,
-        service: booking.service,
-        provider: booking.provider
+        service: booking.service && typeof booking.service === 'object' && 'name' in booking.service 
+          ? { name: booking.service.name } 
+          : null,
+        provider: booking.provider && typeof booking.provider === 'object' && 'full_name' in booking.provider
+          ? { full_name: booking.provider.full_name }
+          : null
       }));
 
       setBookings(processedBookings);

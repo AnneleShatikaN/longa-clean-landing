@@ -199,19 +199,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
   const handleComplete = async () => {
     try {
-      // Save onboarding completion status
-      if (user) {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ 
-            onboarding_completed: true,
-            preferred_location: userLocation || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id);
-        
-        if (error) throw error;
-      }
+      // For now, just complete onboarding - we'll save to DB when migration is applied
+      console.log('Onboarding completed with location:', userLocation);
+      console.log('Selected services:', selectedServices);
       
       onComplete();
       onClose();

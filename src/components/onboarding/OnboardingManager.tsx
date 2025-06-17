@@ -17,27 +17,26 @@ export const OnboardingManager: React.FC = () => {
       }
 
       try {
-        // Check if user has completed onboarding
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('onboarding_completed, created_at')
+        // Check if user has completed onboarding - using users table instead of profiles
+        const { data: userProfile, error } = await supabase
+          .from('users')
+          .select('created_at')
           .eq('id', user.id)
           .single();
 
         if (error) {
-          console.error('Error fetching profile:', error);
+          console.error('Error fetching user profile:', error);
           setIsLoading(false);
           return;
         }
 
         // Show onboarding if:
-        // 1. User hasn't completed onboarding, OR
-        // 2. User is very new (created in last 3 days) and hasn't completed onboarding
-        const userCreated = new Date(profile.created_at || user.created_at || '');
+        // User is very new (created in last 3 days) - simplified logic since onboarding_completed doesn't exist yet
+        const userCreated = new Date(userProfile.created_at || '');
         const now = new Date();
         const daysSinceCreation = (now.getTime() - userCreated.getTime()) / (1000 * 60 * 60 * 24);
         
-        const shouldShowOnboarding = !profile.onboarding_completed && daysSinceCreation <= 3;
+        const shouldShowOnboarding = daysSinceCreation <= 3;
         
         setShowOnboarding(shouldShowOnboarding);
       } catch (error) {
@@ -53,24 +52,8 @@ export const OnboardingManager: React.FC = () => {
   const handleComplete = async () => {
     setShowOnboarding(false);
     
-    // Update the profile to mark onboarding as completed
-    if (user) {
-      try {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ 
-            onboarding_completed: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id);
-        
-        if (error) {
-          console.error('Error updating onboarding completion:', error);
-        }
-      } catch (error) {
-        console.error('Error marking onboarding complete:', error);
-      }
-    }
+    // For now, just hide onboarding - we'll implement completion tracking when the DB migration is applied
+    console.log('Onboarding completed for user:', user?.id);
   };
 
   const handleManualTrigger = () => {

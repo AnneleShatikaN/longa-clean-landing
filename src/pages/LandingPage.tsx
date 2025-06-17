@@ -41,7 +41,7 @@ const LandingPage = () => {
     const fetchFAQs = async () => {
       try {
         const { data, error } = await supabase
-          .from('faqs')
+          .from('support_faqs')
           .select('*')
           .eq('is_active', true)
           .order('created_at', { ascending: true });

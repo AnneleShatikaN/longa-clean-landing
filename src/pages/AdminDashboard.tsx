@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { DashboardNavigation } from '@/components/common/DashboardNavigation';
 import { AdminOverview } from '@/components/admin/AdminOverview';
 import ServiceManagement from '@/components/admin/ServiceManagement';
 import { PackageManager } from '@/components/admin/PackageManager';

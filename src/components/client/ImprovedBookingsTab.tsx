@@ -66,8 +66,8 @@ export const ImprovedBookingsTab: React.FC = () => {
             typeof booking.provider === 'object' && 
             booking.provider !== null &&
             'full_name' in booking.provider &&
-            typeof booking.provider.full_name === 'string') {
-          providerData = { full_name: booking.provider.full_name };
+            typeof (booking.provider as any).full_name === 'string') {
+          providerData = { full_name: (booking.provider as any).full_name };
         }
 
         return {

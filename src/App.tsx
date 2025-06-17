@@ -68,6 +68,16 @@ function App() {
                             }
                           />
                           <Route
+                            path="/dashboard/client"
+                            element={
+                              <ProtectedRoute allowedRoles={['client']}>
+                                <AuthenticatedLayout>
+                                  <ClientDashboard />
+                                </AuthenticatedLayout>
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
                             path="/provider-dashboard"
                             element={
                               <ProtectedRoute allowedRoles={['provider']}>
@@ -78,7 +88,27 @@ function App() {
                             }
                           />
                           <Route
+                            path="/dashboard/provider"
+                            element={
+                              <ProtectedRoute allowedRoles={['provider']}>
+                                <AuthenticatedLayout>
+                                  <ProviderDashboard />
+                                </AuthenticatedLayout>
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
                             path="/admin-dashboard"
+                            element={
+                              <ProtectedRoute allowedRoles={['admin']}>
+                                <AuthenticatedLayout>
+                                  <AdminDashboard />
+                                </AuthenticatedLayout>
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="/dashboard/admin"
                             element={
                               <ProtectedRoute allowedRoles={['admin']}>
                                 <AuthenticatedLayout>

@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,11 +14,11 @@ const Index = () => {
     if (user) {
       // Redirect authenticated users to their dashboard
       if (user.role === 'client') {
-        navigate('/dashboard/client');
+        navigate('/client-dashboard');
       } else if (user.role === 'provider') {
-        navigate('/dashboard/provider');
+        navigate('/provider-dashboard');
       } else if (user.role === 'admin') {
-        navigate('/dashboard/admin');
+        navigate('/admin-dashboard');
       }
     }
   }, [user, navigate]);

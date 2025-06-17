@@ -25,13 +25,7 @@ import NotificationSystem from '@/components/NotificationSystem';
 
 import ProviderProfile from '@/pages/ProviderProfile';
 
-// Component to conditionally render NotificationSystem for authenticated routes
-const AuthenticatedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <>
-    <NotificationSystem />
-    {children}
-  </>
-);
+
 
 function App() {
   return (

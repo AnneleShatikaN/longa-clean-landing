@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -11,7 +12,7 @@ import { ServiceProvider } from '@/contexts/ServiceContext';
 import { PayoutProvider } from '@/contexts/PayoutContext';
 import { SupabaseBookingProvider } from '@/contexts/SupabaseBookingContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
-import ErrorBoundary from '@/components/ErrorBoundary';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Home from './pages/Home';
 import About from './pages/About';
 import Contact from './pages/Contact';
@@ -29,9 +30,11 @@ import Search from './pages/Search';
 import ProviderAvailability from './pages/ProviderAvailability';
 import { LocationProvider } from '@/contexts/LocationContext';
 
+const queryClient = new QueryClient();
+
 function App() {
   return (
-    <QueryClient>
+    <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <TooltipProvider>
           <AuthProvider>
@@ -76,7 +79,7 @@ function App() {
           </AuthProvider>
         </TooltipProvider>
       </BrowserRouter>
-    </QueryClient>
+    </QueryClientProvider>
   );
 }
 

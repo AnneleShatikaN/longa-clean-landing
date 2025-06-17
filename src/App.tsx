@@ -59,6 +59,7 @@ function App() {
                                   <Route path="/provider-dashboard" element={<ProviderDashboard />} />
                                   <Route path="/admin-dashboard" element={<AdminDashboard />} />
                                   <Route path="/service/:id" element={<ServiceDetails />} />
+                                  <Route path="/provider-profile/:providerId" element={<ProviderProfile />} />
                                   <Route path="/booking" element={<BookingPage />} />
                                   <Route path="/one-off-booking" element={<OneOffBooking />} />
                                   <Route path="/subscription-packages" element={<SubscriptionPackages />} />

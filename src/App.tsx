@@ -13,7 +13,7 @@ import { PayoutProvider } from '@/contexts/PayoutContext';
 import { SupabaseBookingProvider } from '@/contexts/SupabaseBookingContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import Home from './pages/Home';
+import LandingPage from './pages/LandingPage';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Services from './pages/Services';
@@ -50,7 +50,7 @@ function App() {
                             <ErrorBoundary>
                               <div className="min-h-screen bg-background">
                                 <Routes>
-                                  <Route path="/" element={<Home />} />
+                                  <Route path="/" element={<LandingPage />} />
                                   <Route path="/about" element={<About />} />
                                   <Route path="/contact" element={<Contact />} />
                                   <Route path="/services" element={<Services />} />

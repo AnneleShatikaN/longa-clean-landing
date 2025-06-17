@@ -81,8 +81,8 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
 
 // Helper function to convert Supabase service to our Service interface
 const mapSupabaseService = (supabaseService: any): Service => {
-  const durationHours = Math.floor(supabaseService.duration_minutes / 60);
-  const durationMinutes = supabaseService.duration_minutes % 60;
+  const durationHours = Math.floor((supabaseService.duration_minutes || 0) / 60);
+  const durationMinutes = (supabaseService.duration_minutes || 0) % 60;
 
   return {
     id: supabaseService.id,
@@ -178,7 +178,8 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
         dispatch({ type: 'SET_SERVICES', payload: [] });
         dispatch({ type: 'SET_LOADING', payload: false });
       } else {
-        // LIVE MODE
+        // LIVE MODE - Load from Supabase
+        console.log('[ServiceContext] Loading services from Supabase...');
         const { data, error } = await supabase
           .from('services')
           .select('*')
@@ -187,11 +188,13 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
         if (error) throw error;
 
         const mappedServices = data?.map(mapSupabaseService) || [];
+        console.log('[ServiceContext] Loaded services from Supabase:', mappedServices);
         dispatch({ type: 'SET_SERVICES', payload: mappedServices });
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load services';
+      console.error('[ServiceContext] Error loading services:', error);
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
       toast({
         title: "Error",

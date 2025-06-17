@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useServices } from '@/contexts/ServiceContext';
 import { useServiceEntitlements } from '@/hooks/useServiceEntitlements';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,92 +13,106 @@ import { Package, Calendar, Clock, CheckCircle } from 'lucide-react';
 export const SimplifiedDashboardOverview = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { services, isLoading: servicesLoading } = useServices();
   const { serviceUsage, isLoading } = useServiceEntitlements();
   const { bookings } = useSupabaseBookings();
   
   const hasActivePackage = serviceUsage.length > 0;
   const recentBookings = bookings.slice(0, 3);
 
-  // Service cards data - elegant 1x3 grid
-  const serviceCards = [
-    {
-      id: '1',
-      name: 'Deep House Cleaning',
-      description: 'Complete deep cleaning service for your home',
-      price: 'N$600',
-      duration: '3h'
-    },
-    {
-      id: '2',
-      name: 'Garden Maintenance',
-      description: 'Professional garden care and landscaping',
-      price: 'N$400',
-      duration: '2h'
-    },
-    {
-      id: '3',
-      name: 'Home Repairs',
-      description: 'General home maintenance and repair services',
-      price: 'N$500',
-      duration: '2.5h'
-    }
-  ];
+  // Get active services from database (limit to 3 for display)
+  const activeServices = services.filter(service => service.status === 'active').slice(0, 3);
 
   const handleBookService = (serviceId: string) => {
     navigate(`/one-off-booking?service_id=${serviceId}`);
   };
+
+  if (servicesLoading) {
+    return (
+      <div className="space-y-6" style={{ background: 'linear-gradient(to right, #e6f0fa, #fff)', padding: '20px', borderRadius: '8px' }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="bg-white border-0 animate-pulse" style={{ borderRadius: '8px', padding: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+              <CardContent className="p-0">
+                <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                <div className="h-8 bg-gray-200 rounded mb-4"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" style={{ background: 'linear-gradient(to right, #e6f0fa, #fff)', padding: '20px', borderRadius: '8px' }}>
       
       {/* Service Cards Grid - 1x3 elegant layout */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {serviceCards.map((service) => (
-          <Card 
-            key={service.id} 
-            className="bg-white border-0"
-            style={{ 
-              borderRadius: '8px', 
-              padding: '15px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)' 
-            }}
-          >
-            <CardContent className="p-0">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2" style={{ fontSize: '18px' }}>
-                {service.name}
-              </h3>
-              <p className="text-gray-600 mb-4" style={{ fontSize: '14px' }}>
-                {service.description}
-              </p>
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xl font-bold text-blue-600">{service.price}</span>
-                <span className="text-sm text-gray-500">{service.duration}</span>
-              </div>
-              <Button 
-                className="w-full bg-blue-900 hover:bg-blue-800 text-white cursor-pointer"
-                style={{ 
-                  padding: '10px',
-                  fontSize: '16px'
-                }}
-                onClick={() => handleBookService(service.id)}
-              >
-                Book Now
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+        {activeServices.length > 0 ? (
+          activeServices.map((service) => (
+            <Card 
+              key={service.id} 
+              className="bg-white border-0"
+              style={{ 
+                borderRadius: '8px', 
+                padding: '15px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)' 
+              }}
+            >
+              <CardContent className="p-0">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2" style={{ fontSize: '18px' }}>
+                  {service.name}
+                </h3>
+                <p className="text-gray-600 mb-4" style={{ fontSize: '14px' }}>
+                  {service.description}
+                </p>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xl font-bold text-blue-600">N${service.clientPrice}</span>
+                  <span className="text-sm text-gray-500">
+                    {service.duration.hours}h {service.duration.minutes > 0 ? `${service.duration.minutes}m` : ''}
+                  </span>
+                </div>
+                <Button 
+                  className="w-full bg-blue-900 hover:bg-blue-800 text-white cursor-pointer"
+                  style={{ 
+                    padding: '10px',
+                    fontSize: '16px'
+                  }}
+                  onClick={() => handleBookService(service.id)}
+                >
+                  Book Now
+                </Button>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <div className="col-span-3 text-center py-8">
+            <p className="text-gray-600 mb-4">No services available at the moment.</p>
+            <Button 
+              onClick={() => navigate('/search')}
+              className="bg-blue-100 text-blue-900 hover:bg-blue-200"
+            >
+              Browse All Services
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Browse All Services Button */}
-      <div className="flex justify-center">
-        <Button 
-          onClick={() => navigate('/search')}
-          className="bg-blue-100 text-blue-900 hover:bg-blue-200"
-          style={{ fontSize: '16px', padding: '12px 24px' }}
-        >
-          Browse All Services
-        </Button>
-      </div>
+      {activeServices.length > 0 && (
+        <div className="flex justify-center">
+          <Button 
+            onClick={() => navigate('/search')}
+            className="bg-blue-100 text-blue-900 hover:bg-blue-200"
+            style={{ fontSize: '16px', padding: '12px 24px' }}
+          >
+            Browse All Services
+          </Button>
+        </div>
+      )}
 
       {/* Package Status */}
       {hasActivePackage && (

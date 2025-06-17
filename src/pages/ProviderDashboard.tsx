@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardNavigation } from '@/components/common/DashboardNavigation';
-import { ProviderOverviewTab } from '@/components/provider/ProviderOverviewTab';
-import { ProviderJobsTab } from '@/components/provider/ProviderJobsTab';
-import { ProviderPayoutsTab } from '@/components/provider/ProviderPayoutsTab';
-import { ProviderProfileTab } from '@/components/provider/ProviderProfileTab';
+import ProviderOverviewTab from '@/components/provider/ProviderOverviewTab';
+import ProviderJobsTab from '@/components/provider/ProviderJobsTab';
+import ProviderPayoutsTab from '@/components/provider/ProviderPayoutsTab';
+import ProviderProfileTab from '@/components/provider/ProviderProfileTab';
 
 const ProviderDashboard = () => {
   const { user } = useAuth();

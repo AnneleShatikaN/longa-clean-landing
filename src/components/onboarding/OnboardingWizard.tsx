@@ -1,40 +1,81 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Package, Heart, Star, CheckCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ChevronLeft, ChevronRight, Package, Heart, Star, CheckCircle, MapPin, Mail, AlertCircle, BookOpen, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePackageRecommendations } from '@/hooks/usePackageRecommendations';
 import { useServices } from '@/contexts/ServiceContext';
 import { PaymentFlow } from '@/components/payment/PaymentFlow';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface OnboardingStep {
   id: string;
   title: string;
   description: string;
+  canSkip?: boolean;
 }
+
+const NAMIBIAN_TOWNS = [
+  { value: 'windhoek', label: 'Windhoek' },
+  { value: 'walvis-bay', label: 'Walvis Bay' },
+  { value: 'swakopmund', label: 'Swakopmund' },
+  { value: 'oshakati', label: 'Oshakati' },
+  { value: 'rundu', label: 'Rundu' },
+  { value: 'otjiwarongo', label: 'Otjiwarongo' },
+  { value: 'gobabis', label: 'Gobabis' },
+  { value: 'katima-mulilo', label: 'Katima Mulilo' },
+  { value: 'tsumeb', label: 'Tsumeb' },
+  { value: 'keetmanshoop', label: 'Keetmanshoop' },
+  { value: 'rehoboth', label: 'Rehoboth' },
+  { value: 'mariental', label: 'Mariental' }
+];
 
 const steps: OnboardingStep[] = [
   {
+    id: 'email-verification',
+    title: 'Verify Your Email',
+    description: 'Please verify your email address to continue'
+  },
+  {
     id: 'welcome',
     title: 'Welcome to Longa',
-    description: 'Let us help you find the perfect service package'
+    description: 'Let us show you how our platform works'
+  },
+  {
+    id: 'how-it-works',
+    title: 'How Longa Works',
+    description: 'Learn about our services and booking options',
+    canSkip: true
+  },
+  {
+    id: 'location',
+    title: 'Your Location',
+    description: 'Tell us where you need services'
   },
   {
     id: 'preferences',
     title: 'Service Preferences',
-    description: 'What services are you most interested in?'
+    description: 'What services interest you most?',
+    canSkip: true
   },
   {
     id: 'packages',
     title: 'Recommended Packages',
-    description: 'Based on your preferences, here are our recommendations'
+    description: 'Based on your preferences, here are our recommendations',
+    canSkip: true
   },
   {
     id: 'complete',
-    title: 'All Set!',
-    description: 'You can start booking services right away'
+    title: 'You\'re All Set!',
+    description: 'Welcome to the Longa family'
   }
 ];
 
@@ -53,12 +94,72 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [showPaymentFlow, setShowPaymentFlow] = useState(false);
+  const [userLocation, setUserLocation] = useState('');
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [checkingEmailStatus, setCheckingEmailStatus] = useState(true);
   
   const { user } = useAuth();
   const { recommendations, isLoading: recommendationsLoading } = usePackageRecommendations();
   const { services } = useServices();
+  const { toast } = useToast();
 
   const progress = ((currentStep + 1) / steps.length) * 100;
+
+  // Check email verification status
+  useEffect(() => {
+    const checkEmailVerification = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        
+        const emailConfirmed = data.user?.email_confirmed_at !== null;
+        setIsEmailVerified(emailConfirmed);
+        
+        // If email is verified, skip email verification step
+        if (emailConfirmed && currentStep === 0) {
+          setCurrentStep(1);
+        }
+      } catch (error) {
+        console.error('Error checking email verification:', error);
+      } finally {
+        setCheckingEmailStatus(false);
+      }
+    };
+
+    if (user) {
+      checkEmailVerification();
+    }
+  }, [user]);
+
+  const handleResendVerification = async () => {
+    if (!user?.email) return;
+    
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: user.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Verification email sent!",
+        description: "Please check your email and click the verification link.",
+      });
+    } catch (error) {
+      console.error('Error resending verification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to resend verification email. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleServiceToggle = (serviceId: string) => {
     setSelectedServices(prev => 
@@ -74,6 +175,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   };
 
   const handleNext = () => {
+    if (currentStep === 0 && !isEmailVerified) {
+      // Can't proceed without email verification
+      return;
+    }
+    
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     }
@@ -85,9 +191,36 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     }
   };
 
-  const handleComplete = () => {
-    onComplete();
-    onClose();
+  const handleSkip = () => {
+    if (steps[currentStep].canSkip) {
+      handleNext();
+    }
+  };
+
+  const handleComplete = async () => {
+    try {
+      // Save onboarding completion status
+      if (user) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ 
+            onboarding_completed: true,
+            preferred_location: userLocation || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+        
+        if (error) throw error;
+      }
+      
+      onComplete();
+      onClose();
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      // Still complete onboarding even if saving fails
+      onComplete();
+      onClose();
+    }
   };
 
   if (!isOpen) return null;
@@ -113,8 +246,51 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Welcome Step */}
+            {/* Email Verification Step */}
             {currentStep === 0 && (
+              <div className="text-center space-y-4">
+                {checkingEmailStatus ? (
+                  <div className="py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="text-sm text-gray-500 mt-2">Checking email status...</p>
+                  </div>
+                ) : isEmailVerified ? (
+                  <div className="space-y-4">
+                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                      <CheckCircle className="h-10 w-10 text-green-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-green-800">Email Verified!</h3>
+                    <p className="text-gray-600">Your email has been verified. Let's continue with your setup.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto">
+                      <Mail className="h-10 w-10 text-yellow-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold">Verify Your Email</h3>
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Please check your email and click the verification link to continue.
+                      </AlertDescription>
+                    </Alert>
+                    <div className="text-sm text-gray-600 space-y-2">
+                      <p>We sent a verification email to:</p>
+                      <p className="font-medium text-gray-900 bg-gray-50 p-2 rounded">{user?.email}</p>
+                    </div>
+                    <Button onClick={handleResendVerification} variant="outline" className="w-full">
+                      Resend Verification Email
+                    </Button>
+                    <p className="text-xs text-gray-500">
+                      Check your spam folder if you don't see the email.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Welcome Step */}
+            {currentStep === 1 && (
               <div className="text-center space-y-4">
                 <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
                   <Heart className="h-10 w-10 text-blue-600" />
@@ -123,8 +299,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   Hi {user?.full_name?.split(' ')[0] || 'there'}! 👋
                 </h3>
                 <p className="text-gray-600">
-                  We're excited to help you discover the best home services in Windhoek. 
-                  Let's get you set up with the perfect package.
+                  Welcome to Longa! We're excited to help you discover the best home services in Namibia. 
+                  Let's get you set up in just a few quick steps.
                 </p>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="bg-green-50 p-3 rounded-lg">
@@ -139,11 +315,78 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               </div>
             )}
 
+            {/* How It Works Step */}
+            {currentStep === 2 && (
+              <div className="space-y-4">
+                <div className="text-center mb-4">
+                  <BookOpen className="h-12 w-12 text-blue-600 mx-auto mb-2" />
+                  <h3 className="text-lg font-semibold">How Longa Works</h3>
+                </div>
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-2">Two Ways to Book:</h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-start gap-3">
+                        <Package className="h-4 w-4 text-blue-600 mt-0.5" />
+                        <div>
+                          <strong>Packages:</strong> Buy credits upfront for better rates and convenience
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Clock className="h-4 w-4 text-green-600 mt-0.5" />
+                        <div>
+                          <strong>One-off:</strong> Book individual services as needed
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-blue-800 mb-2">Simple Process:</h4>
+                    <ol className="text-sm text-blue-700 space-y-1">
+                      <li>1. Choose your service</li>
+                      <li>2. Select a verified provider</li>
+                      <li>3. Pick your time and pay</li>
+                      <li>4. Relax while we handle the rest!</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Location Step */}
+            {currentStep === 3 && (
+              <div className="space-y-4">
+                <div className="text-center mb-4">
+                  <MapPin className="h-12 w-12 text-blue-600 mx-auto mb-2" />
+                  <h3 className="text-lg font-semibold">Where do you need services?</h3>
+                  <p className="text-sm text-gray-600">This helps us show you available providers in your area.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location">Primary Location</Label>
+                  <Select value={userLocation} onValueChange={setUserLocation}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your city/town" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NAMIBIAN_TOWNS.map((town) => (
+                        <SelectItem key={town.value} value={town.value}>
+                          {town.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    You can change this later or add additional locations in your profile.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Service Preferences Step */}
-            {currentStep === 1 && (
+            {currentStep === 4 && (
               <div className="space-y-4">
                 <p className="text-center text-gray-600">
-                  Select the services you're most interested in (optional):
+                  Select services you're interested in (this helps us personalize your experience):
                 </p>
                 <div className="grid grid-cols-1 gap-3">
                   {services.slice(0, 6).map((service) => (
@@ -160,7 +403,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                         <div>
                           <div className="font-medium">{service.name}</div>
                           <div className="text-sm text-gray-500">
-                            N${service.clientPrice}
+                            From N${service.clientPrice}
                           </div>
                         </div>
                         {selectedServices.includes(service.id) && (
@@ -174,7 +417,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             )}
 
             {/* Package Recommendations Step */}
-            {currentStep === 2 && (
+            {currentStep === 5 && (
               <div className="space-y-4">
                 {recommendationsLoading ? (
                   <div className="text-center py-8">
@@ -184,7 +427,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 ) : (
                   <>
                     <p className="text-center text-gray-600">
-                      Based on your preferences, here are our top recommendations:
+                      Based on your preferences, here are our recommendations:
                     </p>
                     <div className="space-y-3">
                       {recommendations.map((rec, index) => (
@@ -217,13 +460,19 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                         </div>
                       ))}
                     </div>
+                    <div className="text-center">
+                      <p className="text-sm text-gray-500 mb-2">Not ready for a package?</p>
+                      <Button variant="ghost" onClick={handleNext} className="text-blue-600">
+                        I'll browse services individually
+                      </Button>
+                    </div>
                   </>
                 )}
               </div>
             )}
 
             {/* Complete Step */}
-            {currentStep === 3 && (
+            {currentStep === 6 && (
               <div className="text-center space-y-4">
                 <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                   <CheckCircle className="h-10 w-10 text-green-600" />
@@ -231,14 +480,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 <h3 className="text-lg font-semibold">Welcome to Longa!</h3>
                 <p className="text-gray-600">
                   You're all set up and ready to start booking quality home services. 
-                  Your package gives you access to vetted providers across Windhoek.
+                  {userLocation && ` We'll show you providers available in ${NAMIBIAN_TOWNS.find(t => t.value === userLocation)?.label}.`}
                 </p>
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h4 className="font-medium text-blue-800 mb-2">What's Next?</h4>
                   <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Browse available services</li>
+                    <li>• Browse available services in your area</li>
                     <li>• Select your preferred provider</li>
-                    <li>• Book instantly with your package</li>
+                    <li>• Book instantly or schedule for later</li>
+                    {selectedServices.length > 0 && <li>• Check out your preferred services first</li>}
                   </ul>
                 </div>
               </div>
@@ -248,20 +498,30 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             <div className="flex justify-between pt-4">
               <Button
                 variant="outline"
-                onClick={currentStep === 0 ? onClose : () => setCurrentStep(currentStep - 1)}
+                onClick={currentStep === 0 ? onClose : handlePrevious}
                 className="flex items-center gap-2"
+                disabled={currentStep === 0 && !isEmailVerified}
               >
                 <ChevronLeft className="h-4 w-4" />
-                {currentStep === 0 ? 'Skip' : 'Previous'}
+                {currentStep === 0 ? 'Close' : 'Previous'}
               </Button>
 
-              <Button
-                onClick={currentStep === steps.length - 1 ? onComplete : () => setCurrentStep(currentStep + 1)}
-                className="flex items-center gap-2"
-              >
-                {currentStep === steps.length - 1 ? 'Get Started' : 'Next'}
-                {currentStep !== steps.length - 1 && <ChevronRight className="h-4 w-4" />}
-              </Button>
+              <div className="flex items-center gap-2">
+                {steps[currentStep].canSkip && (
+                  <Button variant="ghost" onClick={handleSkip}>
+                    Skip
+                  </Button>
+                )}
+                
+                <Button
+                  onClick={currentStep === steps.length - 1 ? handleComplete : handleNext}
+                  disabled={(currentStep === 0 && !isEmailVerified) || (currentStep === 3 && !userLocation)}
+                  className="flex items-center gap-2"
+                >
+                  {currentStep === steps.length - 1 ? 'Get Started' : 'Next'}
+                  {currentStep !== steps.length - 1 && <ChevronRight className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -157,19 +156,23 @@ const Auth = () => {
         });
 
         if (result.success) {
-          // Show success message for all signups
+          // Enhanced success messaging based on role
           setShowSuccessMessage(true);
           
-          // Show email verification prompt for provider signups
           if (formData.role === 'provider') {
+            // Providers need email verification
             setTimeout(() => {
               setShowSuccessMessage(false);
               setShowEmailVerification(true);
             }, 3000);
           } else {
-            // For clients, show success and switch to login after a delay
+            // Clients get success message and instructions
             setTimeout(() => {
               setShowSuccessMessage(false);
+              toast({
+                title: "Welcome to Longa! 🎉",
+                description: "Please check your email to verify your account, then you can start exploring our services.",
+              });
               setMode('login');
             }, 4000);
           }
@@ -242,13 +245,16 @@ const Auth = () => {
         email={formData.email}
       />
 
-      {/* Success Message Alert */}
+      {/* Enhanced Success Message Alert */}
       {showSuccessMessage && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4">
           <Alert className="bg-green-50 border-green-200 text-green-800">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="font-medium">
-              🎉 Success! Please check your email to verify your account before logging in.
+              {formData.role === 'client' 
+                ? "🎉 Account created! Please verify your email to start booking services."
+                : "🎉 Provider account created! Please verify your email to access your dashboard."
+              }
             </AlertDescription>
           </Alert>
         </div>
@@ -370,27 +376,35 @@ const Auth = () => {
                 </div>
               )}
 
-              {/* Role selection only for signup - Admin removed */}
+              {/* Enhanced role selection with better descriptions */}
               {mode === 'signup' && (
                 <div className="space-y-2">
                   <Label className="text-gray-700">I want to</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-3">
                     {(['client', 'provider'] as UserRole[]).map((role) => (
                       <button
                         key={role}
                         type="button"
                         onClick={() => handleInputChange('role', role)}
-                        className={`p-3 rounded-lg border-2 transition-all duration-200 ${
+                        className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
                           formData.role === role
                             ? 'border-purple-500 bg-purple-50 text-purple-700'
                             : 'border-gray-200 hover:border-gray-300 text-gray-600'
                         }`}
                       >
-                        <div className="flex flex-col items-center space-y-1">
+                        <div className="flex items-center space-x-3">
                           {getRoleIcon(role)}
-                          <span className="text-xs font-medium">
-                            {role === 'client' ? 'Book Services' : 'Provide Services'}
-                          </span>
+                          <div>
+                            <div className="font-medium">
+                              {role === 'client' ? 'Book Services' : 'Provide Services'}
+                            </div>
+                            <div className="text-sm opacity-75">
+                              {role === 'client' 
+                                ? 'Find and book trusted home services' 
+                                : 'Offer your professional services to clients'
+                              }
+                            </div>
+                          </div>
                         </div>
                       </button>
                     ))}

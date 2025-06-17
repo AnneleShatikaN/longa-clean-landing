@@ -115,26 +115,23 @@ const ClientDashboard = () => {
                     <ShoppingBag className="h-16 w-16 text-blue-500 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold mb-2">Ready to book a service?</h3>
                     <p className="text-gray-600 mb-6">
-                      {hasActivePackage 
-                        ? "Use your package credits or book additional services"
-                        : "Book individual services or get a package for better value"
-                      }
+                      Browse our available services and book what you need
                     </p>
                   </div>
                   <div className="space-y-3">
                     <Button onClick={() => navigate('/search')} className="w-full sm:w-auto">
-                      Browse Services
+                      Browse All Services
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
                     {!hasActivePackage && (
                       <div>
-                        <p className="text-sm text-gray-500 mb-2">or</p>
+                        <p className="text-sm text-gray-500 mb-2">Want better value?</p>
                         <Button 
                           variant="outline" 
                           onClick={() => navigate('/subscription-packages')}
                           className="w-full sm:w-auto"
                         >
-                          View Packages
+                          View Packages & Save
                           <Package className="h-4 w-4 ml-2" />
                         </Button>
                       </div>

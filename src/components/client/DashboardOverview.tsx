@@ -50,7 +50,7 @@ export const DashboardOverview = () => {
         </Card>
       </div>
 
-      {/* Package Status or Call to Action */}
+      {/* Package Status or Individual Booking Promotion */}
       {hasActivePackage ? (
         <Card>
           <CardHeader>
@@ -92,27 +92,38 @@ export const DashboardOverview = () => {
         </Card>
       ) : (
         <Card>
-          <CardContent className="p-6 text-center">
+          <CardContent className="p-6">
             <div className="mb-4">
-              <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <h3 className="text-lg font-semibold mb-2">Get More Value with a Package</h3>
-              <p className="text-gray-600 mb-4">
-                Save money and get priority access to services with one of our packages.
+              <ShoppingBag className="h-12 w-12 text-blue-500 mx-auto mb-3" />
+              <h3 className="text-lg font-semibold mb-2 text-center">Ready to Book a Service?</h3>
+              <p className="text-gray-600 mb-4 text-center">
+                Browse our available services and book what you need, when you need it.
               </p>
             </div>
             <div className="space-y-3">
-              <Button onClick={() => navigate('/subscription-packages')} className="w-full sm:w-auto">
-                View Packages
+              <Button onClick={() => navigate('/search')} className="w-full">
+                Browse All Services
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
-              <div className="text-sm text-gray-500">
-                or <button 
-                  onClick={() => navigate('/search')} 
-                  className="text-blue-600 underline"
-                >
-                  book individual services
-                </button>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
               </div>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/subscription-packages')}
+                className="w-full"
+              >
+                <Package className="h-4 w-4 mr-2" />
+                View Packages & Save
+              </Button>
+              <p className="text-xs text-gray-500 text-center">
+                Packages offer better value and priority booking
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -183,25 +194,23 @@ export const DashboardOverview = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Button onClick={() => navigate('/search')} className="justify-start">
               <ShoppingBag className="h-4 w-4 mr-2" />
-              Book a Service
+              Browse Services
             </Button>
-            {!hasActivePackage && (
-              <Button variant="outline" onClick={() => navigate('/subscription-packages')} className="justify-start">
-                <Package className="h-4 w-4 mr-2" />
-                View Packages
-              </Button>
-            )}
+            <Button variant="outline" onClick={() => navigate('/subscription-packages')} className="justify-start">
+              <Package className="h-4 w-4 mr-2" />
+              View Packages
+            </Button>
             <Button variant="outline" onClick={() => navigate('/bookings')} className="justify-start">
               <Calendar className="h-4 w-4 mr-2" />
               My Bookings
             </Button>
             <Button variant="outline" onClick={() => navigate('/profile')} className="justify-start">
               <Star className="h-4 w-4 mr-2" />
-              Rate Services
+              My Profile
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </div>
     </div>
   );
 };

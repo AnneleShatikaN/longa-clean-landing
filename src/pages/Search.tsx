@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { useServiceEntitlements } from '@/hooks/useServiceEntitlements';
-import { Search as SearchIcon, Grid, Package, ArrowLeft } from 'lucide-react';
+import { Search as SearchIcon, Grid, Package, ArrowLeft, Info } from 'lucide-react';
 
 const Search = () => {
   const { user } = useAuth();
@@ -59,18 +59,35 @@ const Search = () => {
             Back
           </Button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900">Search Services</h1>
-            <p className="text-gray-600 mt-2">Find and book the services you need</p>
+            <h1 className="text-3xl font-bold text-gray-900">Browse Services</h1>
+            <p className="text-gray-600 mt-2">Find and book individual services or explore packages</p>
           </div>
           <Badge variant={hasActivePackage ? "default" : "secondary"}>
-            {hasActivePackage ? "Active Package" : "No Package"}
+            {hasActivePackage ? "Package Member" : "Individual Booking"}
           </Badge>
         </div>
 
+        {/* Package Promotion for Non-Package Users */}
         {!hasActivePackage && (
-          <div className="mb-8">
-            <PackagePrompt onUpgrade={handleUpgradeToPackages} />
-          </div>
+          <Card className="mb-8 border-blue-200 bg-blue-50">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Info className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-blue-900 mb-2">Save with a Package</h3>
+                  <p className="text-blue-700 mb-4">
+                    Get better value and priority booking by subscribing to one of our service packages.
+                  </p>
+                  <Button onClick={handleUpgradeToPackages} size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100">
+                    View Packages
+                    <Package className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         <Tabs defaultValue="browse" className="space-y-6">
@@ -86,52 +103,15 @@ const Search = () => {
           </TabsList>
 
           <TabsContent value="browse" className="space-y-6">
-            {hasActivePackage ? (
-              <ServiceDisplayWithEntitlements
-                onBookService={handleServiceSelection}
-                showBookingButton={true}
-              />
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5 text-gray-400" />
-                    Services Locked
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">
-                    Subscribe to a package to unlock access to our services and start booking.
-                  </p>
-                  <Button onClick={handleUpgradeToPackages}>
-                    View Available Packages
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+            <ServiceDisplayWithEntitlements
+              onBookService={handleServiceSelection}
+              showBookingButton={true}
+              allowIndividualBooking={true}
+            />
           </TabsContent>
 
           <TabsContent value="advanced" className="space-y-6">
-            {hasActivePackage ? (
-              <AdvancedServiceSearch />
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <SearchIcon className="h-5 w-5 text-gray-400" />
-                    Advanced Search Unavailable
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">
-                    Advanced search features are available with an active package subscription.
-                  </p>
-                  <Button onClick={handleUpgradeToPackages}>
-                    Subscribe to Access
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+            <AdvancedServiceSearch />
           </TabsContent>
         </Tabs>
       </div>

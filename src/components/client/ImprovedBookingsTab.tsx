@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -70,7 +69,10 @@ export const ImprovedBookingsTab: React.FC = () => {
         service: booking.service && typeof booking.service === 'object' && 'name' in booking.service 
           ? { name: booking.service.name } 
           : null,
-        provider: booking.provider && typeof booking.provider === 'object' && 'full_name' in booking.provider
+        provider: booking.provider && 
+                 typeof booking.provider === 'object' && 
+                 booking.provider !== null &&
+                 'full_name' in booking.provider
           ? { full_name: booking.provider.full_name }
           : null
       }));

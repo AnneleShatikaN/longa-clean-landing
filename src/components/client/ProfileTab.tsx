@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { User, Mail, Phone, MapPin, Save, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const NAMIBIAN_TOWNS = [
   { value: 'windhoek', label: 'Windhoek' },
@@ -26,7 +27,7 @@ const NAMIBIAN_TOWNS = [
 ];
 
 export const ProfileTab = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -40,9 +41,24 @@ export const ProfileTab = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Here you would typically update the user profile via Supabase
-      // For now, we'll just simulate a save
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Update user profile in Supabase
+      const { error } = await supabase
+        .from('users')
+        .update({
+          full_name: formData.full_name,
+          phone: formData.phone,
+          current_work_location: formData.location,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user?.id);
+
+      if (error) {
+        console.error('Error updating user profile:', error);
+        throw error;
+      }
+
+      // Refresh user data to reflect changes
+      await refreshUser();
       
       toast({
         title: "Profile Updated",
@@ -50,6 +66,7 @@ export const ProfileTab = () => {
       });
       setIsEditing(false);
     } catch (error) {
+      console.error('Profile update error:', error);
       toast({
         title: "Update Failed",
         description: "Failed to update your profile. Please try again.",
@@ -129,17 +146,8 @@ export const ProfileTab = () => {
                 <Mail className="h-4 w-4" />
                 Email Address
               </Label>
-              {isEditing ? (
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="Enter your email"
-                />
-              ) : (
-                <p className="text-gray-900 font-medium">{user.email}</p>
-              )}
+              <p className="text-gray-900 font-medium">{user.email}</p>
+              <p className="text-xs text-gray-500">Email cannot be changed</p>
             </div>
 
             <div className="space-y-2">
@@ -162,7 +170,7 @@ export const ProfileTab = () => {
             <div className="space-y-2">
               <Label htmlFor="location" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Location <span className="text-sm text-gray-500">(Optional)</span>
+                Location
               </Label>
               {isEditing ? (
                 <Select

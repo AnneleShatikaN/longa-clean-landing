@@ -1,18 +1,16 @@
+
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Home, LogIn, UserPlus, User, Briefcase, Eye, EyeOff, AlertCircle, MapPin, CheckCircle } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { UserRole } from "@/types/auth";
-import { useToast } from "@/hooks/use-toast";
-import { PhoneValidation } from "@/components/profile/PhoneValidation";
-import { EmailVerificationPrompt } from "@/components/auth/EmailVerificationPrompt";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Eye, EyeOff, User, Briefcase, Shield, ArrowLeft } from "lucide-react";
+import { toast } from 'sonner';
 
 const NAMIBIAN_TOWNS = [
   { value: 'windhoek', label: 'Windhoek' },
@@ -29,404 +27,243 @@ const NAMIBIAN_TOWNS = [
   { value: 'mariental', label: 'Mariental' }
 ];
 
-type AuthMode = 'login' | 'signup' | 'forgot-password';
-
 const Auth = () => {
-  const [mode, setMode] = useState<AuthMode>('login');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showEmailVerification, setShowEmailVerification] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-    role: 'client' as UserRole,
-    workLocation: 'windhoek',
-    rememberMe: false
-  });
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
-  const { 
-    user,
-    login, 
-    signup, 
-    requestPasswordReset, 
-    isLoading, 
-    error, 
-    isInitialized 
-  } = useAuth();
-  
-  const { toast } = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  console.log('Auth component state:', { user, isLoading, isInitialized, error });
-
-  // Get the intended destination from location state
-  const from = location.state?.from?.pathname || '/';
+  const { user, signIn, signUp, loading } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    phone: '',
+    role: 'client' as 'client' | 'provider' | 'admin',
+    location: ''
+  });
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (user && isInitialized) {
-      console.log('🔀 User authenticated, redirecting...', user.role);
-      const redirectPath = user.role === 'admin' ? '/dashboard/admin'
-        : user.role === 'provider' ? '/dashboard/provider'
-        : '/dashboard/client';
-      
-      navigate(redirectPath, { replace: true });
+    if (user && !loading) {
+      if (user.role === 'client') {
+        navigate('/client-dashboard');
+      } else if (user.role === 'provider') {
+        navigate('/provider-dashboard');
+      } else if (user.role === 'admin') {
+        navigate('/admin-dashboard');
+      }
     }
-  }, [user, isInitialized, navigate]);
+  }, [user, loading, navigate]);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   const validateForm = () => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.email) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Email is invalid';
+    if (!formData.email || !formData.password) {
+      toast.error('Email and password are required');
+      return false;
     }
 
-    if (mode !== 'forgot-password') {
-      if (!formData.password) {
-        errors.password = 'Password is required';
-      } else if (mode === 'signup') {
-        if (formData.password.length < 8) {
-          errors.password = 'Password must be at least 8 characters';
-        } else if (!/[a-z]/.test(formData.password)) {
-          errors.password = 'Password must contain lowercase letters';
-        } else if (!/[A-Z]/.test(formData.password)) {
-          errors.password = 'Password must contain uppercase letters';
-        } else if (!/\d/.test(formData.password)) {
-          errors.password = 'Password must contain numbers';
-        } else if (!/[^a-zA-Z0-9]/.test(formData.password)) {
-          errors.password = 'Password must contain special characters';
-        }
+    if (isSignUp) {
+      if (!formData.fullName) {
+        toast.error('Full name is required');
+        return false;
       }
 
-      if (mode === 'signup' && formData.password !== formData.confirmPassword) {
-        errors.confirmPassword = 'Passwords do not match';
+      // Make location required for all users during signup
+      if (!formData.location) {
+        toast.error('Location is required');
+        return false;
+      }
+
+      if (formData.password.length < 6) {
+        toast.error('Password must be at least 6 characters');
+        return false;
       }
     }
 
-    if (mode === 'signup') {
-      if (!formData.name) {
-        errors.name = 'Name is required';
-      }
-      if (!formData.phone) {
-        errors.phone = 'Phone is required';
-      }
-      if (formData.role === 'provider' && !formData.workLocation) {
-        errors.workLocation = 'Work location is required for providers';
-      }
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
 
+    setIsSubmitting(true);
     try {
-      if (mode === 'login') {
-        console.log('🔑 Attempting login with:', formData.email);
-        const success = await login({
-          email: formData.email,
-          password: formData.password,
-          rememberMe: formData.rememberMe
-        });
-        
-        if (success) {
-          console.log('✅ Login successful');
-        }
-      } else if (mode === 'signup') {
-        const result = await signup({
-          name: formData.name,
-          email: formData.email,
+      if (isSignUp) {
+        await signUp(formData.email, formData.password, {
+          full_name: formData.fullName,
           phone: formData.phone,
-          password: formData.password,
-          confirmPassword: formData.confirmPassword,
           role: formData.role,
-          workLocation: formData.role === 'provider' ? formData.workLocation : undefined
+          location: formData.location
         });
-
-        if (result.success) {
-          // Enhanced success messaging based on role
-          setShowSuccessMessage(true);
-          
-          if (formData.role === 'provider') {
-            // Providers need email verification
-            setTimeout(() => {
-              setShowSuccessMessage(false);
-              setShowEmailVerification(true);
-            }, 3000);
-          } else {
-            // Clients get success message and instructions
-            setTimeout(() => {
-              setShowSuccessMessage(false);
-              toast({
-                title: "Welcome to Longa! 🎉",
-                description: "Please check your email to verify your account, then you can start exploring our services.",
-              });
-              setMode('login');
-            }, 4000);
-          }
-        }
-      } else if (mode === 'forgot-password') {
-        await requestPasswordReset({ email: formData.email });
+      } else {
+        await signIn(formData.email, formData.password);
       }
-    } catch (err) {
-      console.error('Auth error:', err);
+    } catch (error: any) {
+      toast.error(error.message || 'Authentication failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (formErrors[field]) {
-      setFormErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const getRoleIcon = (role: UserRole) => {
+  const getRoleInfo = (role: string) => {
     switch (role) {
-      case 'client': return <User className="w-4 h-4" />;
-      case 'provider': return <Briefcase className="w-4 h-4" />;
-      case 'admin': return null; // Admin role is no longer available
+      case 'client':
+        return {
+          icon: <User className="h-4 w-4" />,
+          title: 'Client',
+          description: 'Book services from trusted providers'
+        };
+      case 'provider':
+        return {
+          icon: <Briefcase className="h-4 w-4" />,
+          title: 'Service Provider',
+          description: 'Offer your services and earn income'
+        };
+      case 'admin':
+        return {
+          icon: <Shield className="h-4 w-4" />,
+          title: 'Admin',
+          description: 'Manage the platform and users'
+        };
+      default:
+        return { icon: null, title: '', description: '' };
     }
   };
 
-  const getTitle = () => {
-    switch (mode) {
-      case 'login': return 'Welcome Back';
-      case 'signup': return 'Join Longa';
-      case 'forgot-password': return 'Reset Password';
-    }
-  };
-
-  const getSubtitle = () => {
-    switch (mode) {
-      case 'login': return 'Sign in to your account';
-      case 'signup': return 'Create your account to get started';
-      case 'forgot-password': return 'Enter your email to receive reset instructions';
-    }
-  };
-
-  // Show simple loading while auth is initializing - but with timeout
-  if (!isInitialized) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <Card className="bg-white border-gray-200 shadow-lg">
-            <CardContent className="text-center py-8">
-              <div className="flex flex-col items-center space-y-4">
-                <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-gray-600">Initializing...</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <EmailVerificationPrompt
-        isOpen={showEmailVerification}
-        onClose={() => {
-          setShowEmailVerification(false);
-          setMode('login');
-        }}
-        email={formData.email}
-      />
-
-      {/* Enhanced Success Message Alert */}
-      {showSuccessMessage && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4">
-          <Alert className="bg-green-50 border-green-200 text-green-800">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="font-medium">
-              {formData.role === 'client' 
-                ? "🎉 Account created! Please verify your email to start booking services."
-                : "🎉 Provider account created! Please verify your email to access your dashboard."
-              }
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="absolute top-6 left-6">
-        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-200">
-            <Home className="w-6 h-6 text-purple-600" />
-          </div>
-          <span className="text-2xl font-bold text-gray-800">Longa</span>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <Card className="bg-white border-gray-200 shadow-lg">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-gray-800">
-              {getTitle()}
-            </CardTitle>
-            <p className="text-gray-600">
-              {getSubtitle()}
-            </p>
-          </CardHeader>
+        {/* Header */}
+        <div className="text-center mb-8">
+          <Button
+            variant="ghost"
+            className="absolute top-4 left-4"
+            onClick={() => navigate('/')}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Home
+          </Button>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Longa</h1>
+          <p className="text-gray-600">
+            {isSignUp ? 'Create your account' : 'Welcome back'}
+          </p>
+        </div>
 
-          <CardContent className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              {mode === 'signup' && (
-                <div className="space-y-2">
-                  <Label htmlFor={`name-${mode}`} className="text-gray-700">Full Name</Label>
-                  <Input
-                    id={`name-${mode}`}
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className={`${formErrors.name ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500`}
-                    placeholder="Enter your full name"
-                    autoComplete="name"
-                  />
-                  {formErrors.name && <p className="text-sm text-red-500">{formErrors.name}</p>}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center">
+              {isSignUp ? 'Sign Up' : 'Sign In'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Role Selection for Sign Up */}
+              {isSignUp && (
+                <div className="space-y-3">
+                  <Label>Account Type</Label>
+                  <Tabs 
+                    value={formData.role} 
+                    onValueChange={(value) => handleInputChange('role', value)}
+                    className="w-full"
+                  >
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="client">Client</TabsTrigger>
+                      <TabsTrigger value="provider">Provider</TabsTrigger>
+                      <TabsTrigger value="admin">Admin</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  
+                  {/* Role Description */}
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      {getRoleInfo(formData.role).icon}
+                      <span className="font-medium">{getRoleInfo(formData.role).title}</span>
+                    </div>
+                    <p className="text-sm text-gray-600">{getRoleInfo(formData.role).description}</p>
+                  </div>
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor={`email-${mode}`} className="text-gray-700">Email</Label>
+              {/* Full Name for Sign Up */}
+              {isSignUp && (
+                <div>
+                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Input
+                    id="fullName"
+                    value={formData.fullName}
+                    onChange={(e) => handleInputChange('fullName', e.target.value)}
+                    placeholder="Enter your full name"
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Email */}
+              <div>
+                <Label htmlFor="email">Email Address *</Label>
                 <Input
-                  id={`email-${mode}`}
+                  id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`${formErrors.email ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500`}
                   placeholder="Enter your email"
-                  autoComplete="email"
+                  required
                 />
-                {formErrors.email && <p className="text-sm text-red-500">{formErrors.email}</p>}
               </div>
 
-              {mode === 'signup' && (
-                <PhoneValidation
-                  value={formData.phone}
-                  onChange={(value) => handleInputChange('phone', value)}
-                  error={formErrors.phone}
-                />
-              )}
-
-              {mode !== 'forgot-password' && (
-                <div className="space-y-2">
-                  <Label htmlFor={`password-${mode}`} className="text-gray-700">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id={`password-${mode}`}
-                      type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={(e) => handleInputChange('password', e.target.value)}
-                      className={`${formErrors.password ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 pr-10`}
-                      placeholder="Enter your password"
-                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {formErrors.password && <p className="text-sm text-red-500">{formErrors.password}</p>}
-                  {mode === 'signup' && (
-                    <p className="text-xs text-gray-500">
-                      Must be 8+ characters with uppercase, lowercase, numbers, and special characters
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {mode === 'signup' && (
-                <div className="space-y-2">
-                  <Label htmlFor={`confirmPassword-${mode}`} className="text-gray-700">Confirm Password</Label>
-                  <div className="relative">
-                    <Input
-                      id={`confirmPassword-${mode}`}
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={formData.confirmPassword}
-                      onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                      className={`${formErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500 pr-10`}
-                      placeholder="Confirm your password"
-                      autoComplete="new-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {formErrors.confirmPassword && <p className="text-sm text-red-500">{formErrors.confirmPassword}</p>}
-                </div>
-              )}
-
-              {/* Enhanced role selection with better descriptions */}
-              {mode === 'signup' && (
-                <div className="space-y-2">
-                  <Label className="text-gray-700">I want to</Label>
-                  <div className="grid grid-cols-1 gap-3">
-                    {(['client', 'provider'] as UserRole[]).map((role) => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => handleInputChange('role', role)}
-                        className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
-                          formData.role === role
-                            ? 'border-purple-500 bg-purple-50 text-purple-700'
-                            : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          {getRoleIcon(role)}
-                          <div>
-                            <div className="font-medium">
-                              {role === 'client' ? 'Book Services' : 'Provide Services'}
-                            </div>
-                            <div className="text-sm opacity-75">
-                              {role === 'client' 
-                                ? 'Find and book trusted home services' 
-                                : 'Offer your professional services to clients'
-                              }
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Work Location for Provider signup */}
-              {mode === 'signup' && formData.role === 'provider' && (
-                <div className="space-y-2">
-                  <Label className="text-gray-700 flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    Work Location
-                  </Label>
-                  <Select
-                    value={formData.workLocation}
-                    onValueChange={(value) => handleInputChange('workLocation', value)}
+              {/* Password */}
+              <div>
+                <Label htmlFor="password">Password *</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
                   >
-                    <SelectTrigger className={`${formErrors.workLocation ? 'border-red-500' : 'border-gray-300'} focus:border-purple-500`}>
-                      <SelectValue placeholder="Select your primary work location" />
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {isSignUp && (
+                  <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+                )}
+              </div>
+
+              {/* Location for Sign Up - Required for all users */}
+              {isSignUp && (
+                <div>
+                  <Label htmlFor="location">Location *</Label>
+                  <Select
+                    value={formData.location}
+                    onValueChange={(value) => handleInputChange('location', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your location" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent>
                       {NAMIBIAN_TOWNS.map((town) => (
                         <SelectItem key={town.value} value={town.value}>
                           {town.label}
@@ -434,95 +271,44 @@ const Auth = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  {formErrors.workLocation && <p className="text-sm text-red-500">{formErrors.workLocation}</p>}
-                  <p className="text-xs text-gray-500">
-                    You can change this later in your profile settings.
-                  </p>
                 </div>
               )}
 
-              {mode === 'login' && (
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="rememberMe"
-                    checked={formData.rememberMe}
-                    onCheckedChange={(checked) => handleInputChange('rememberMe', checked as boolean)}
+              {/* Phone for Sign Up */}
+              {isSignUp && (
+                <div>
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    placeholder="+264 XX XXX XXXX"
                   />
-                  <Label htmlFor="rememberMe" className="text-sm text-gray-700">
-                    Remember me
-                  </Label>
                 </div>
               )}
 
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
+              {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200"
+                className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                disabled={isSubmitting}
               >
-                {isLoading ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>
-                      {mode === 'login' && 'Signing In...'}
-                      {mode === 'signup' && 'Creating Account...'}
-                      {mode === 'forgot-password' && 'Sending Reset Link...'}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    {mode === 'login' && <><LogIn className="w-4 h-4" /><span>Sign In</span></>}
-                    {mode === 'signup' && <><UserPlus className="w-4 h-4" /><span>Create Account</span></>}
-                    {mode === 'forgot-password' && <><span>Send Reset Link</span></>}
-                  </div>
-                )}
+                {isSubmitting ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
               </Button>
             </form>
 
-            <div className="space-y-2 text-center">
-              {mode === 'login' && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setMode('signup')}
-                    className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 text-sm"
-                  >
-                    Don't have an account? Sign up
-                  </button>
-                  <br />
-                  <button
-                    type="button"
-                    onClick={() => setMode('forgot-password')}
-                    className="text-gray-600 hover:text-gray-700 font-medium transition-colors duration-200 text-sm"
-                  >
-                    Forgot your password?
-                  </button>
-                </>
-              )}
-              {mode === 'signup' && (
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 text-sm"
+            {/* Toggle Sign In/Up */}
+            <div className="mt-6 text-center">
+              <p className="text-gray-600">
+                {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+                <Button
+                  variant="link"
+                  className="p-0 ml-1 text-purple-600"
+                  onClick={() => setIsSignUp(!isSignUp)}
                 >
-                  Already have an account? Sign in
-                </button>
-              )}
-              {mode === 'forgot-password' && (
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 text-sm"
-                >
-                  Back to Login
-                </button>
-              )}
+                  {isSignUp ? 'Sign In' : 'Sign Up'}
+                </Button>
+              </p>
             </div>
           </CardContent>
         </Card>

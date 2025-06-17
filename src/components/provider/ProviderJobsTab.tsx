@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, User, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, CheckCircle, Play, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,46 +27,45 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
   onCompleteJob: propOnCompleteJob,
   isAvailable = true
 }) => {
-  const { getAvailableJobs, acceptBooking } = useSupabaseBookings();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [availableJobs, setAvailableJobs] = useState(propAvailableJobs || []);
+  const [assignedJobs, setAssignedJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (propAvailableJobs) {
-      setAvailableJobs(propAvailableJobs);
+    if (propMyJobs) {
+      setAssignedJobs(propMyJobs);
       setIsLoading(false);
     } else {
-      fetchAvailableJobs();
+      fetchAssignedJobs();
     }
-  }, [propAvailableJobs]);
+  }, [propMyJobs, user]);
 
-  const fetchAvailableJobs = async () => {
+  const fetchAssignedJobs = async () => {
+    if (!user) return;
+    
     setIsLoading(true);
     try {
-      // Check if provider is verified first
-      if (user?.role === 'provider') {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('verification_status')
-          .eq('id', user.id)
-          .single();
+      // Only fetch jobs that have been assigned to this provider
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          service:services(*),
+          client:users!bookings_client_id_fkey(*),
+          assignment:booking_assignments(*)
+        `)
+        .eq('provider_id', user.id)
+        .in('status', ['accepted', 'in_progress', 'completed'])
+        .order('created_at', { ascending: false });
 
-        if (userData?.verification_status !== 'verified') {
-          setAvailableJobs([]);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      const jobs = await getAvailableJobs();
-      setAvailableJobs(jobs);
+      if (error) throw error;
+      setAssignedJobs(data || []);
     } catch (error) {
-      console.error('Error fetching jobs:', error);
+      console.error('Error fetching assigned jobs:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch available jobs",
+        description: "Failed to fetch your assigned jobs",
         variant: "destructive",
       });
     } finally {
@@ -74,23 +73,56 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
     }
   };
 
-  const handleAcceptJob = async (bookingId: string) => {
+  const handleStartJob = async (bookingId: string) => {
     try {
-      if (propOnAcceptJob) {
-        await propOnAcceptJob(bookingId);
-      } else {
-        await acceptBooking(bookingId);
-        toast({
-          title: "Job Accepted",
-          description: "You have accepted this job successfully.",
-        });
-        fetchAvailableJobs(); // Refresh jobs after accepting
-      }
-    } catch (error) {
-      console.error('Error accepting job:', error);
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'in_progress',
+          check_in_time: new Date().toISOString()
+        })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
       toast({
-        title: "Accept Failed",
-        description: "Failed to accept this job.",
+        title: "Job Started",
+        description: "You have started working on this job.",
+      });
+      fetchAssignedJobs();
+    } catch (error) {
+      console.error('Error starting job:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start job",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCompleteJob = async (bookingId: string) => {
+    try {
+      if (propOnCompleteJob) {
+        await propOnCompleteJob(bookingId);
+      } else {
+        const { error } = await supabase
+          .from('bookings')
+          .update({ status: 'completed' })
+          .eq('id', bookingId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Job Completed",
+          description: "Job marked as completed successfully.",
+        });
+      }
+      fetchAssignedJobs();
+    } catch (error) {
+      console.error('Error completing job:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete job",
         variant: "destructive",
       });
     }
@@ -100,7 +132,7 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <p className="text-gray-600">Loading available jobs...</p>
+          <p className="text-gray-600">Loading your assigned jobs...</p>
         </CardContent>
       </Card>
     );
@@ -110,44 +142,74 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <p className="text-gray-600">Please sign in as a service provider to view available jobs.</p>
+          <p className="text-gray-600">Please sign in as a service provider to view your jobs.</p>
         </CardContent>
       </Card>
     );
   }
 
-  // Check if the provider is verified
-  const isVerified = true; // Assume verified, replace with actual check later
-
-  if (!isVerified) {
+  if (assignedJobs.length === 0) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <p className="text-yellow-600">Your provider profile is not yet verified. Please complete the verification process to view available jobs.</p>
+          <p className="text-gray-600">No jobs have been assigned to you yet. Jobs are assigned by administrators based on your availability and expertise.</p>
         </CardContent>
       </Card>
     );
   }
 
-  if (availableJobs.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <p className="text-gray-600">No available jobs at the moment. Please check back later.</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'accepted': return 'bg-blue-100 text-blue-800';
+      case 'in_progress': return 'bg-yellow-100 text-yellow-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusAction = (job: any) => {
+    switch (job.status) {
+      case 'accepted':
+        return (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleStartJob(job.id)}
+            className="flex items-center gap-1"
+          >
+            <Play className="h-3 w-3" />
+            Start Job
+          </Button>
+        );
+      case 'in_progress':
+        return (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleCompleteJob(job.id)}
+            className="flex items-center gap-1"
+          >
+            <CheckCircle className="h-3 w-3" />
+            Mark Complete
+          </Button>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Available Jobs</CardTitle>
+          <CardTitle>Your Assigned Jobs</CardTitle>
+          <p className="text-sm text-gray-600">
+            Jobs assigned to you by administrators based on your availability and expertise
+          </p>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {availableJobs.map((job) => (
+            {assignedJobs.map((job) => (
               <Card key={job.id} className="border">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-3">
@@ -168,8 +230,8 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
                         </div>
                       </div>
                     </div>
-                    <Badge className="bg-green-100 text-green-800">
-                      Pending
+                    <Badge className={getStatusColor(job.status)}>
+                      {job.status.replace('_', ' ').charAt(0).toUpperCase() + job.status.replace('_', ' ').slice(1)}
                     </Badge>
                   </div>
 
@@ -178,17 +240,15 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
                     <span>Client: {job.client?.full_name}</span>
                   </div>
 
+                  {job.special_instructions && (
+                    <div className="mb-3 p-2 bg-gray-50 rounded text-sm">
+                      <strong>Instructions:</strong> {job.special_instructions}
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center">
                     <div className="font-medium text-lg">N${job.total_amount}</div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAcceptJob(job.id)}
-                      className="flex items-center gap-1"
-                    >
-                      <CheckCircle className="h-3 w-3" />
-                      Accept Job
-                    </Button>
+                    {getStatusAction(job)}
                   </div>
                 </CardContent>
               </Card>

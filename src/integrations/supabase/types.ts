@@ -9,9 +9,78 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      booking_assignments: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string
+          assignment_reason: string | null
+          auto_assigned: boolean | null
+          booking_id: string
+          id: string
+          provider_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by: string
+          assignment_reason?: string | null
+          auto_assigned?: boolean | null
+          booking_id: string
+          id?: string
+          provider_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string
+          assignment_reason?: string | null
+          auto_assigned?: boolean | null
+          booking_id?: string
+          id?: string
+          provider_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "booking_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_assignments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_assignments_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "booking_assignments_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           acceptance_deadline: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          assignment_status: string | null
           booking_date: string
           booking_time: string
           check_in_time: string | null
@@ -37,6 +106,9 @@ export type Database = {
         }
         Insert: {
           acceptance_deadline?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assignment_status?: string | null
           booking_date: string
           booking_time: string
           check_in_time?: string | null
@@ -62,6 +134,9 @@ export type Database = {
         }
         Update: {
           acceptance_deadline?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assignment_status?: string | null
           booking_date?: string
           booking_time?: string
           check_in_time?: string | null
@@ -86,6 +161,20 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "bookings_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_client_id_fkey"
             columns: ["client_id"]
@@ -1180,6 +1269,54 @@ export type Database = {
           },
         ]
       }
+      provider_availability: {
+        Row: {
+          created_at: string | null
+          day_of_week: number
+          end_time: string
+          id: string
+          is_available: boolean | null
+          provider_id: string
+          start_time: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_available?: boolean | null
+          provider_id: string
+          start_time: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_available?: boolean | null
+          provider_id?: string
+          start_time?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_availability_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_availability_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_banking_details: {
         Row: {
           account_holder_name: string
@@ -1531,6 +1668,123 @@ export type Database = {
           {
             foreignKeyName: "provider_references_verified_by_fkey"
             columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_specializations: {
+        Row: {
+          certification_details: Json | null
+          created_at: string | null
+          expertise_level: string | null
+          id: string
+          provider_id: string
+          service_id: string
+          years_experience: number | null
+        }
+        Insert: {
+          certification_details?: Json | null
+          created_at?: string | null
+          expertise_level?: string | null
+          id?: string
+          provider_id: string
+          service_id: string
+          years_experience?: number | null
+        }
+        Update: {
+          certification_details?: Json | null
+          created_at?: string | null
+          expertise_level?: string | null
+          id?: string
+          provider_id?: string
+          service_id?: string
+          years_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_specializations_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_specializations_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_specializations_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_popularity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_specializations_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_search_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_specializations_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_time_off: {
+        Row: {
+          all_day: boolean | null
+          created_at: string | null
+          end_date: string
+          end_time: string | null
+          id: string
+          provider_id: string
+          reason: string | null
+          start_date: string
+          start_time: string | null
+        }
+        Insert: {
+          all_day?: boolean | null
+          created_at?: string | null
+          end_date: string
+          end_time?: string | null
+          id?: string
+          provider_id: string
+          reason?: string | null
+          start_date: string
+          start_time?: string | null
+        }
+        Update: {
+          all_day?: boolean | null
+          created_at?: string | null
+          end_date?: string
+          end_time?: string | null
+          id?: string
+          provider_id?: string
+          reason?: string | null
+          start_date?: string
+          start_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_time_off_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_time_off_provider_id_fkey"
+            columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -2213,6 +2467,16 @@ export type Database = {
         Args: { transaction_id: string; admin_notes_param?: string }
         Returns: Json
       }
+      assign_booking_to_provider: {
+        Args: {
+          p_booking_id: string
+          p_provider_id: string
+          p_assigned_by: string
+          p_assignment_reason?: string
+          p_auto_assigned?: boolean
+        }
+        Returns: Json
+      }
       calculate_enhanced_payout: {
         Args:
           | { service_id: string; client_price: number; is_emergency?: boolean }
@@ -2242,9 +2506,35 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_provider_availability_at_time: {
+        Args: {
+          p_provider_id: string
+          p_date: string
+          p_time: string
+          p_duration_minutes?: number
+        }
+        Returns: boolean
+      }
       decline_pending_transaction: {
         Args: { transaction_id: string; admin_notes_param?: string }
         Returns: Json
+      }
+      find_available_providers_for_booking: {
+        Args: {
+          p_service_id: string
+          p_booking_date: string
+          p_booking_time: string
+          p_duration_minutes?: number
+          p_location_town?: string
+        }
+        Returns: {
+          provider_id: string
+          provider_name: string
+          rating: number
+          expertise_level: string
+          years_experience: number
+          availability_score: number
+        }[]
       }
       get_analytics_summary: {
         Args: Record<PropertyKey, never>

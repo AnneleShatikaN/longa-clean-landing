@@ -325,62 +325,8 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
   };
 
   const acceptBooking = async (bookingId: string) => {
-    if (!user) throw new Error('User not authenticated');
-
-    try {
-      // Check if provider is verified before accepting
-      const { data: isVerified } = await supabase.rpc('is_provider_verified', {
-        provider_id: user.id
-      });
-
-      if (!isVerified) {
-        throw new Error('You must complete verification before accepting bookings');
-      }
-
-      // Check for conflicts first
-      const { data: booking } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('id', bookingId)
-        .single();
-
-      if (!booking) throw new Error('Booking not found');
-
-      const { data: hasConflict } = await supabase.rpc('check_booking_conflicts', {
-        provider_id: user.id,
-        booking_date: booking.booking_date,
-        booking_time: booking.booking_time,
-        duration_minutes: booking.duration_minutes || 60
-      });
-
-      if (hasConflict) {
-        throw new Error('You have a conflicting booking at this time');
-      }
-
-      // Accept the booking
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          status: 'accepted',
-          provider_id: user.id
-        })
-        .eq('id', bookingId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Booking Accepted",
-        description: "You have successfully accepted this booking",
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to accept booking';
-      toast({
-        title: "Accept Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      throw error;
-    }
+    // This function is now disabled for the new assignment system
+    throw new Error('Job acceptance is now handled through admin assignment. Please wait for jobs to be assigned to you.');
   };
 
   const startJob = async (bookingId: string) => {
@@ -443,18 +389,14 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
   };
 
   const getAvailableJobs = async (): Promise<BookingWithRelations[]> => {
+    // Providers should no longer see "available" jobs - only assigned ones
+    // This function now returns empty array for providers
+    if (user?.role === 'provider') {
+      return []; // Providers can't self-select jobs anymore
+    }
+
+    // For admin/client views, still show unassigned jobs
     try {
-      // First check if user is verified
-      if (user?.role === 'provider') {
-        const { data: isVerified } = await supabase.rpc('is_provider_verified', {
-          provider_id: user.id
-        });
-
-        if (!isVerified) {
-          return []; // Return empty array for unverified providers
-        }
-      }
-
       const { data, error } = await supabase
         .from('bookings')
         .select(`

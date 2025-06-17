@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardNavigation } from '@/components/common/DashboardNavigation';
@@ -50,6 +49,7 @@ import {
   Bell,
   LogOut
 } from 'lucide-react';
+import { JobAssignmentManager } from '@/components/admin/JobAssignmentManager';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -85,6 +85,12 @@ const AdminDashboard = () => {
       title: 'Overview',
       icon: Home,
       description: 'Dashboard overview'
+    },
+    {
+      id: 'job-assignments',
+      title: 'Job Assignments',
+      icon: Users,
+      description: 'Assign jobs to providers'
     },
     {
       id: 'financial-overview',
@@ -170,6 +176,8 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case 'overview':
         return <AdminOverview data={{}} isLoading={false} />;
+      case 'job-assignments':
+        return <JobAssignmentManager />;
       case 'financial-overview':
         return <FinancialOverview />;
       case 'weekly-payouts':

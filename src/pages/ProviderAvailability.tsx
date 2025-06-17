@@ -3,8 +3,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { ProviderAvailabilityManager } from '@/components/provider/ProviderAvailabilityManager';
+import { ProviderSpecializationManager } from '@/components/provider/ProviderSpecializationManager';
 
 const ProviderAvailability = () => {
   const navigate = useNavigate();
@@ -37,23 +40,24 @@ const ProviderAvailability = () => {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Provider Availability</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Provider Settings</h1>
         </div>
 
-        <div className="max-w-4xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Your Availability</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 mb-4">
-                Set your working hours and availability calendar here. This feature will be fully implemented soon.
-              </p>
-              <Button onClick={() => navigate('/provider-dashboard')}>
-                Back to Provider Dashboard
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="max-w-6xl mx-auto">
+          <Tabs defaultValue="availability" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="availability">Availability & Schedule</TabsTrigger>
+              <TabsTrigger value="specializations">Service Specializations</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="availability">
+              <ProviderAvailabilityManager />
+            </TabsContent>
+
+            <TabsContent value="specializations">
+              <ProviderSpecializationManager />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

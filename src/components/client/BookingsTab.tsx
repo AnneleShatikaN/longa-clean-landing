@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
 export const BookingsTab = () => {
-  const { bookings, isLoading, cancelBooking } = useSupabaseBookings();
+  const { bookings, isLoading, updateBookingStatus } = useSupabaseBookings();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [ratingModal, setRatingModal] = useState<{
     isOpen: boolean;
@@ -64,14 +64,15 @@ export const BookingsTab = () => {
   };
 
   const handleCancelBooking = async (bookingId: string) => {
-    if (window.confirm('Are you sure you want to cancel this booking?')) {
+    if (window.confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) {
       try {
-        await cancelBooking(bookingId, 'Cancelled by client');
+        await updateBookingStatus(bookingId, 'cancelled');
         toast({
           title: "Booking Cancelled",
           description: "Your booking has been cancelled successfully.",
         });
       } catch (error) {
+        console.error('Error cancelling booking:', error);
         toast({
           title: "Cancel Failed",
           description: "There was an error cancelling your booking. Please try again.",
@@ -111,6 +112,7 @@ export const BookingsTab = () => {
 
   return (
     <div className="space-y-6">
+      {/* Filter Card */}
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -143,6 +145,7 @@ export const BookingsTab = () => {
         </CardContent>
       </Card>
 
+      {/* Bookings List */}
       {filteredBookings.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">

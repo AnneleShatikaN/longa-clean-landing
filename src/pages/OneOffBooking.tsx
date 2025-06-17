@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, MapPin, User, Info } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, MapPin, User, Info, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -125,7 +125,7 @@ const OneOffBooking = () => {
         description: "Your service booking has been submitted successfully.",
       });
 
-      // Navigate to confirmation page
+      // Navigate to confirmation page with booking ID
       navigate(`/booking-confirmation?booking_id=${booking.id}`);
 
     } catch (error: any) {
@@ -210,17 +210,20 @@ const OneOffBooking = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Service Display */}
+              {/* Service Display with Enhanced Pricing */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">{selectedService.name}</h3>
-                <p className="text-blue-800 text-sm mb-3">{selectedService.description}</p>
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">{selectedService?.name}</h3>
+                <p className="text-blue-800 text-sm mb-3">{selectedService?.description}</p>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2 text-sm text-blue-700">
                     <Clock className="h-4 w-4" />
-                    <span>{Math.floor((selectedService.duration_minutes || 180) / 60)}h {(selectedService.duration_minutes || 180) % 60}m</span>
+                    <span>{Math.floor((selectedService?.duration_minutes || 180) / 60)}h {(selectedService?.duration_minutes || 180) % 60}m</span>
                   </div>
-                  <div className="text-xl font-bold text-blue-900">
-                    N${selectedService.client_price}
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-blue-900" />
+                    <div className="text-2xl font-bold text-blue-900">
+                      N${selectedService?.client_price}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -320,13 +323,13 @@ const OneOffBooking = () => {
                 />
               </div>
 
-              {/* Booking Summary */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium mb-3">Booking Summary</h4>
+              {/* Enhanced Booking Summary */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-medium mb-3 text-blue-900">Booking Summary</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Service:</span>
-                    <span>{selectedService.name}</span>
+                    <span className="font-medium">{selectedService?.name}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Date:</span>
@@ -337,12 +340,16 @@ const OneOffBooking = () => {
                     <span>{bookingTime}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span>Duration:</span>
+                    <span>{Math.floor((selectedService?.duration_minutes || 180) / 60)}h {(selectedService?.duration_minutes || 180) % 60}m</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span>Location:</span>
                     <span>{clientLocation}</span>
                   </div>
-                  <div className="flex justify-between font-medium border-t pt-2">
-                    <span>Total:</span>
-                    <span>N${selectedService.client_price}</span>
+                  <div className="flex justify-between font-medium border-t pt-2 text-lg">
+                    <span>Total Amount:</span>
+                    <span className="text-blue-900">N${selectedService?.client_price}</span>
                   </div>
                 </div>
               </div>

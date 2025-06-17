@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -352,7 +351,29 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
   };
 
   const cancelBooking = async (bookingId: string, reason?: string) => {
-    await updateBookingStatus(bookingId, 'cancelled');
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'cancelled'
+        })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Booking Cancelled",
+        description: "Your booking has been cancelled successfully.",
+      });
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      toast({
+        title: "Cancel Failed",
+        description: "Failed to cancel booking",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   const getAvailableJobs = async (): Promise<BookingWithRelations[]> => {

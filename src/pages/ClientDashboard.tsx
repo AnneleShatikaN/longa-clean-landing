@@ -40,9 +40,10 @@ const ClientDashboard = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/notification-center')}
+                onClick={() => navigate('/notifications')}
               >
-                <Bell className="h-4 w-4" />
+                <Bell className="h-4 w-4 mr-2" />
+                Notifications
               </Button>
               <Button variant="outline" onClick={handleLogout}>
                 Logout

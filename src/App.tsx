@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -53,8 +52,29 @@ function App() {
                           <Route path="/search" element={<Search />} />
                           <Route path="/subscription-packages" element={<SubscriptionPackages />} />
                           <Route path="/one-off-booking" element={<OneOffBooking />} />
-                          <Route path="/notification-center" element={<AuthenticatedLayout><NotificationCenter /></AuthenticatedLayout>} />
                           <Route path="/provider/:providerId" element={<ProviderProfile />} />
+                          
+                          {/* Notifications route - accessible to all authenticated users */}
+                          <Route
+                            path="/notifications"
+                            element={
+                              <ProtectedRoute allowedRoles={['client', 'provider', 'admin']}>
+                                <AuthenticatedLayout>
+                                  <NotificationCenter />
+                                </AuthenticatedLayout>
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="/notification-center"
+                            element={
+                              <ProtectedRoute allowedRoles={['client', 'provider', 'admin']}>
+                                <AuthenticatedLayout>
+                                  <NotificationCenter />
+                                </AuthenticatedLayout>
+                              </ProtectedRoute>
+                            }
+                          />
                           
                           {/* Protected Routes with Notifications */}
                           <Route

@@ -2,10 +2,9 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Home, Calendar, Package, CreditCard, User, Briefcase, BarChart3, Settings } from 'lucide-react';
+import { Home, Calendar, Package, CreditCard, User, Briefcase, BarChart3, Settings, Bell } from 'lucide-react';
 
 interface DashboardNavigationProps {
   userRole: 'client' | 'provider' | 'admin';
@@ -74,12 +73,12 @@ export const DashboardNavigation: React.FC<DashboardNavigationProps> = ({
               <span className="text-sm text-gray-500">{dashboardTitle}</span>
             </div>
             <div className="flex items-center space-x-4">
-              <NotificationBell />
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/notifications')}
               >
+                <Bell className="h-4 w-4 mr-2" />
                 Notifications
               </Button>
               <Button variant="outline" onClick={handleLogout}>

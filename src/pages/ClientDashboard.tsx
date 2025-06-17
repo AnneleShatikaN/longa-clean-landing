@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,20 +7,21 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { useServiceEntitlements } from '@/hooks/useServiceEntitlements';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
-import { Package, Calendar, User, ShoppingBag, Home, Star, Clock, MapPin, ArrowRight, Repeat } from 'lucide-react';
+import { Package, Calendar, User, ShoppingBag, Home, Star, Clock, MapPin, ArrowRight, Repeat, Receipt } from 'lucide-react';
 import { DashboardOverview } from '@/components/client/DashboardOverview';
 import { MyPackageTab } from '@/components/client/MyPackageTab';
 import { MyServicesTab } from '@/components/client/MyServicesTab';
 import { BookingsTab } from '@/components/client/BookingsTab';
 import { ProfileTab } from '@/components/client/ProfileTab';
 import { RecurringBookingsTab } from '@/components/client/RecurringBookingsTab';
+import { PaymentHistoryTab } from '@/components/client/PaymentHistoryTab';
 
 const ClientDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { serviceUsage, isLoading } = useServiceEntitlements();
   const { bookings } = useSupabaseBookings();
-  
+
   const hasActivePackage = serviceUsage.length > 0;
   const hasBookings = bookings.length > 0;
 
@@ -69,7 +69,7 @@ const ClientDashboard = () => {
 
         {/* Mobile-First Tabs */}
         <Tabs defaultValue="dashboard" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-8 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex flex-col items-center gap-1 py-2 text-xs">
               <Home className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -95,6 +95,10 @@ const ClientDashboard = () => {
             <TabsTrigger value="recurring" className="flex flex-col items-center gap-1 py-2 text-xs">
               <Repeat className="h-4 w-4" />
               <span className="hidden sm:inline">Recurring</span>
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="flex flex-col items-center gap-1 py-2 text-xs">
+              <Receipt className="h-4 w-4" />
+              <span className="hidden sm:inline">Payments</span>
             </TabsTrigger>
             <TabsTrigger value="profile" className="flex flex-col items-center gap-1 py-2 text-xs">
               <User className="h-4 w-4" />
@@ -163,6 +167,10 @@ const ClientDashboard = () => {
 
           <TabsContent value="recurring" className="space-y-4">
             <RecurringBookingsTab />
+          </TabsContent>
+
+          <TabsContent value="payments" className="space-y-4">
+            <PaymentHistoryTab />
           </TabsContent>
 
           <TabsContent value="profile" className="space-y-4">

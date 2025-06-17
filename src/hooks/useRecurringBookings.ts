@@ -32,28 +32,42 @@ export const useRecurringBookings = () => {
 
     try {
       setIsLoading(true);
-      // For now, we'll fetch from bookings table with recurring flags
-      // This is a simplified approach until the recurring_booking_schedules table types are available
-      const { data, error } = await supabase
+      
+      // Use a simple query to avoid type inference issues
+      const { data: bookings, error } = await supabase
         .from('bookings')
-        .select('*')
+        .select(`
+          id,
+          service_id,
+          booking_time,
+          booking_date,
+          special_instructions,
+          emergency_booking,
+          duration_minutes,
+          location_town,
+          created_at,
+          is_recurring,
+          recurring_frequency,
+          recurring_day_of_week,
+          recurring_end_date,
+          is_auto_scheduled
+        `)
         .eq('client_id', user.id)
         .eq('is_recurring', true)
-        .eq('is_auto_scheduled', false)
-        .order('created_at', { ascending: false });
+        .eq('is_auto_scheduled', false);
 
       if (error) throw error;
       
-      // Transform the booking data to match our RecurringSchedule interface
-      const schedules: RecurringSchedule[] = (data || []).map(booking => ({
+      // Transform the booking data manually
+      const schedules: RecurringSchedule[] = (bookings || []).map((booking: any) => ({
         id: booking.id,
         parent_booking_id: booking.id,
         service_id: booking.service_id,
-        frequency: (booking as any).recurring_frequency || 'weekly',
-        day_of_week: (booking as any).recurring_day_of_week || 1,
+        frequency: booking.recurring_frequency || 'weekly',
+        day_of_week: booking.recurring_day_of_week || 1,
         booking_time: booking.booking_time,
         start_date: booking.booking_date,
-        end_date: (booking as any).recurring_end_date,
+        end_date: booking.recurring_end_date,
         is_active: true,
         special_instructions: booking.special_instructions,
         emergency_booking: booking.emergency_booking,
@@ -99,7 +113,7 @@ export const useRecurringBookings = () => {
           recurring_frequency: scheduleData.frequency,
           recurring_day_of_week: scheduleData.day_of_week,
           recurring_end_date: scheduleData.end_date
-        } as any)
+        })
         .eq('id', scheduleData.parent_booking_id);
 
       if (updateError) throw updateError;
@@ -142,7 +156,7 @@ export const useRecurringBookings = () => {
               is_auto_scheduled: true,
               status: 'pending',
               total_amount: serviceData?.client_price || 0
-            } as any);
+            });
 
           if (!error) {
             bookingsCreated++;
@@ -178,7 +192,7 @@ export const useRecurringBookings = () => {
           recurring_frequency: null,
           recurring_day_of_week: null,
           recurring_end_date: null
-        } as any)
+        })
         .eq('id', scheduleId);
 
       if (error) throw error;

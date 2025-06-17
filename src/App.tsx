@@ -1,10 +1,12 @@
 
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { UserProvider } from '@/contexts/UserContext';
+import { DataModeProvider } from '@/contexts/DataModeContext';
 import { ServiceProvider } from '@/contexts/ServiceContext';
 import { PayoutProvider } from '@/contexts/PayoutContext';
 import { SupabaseBookingProvider } from '@/contexts/SupabaseBookingContext';
@@ -30,60 +32,62 @@ function App() {
       <QueryClientProvider client={new QueryClient()}>
         <AuthProvider>
           <UserProvider>
-            <ServiceProvider>
-              <PayoutProvider>
-                <SupabaseBookingProvider>
-                  <div className="min-h-screen bg-gray-50">
-                    <Toaster />
-                    <NotificationSystem />
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/auth" element={<Auth />} />
-                      <Route path="/search" element={<Search />} />
-                      <Route path="/subscription-packages" element={<SubscriptionPackages />} />
-                      <Route path="/one-off-booking" element={<OneOffBooking />} />
-                      <Route path="/notification-center" element={<NotificationCenter />} />
-                      <Route path="/provider/:providerId" element={<ProviderProfile />} />
-                      
-                      {/* Protected Routes */}
-                      <Route
-                        path="/client-dashboard"
-                        element={
-                          <ProtectedRoute allowedRoles={['client']}>
-                            <ClientDashboard />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/provider-dashboard"
-                        element={
-                          <ProtectedRoute allowedRoles={['provider']}>
-                            <ProviderDashboard />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/admin-dashboard"
-                        element={
-                          <ProtectedRoute allowedRoles={['admin']}>
-                            <AdminDashboard />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/admin-setup"
-                        element={
-                          <ProtectedRoute allowedRoles={['admin']}>
-                            <AdminSetup />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </div>
-                </SupabaseBookingProvider>
-              </PayoutProvider>
-            </ServiceProvider>
+            <DataModeProvider>
+              <ServiceProvider>
+                <PayoutProvider>
+                  <SupabaseBookingProvider>
+                    <div className="min-h-screen bg-gray-50">
+                      <Toaster />
+                      <NotificationSystem />
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/auth" element={<Auth />} />
+                        <Route path="/search" element={<Search />} />
+                        <Route path="/subscription-packages" element={<SubscriptionPackages />} />
+                        <Route path="/one-off-booking" element={<OneOffBooking />} />
+                        <Route path="/notification-center" element={<NotificationCenter />} />
+                        <Route path="/provider/:providerId" element={<ProviderProfile />} />
+                        
+                        {/* Protected Routes */}
+                        <Route
+                          path="/client-dashboard"
+                          element={
+                            <ProtectedRoute allowedRoles={['client']}>
+                              <ClientDashboard />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/provider-dashboard"
+                          element={
+                            <ProtectedRoute allowedRoles={['provider']}>
+                              <ProviderDashboard />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/admin-dashboard"
+                          element={
+                            <ProtectedRoute allowedRoles={['admin']}>
+                              <AdminDashboard />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/admin-setup"
+                          element={
+                            <ProtectedRoute allowedRoles={['admin']}>
+                              <AdminSetup />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </div>
+                  </SupabaseBookingProvider>
+                </PayoutProvider>
+              </ServiceProvider>
+            </DataModeProvider>
           </UserProvider>
         </AuthProvider>
       </QueryClientProvider>

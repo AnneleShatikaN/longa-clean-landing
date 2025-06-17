@@ -15,6 +15,7 @@ import Auth from '@/pages/Auth';
 import Search from '@/pages/Search';
 import SubscriptionPackages from '@/pages/SubscriptionPackages';
 import OneOffBooking from '@/pages/OneOffBooking';
+import BookingConfirmation from '@/pages/BookingConfirmation';
 import NotificationCenter from '@/pages/NotificationCenter';
 import ClientDashboard from '@/pages/ClientDashboard';
 import ProviderDashboard from '@/pages/ProviderDashboard';
@@ -44,6 +45,11 @@ function App() {
                           <Route path="/search" element={<Search />} />
                           <Route path="/subscription-packages" element={<SubscriptionPackages />} />
                           <Route path="/one-off-booking" element={<OneOffBooking />} />
+                          <Route path="/booking-confirmation" element={
+                            <ProtectedRoute allowedRoles={['client']}>
+                              <BookingConfirmation />
+                            </ProtectedRoute>
+                          } />
                           <Route path="/provider/:providerId" element={<ProviderProfile />} />
                           
                           {/* Notifications route - accessible to all authenticated users */}

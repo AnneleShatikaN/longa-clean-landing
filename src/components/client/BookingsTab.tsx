@@ -1,15 +1,17 @@
+
 import React, { useState } from 'react';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, User, MapPin, DollarSign, Filter, Star, ExternalLink } from 'lucide-react';
+import { Calendar, Clock, User, MapPin, DollarSign, Filter, Star, ExternalLink, AlertTriangle } from 'lucide-react';
 import { ProviderRatingModal } from './ProviderRatingModal';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 export const BookingsTab = () => {
-  const { bookings, isLoading } = useSupabaseBookings();
+  const { bookings, isLoading, cancelBooking } = useSupabaseBookings();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [ratingModal, setRatingModal] = useState<{
     isOpen: boolean;
@@ -21,6 +23,7 @@ export const BookingsTab = () => {
     providerName: ''
   });
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const filteredBookings = statusFilter === 'all' 
     ? bookings 
@@ -60,10 +63,32 @@ export const BookingsTab = () => {
     navigate(`/provider/${providerId}`);
   };
 
+  const handleCancelBooking = async (bookingId: string) => {
+    if (window.confirm('Are you sure you want to cancel this booking?')) {
+      try {
+        await cancelBooking(bookingId, 'Cancelled by client');
+        toast({
+          title: "Booking Cancelled",
+          description: "Your booking has been cancelled successfully.",
+        });
+      } catch (error) {
+        toast({
+          title: "Cancel Failed",
+          description: "There was an error cancelling your booking. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const canRateProvider = (booking: any) => {
     return booking.status === 'completed' && 
            booking.provider && 
            !booking.rating;
+  };
+
+  const canCancelBooking = (booking: any) => {
+    return booking.status === 'pending' || booking.status === 'accepted';
   };
 
   if (isLoading) {
@@ -132,7 +157,7 @@ export const BookingsTab = () => {
               }
             </p>
             {statusFilter === 'all' && (
-              <Button onClick={() => window.location.href = '/search'}>
+              <Button onClick={() => navigate('/search')}>
                 Browse Services
               </Button>
             )}
@@ -162,7 +187,7 @@ export const BookingsTab = () => {
                           <Clock className="h-3 w-3" />
                           <span>{booking.booking_time}</span>
                         </div>
-                        {booking.provider && (
+                        {booking.provider ? (
                           <div className="flex items-center gap-1">
                             <User className="h-3 w-3" />
                             <button
@@ -172,6 +197,11 @@ export const BookingsTab = () => {
                               {booking.provider.full_name}
                               <ExternalLink className="h-3 w-3" />
                             </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            <span className="text-gray-500 italic">Provider pending</span>
                           </div>
                         )}
                         {booking.location_town && (
@@ -206,7 +236,7 @@ export const BookingsTab = () => {
                     </Badge>
                   )}
 
-                  {/* Rating Display or Action */}
+                  {/* Action Buttons */}
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div>
                       {booking.rating && (
@@ -224,17 +254,31 @@ export const BookingsTab = () => {
                       )}
                     </div>
                     
-                    {canRateProvider(booking) && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRateProvider(booking.id, booking.provider!.full_name)}
-                        className="flex items-center gap-1"
-                      >
-                        <Star className="h-3 w-3" />
-                        Rate Provider
-                      </Button>
-                    )}
+                    <div className="flex gap-2">
+                      {canCancelBooking(booking) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleCancelBooking(booking.id)}
+                          className="flex items-center gap-1 text-red-600 border-red-300 hover:bg-red-50"
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                          Cancel Booking
+                        </Button>
+                      )}
+                      
+                      {canRateProvider(booking) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRateProvider(booking.id, booking.provider!.full_name)}
+                          className="flex items-center gap-1"
+                        >
+                          <Star className="h-3 w-3" />
+                          Rate Provider
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="text-xs text-gray-500 pt-2 border-t">

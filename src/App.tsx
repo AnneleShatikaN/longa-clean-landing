@@ -28,6 +28,7 @@ import OneOffBooking from './pages/OneOffBooking';
 import SubscriptionPackages from './pages/SubscriptionPackages';
 import Search from './pages/Search';
 import ProviderAvailability from './pages/ProviderAvailability';
+import ProviderProfile from './pages/ProviderProfile';
 import { LocationProvider } from '@/contexts/LocationContext';
 
 const queryClient = new QueryClient();

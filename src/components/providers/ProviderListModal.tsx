@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star, MapPin, MessageCircle, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useLocationServices } from '@/hooks/useLocationServices';
+import { useProviderProfiles, ProviderProfile } from '@/hooks/useProviderProfiles';
 import { useLocation } from '@/contexts/LocationContext';
 
 interface ProviderListModalProps {
@@ -27,14 +27,18 @@ export const ProviderListModal: React.FC<ProviderListModalProps> = ({
   showBookingButtons = false
 }) => {
   const navigate = useNavigate();
-  const { providers, isLoading, getProvidersByLocation } = useLocationServices();
+  const { providers, isLoading, fetchProviders } = useProviderProfiles();
   const { selectedLocation } = useLocation();
 
   React.useEffect(() => {
     if (isOpen && serviceId) {
-      getProvidersByLocation(selectedLocation, serviceId);
+      // Fetch providers filtered by location
+      fetchProviders({
+        location: selectedLocation,
+        isActive: true
+      });
     }
-  }, [isOpen, serviceId, selectedLocation, getProvidersByLocation]);
+  }, [isOpen, serviceId, selectedLocation, fetchProviders]);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -97,11 +101,11 @@ export const ProviderListModal: React.FC<ProviderListModalProps> = ({
           </div>
         ) : providers.length > 0 ? (
           <div className="space-y-4">
-            {providers.map((provider) => (
+            {providers.map((provider: ProviderProfile) => (
               <div key={provider.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={provider.avatar_url} alt={provider.full_name} />
+                    <AvatarImage src={provider.avatar_url || ''} alt={provider.full_name} />
                     <AvatarFallback className="text-lg font-semibold">
                       {getInitials(provider.full_name)}
                     </AvatarFallback>
@@ -148,7 +152,7 @@ export const ProviderListModal: React.FC<ProviderListModalProps> = ({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleWhatsAppContact(provider.phone, provider.full_name)}
+                          onClick={() => handleWhatsAppContact(provider.phone!, provider.full_name)}
                           className="flex items-center gap-1 text-green-600 hover:text-green-700"
                         >
                           <MessageCircle className="h-4 w-4" />

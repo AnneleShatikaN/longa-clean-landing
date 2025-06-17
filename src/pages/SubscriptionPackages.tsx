@@ -3,12 +3,15 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PackageCard } from '@/components/subscription/PackageCard';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useSubscriptionPackages } from '@/hooks/useSubscriptionPackages';
+import { Card, CardContent } from '@/components/ui/card';
 
 const SubscriptionPackages = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { packages, userActivePackage, isLoading, error } = useSubscriptionPackages();
 
   if (!user) {
     return (
@@ -24,50 +27,32 @@ const SubscriptionPackages = () => {
     );
   }
 
-  const packages = [
-    {
-      id: 'basic',
-      name: 'Basic Package',
-      price: 299,
-      description: 'Perfect for occasional service needs',
-      features: [
-        '3 service bookings per month',
-        'Email support',
-        'Basic scheduling',
-        'Standard providers'
-      ]
-    },
-    {
-      id: 'premium',
-      name: 'Premium Package',
-      price: 599,
-      description: 'Most popular choice for regular users',
-      features: [
-        '8 service bookings per month',
-        'Priority support',
-        'Advanced scheduling',
-        'Premium providers',
-        'Emergency bookings',
-        'Booking modifications'
-      ],
-      popular: true
-    },
-    {
-      id: 'enterprise',
-      name: 'Enterprise Package',
-      price: 1199,
-      description: 'Unlimited access for businesses',
-      features: [
-        'Unlimited service bookings',
-        '24/7 phone support',
-        'Dedicated account manager',
-        'All premium providers',
-        'Priority emergency bookings',
-        'Custom scheduling',
-        'Bulk booking discounts'
-      ]
-    }
-  ];
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading packages...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Packages</h1>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -89,20 +74,62 @@ const SubscriptionPackages = () => {
           </div>
         </div>
 
+        {/* Active Package Alert */}
+        {userActivePackage && (
+          <Card className="mb-8 bg-green-50 border-green-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-green-800">Active Package</h3>
+                  <p className="text-sm text-green-700">
+                    You currently have an active {userActivePackage.package.name} valid until{' '}
+                    {new Date(userActivePackage.expiry_date).toLocaleDateString()}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/client-dashboard')}
+                  className="border-green-300 text-green-700 hover:bg-green-100"
+                >
+                  View Usage
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Packages Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {packages.map((pkg) => (
-            <PackageCard
-              key={pkg.id}
-              id={pkg.id}
-              name={pkg.name}
-              price={pkg.price}
-              description={pkg.description}
-              features={pkg.features}
-              popular={pkg.popular}
-            />
-          ))}
-        </div>
+        {packages.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <h3 className="text-xl font-semibold mb-2">No Packages Available</h3>
+              <p className="text-gray-600">
+                No subscription packages are currently available. Please check back later.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {packages.map((pkg) => {
+              const features = pkg.entitlements?.map(ent => 
+                `${ent.quantity_per_cycle}x ${ent.service?.name || 'Service'} per month`
+              ) || [];
+
+              return (
+                <PackageCard
+                  key={pkg.id}
+                  id={pkg.id}
+                  name={pkg.name}
+                  price={pkg.price}
+                  description={pkg.description || ''}
+                  features={features}
+                  popular={pkg.name.toLowerCase().includes('premium')}
+                  hasActivePackage={!!userActivePackage}
+                />
+              );
+            })}
+          </div>
+        )}
 
         {/* FAQ Section */}
         <div className="max-w-4xl mx-auto mt-16">

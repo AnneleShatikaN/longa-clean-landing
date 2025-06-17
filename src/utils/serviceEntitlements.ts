@@ -1,125 +1,114 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-export interface ServiceEntitlement {
-  id: string;
-  package_id: string;
-  allowed_service_id: string;
-  quantity_per_cycle: number;
-  cycle_days: number;
-}
-
-export interface UserPackage {
-  id: string;
-  user_id: string;
-  package_id: string;
-  start_date: string;
-  expiry_date: string;
-  status: string;
-}
-
 export interface ServiceUsage {
   service_id: string;
   service_name: string;
   used_count: number;
   allowed_count: number;
-  package_id: string;
-  cycle_days: number;
+  remaining_count: number;
+  cycle_start: string;
+  cycle_end: string;
 }
 
-export const checkServiceAccess = async (userId: string, serviceId: string): Promise<{
-  allowed: boolean;
-  reason?: string;
-  usage?: ServiceUsage;
-}> => {
+export const getUserServiceUsage = async (userId: string): Promise<ServiceUsage[]> => {
   try {
-    // Get user's active package
-    const { data: activePackages, error: packageError } = await supabase
+    // Get user's active package with entitlements
+    const { data: activePackage, error: packageError } = await supabase
       .from('user_active_packages')
-      .select('*')
+      .select(`
+        *,
+        package:subscription_packages(
+          *,
+          package_entitlements:package_entitlements(
+            *,
+            service:services(*)
+          )
+        )
+      `)
       .eq('user_id', userId)
       .eq('status', 'active')
-      .gte('expiry_date', new Date().toISOString().split('T')[0]);
+      .gte('expiry_date', new Date().toISOString().split('T')[0])
+      .maybeSingle();
 
-    if (packageError) throw packageError;
-    
-    if (!activePackages || activePackages.length === 0) {
-      return { allowed: false, reason: 'No active package found. Please purchase a package to book services.' };
+    if (packageError || !activePackage) {
+      return [];
     }
 
-    const activePackage = activePackages[0];
+    const entitlements = activePackage.package?.package_entitlements || [];
+    const usagePromises = entitlements.map(async (entitlement) => {
+      // Calculate cycle dates
+      const cycleStart = new Date();
+      cycleStart.setDate(cycleStart.getDate() - entitlement.cycle_days);
+      
+      // Get usage count for this service in current cycle
+      const { count, error: usageError } = await supabase
+        .from('service_usage_logs')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .eq('package_id', activePackage.package_id)
+        .eq('allowed_service_id', entitlement.allowed_service_id)
+        .gte('used_at', cycleStart.toISOString());
 
-    // Check if service is included in the package entitlements
-    const { data: entitlements, error: entitlementError } = await supabase
-      .from('package_entitlements')
-      .select('*')
-      .eq('package_id', activePackage.package_id)
-      .eq('allowed_service_id', serviceId);
+      if (usageError) {
+        console.error('Error fetching usage:', usageError);
+        return null;
+      }
 
-    if (entitlementError) throw entitlementError;
-
-    if (!entitlements || entitlements.length === 0) {
-      return { allowed: false, reason: 'Service not included in your active package' };
-    }
-
-    const entitlement = entitlements[0];
-
-    // Get service name
-    const { data: service, error: serviceError } = await supabase
-      .from('services')
-      .select('name')
-      .eq('id', serviceId)
-      .single();
-
-    if (serviceError) throw serviceError;
-
-    // Check usage within current cycle
-    const cycleStartDate = new Date();
-    cycleStartDate.setDate(cycleStartDate.getDate() - entitlement.cycle_days);
-
-    const { data: usageLogs, error: usageError } = await supabase
-      .from('service_usage_logs')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('package_id', activePackage.package_id)
-      .eq('allowed_service_id', serviceId)
-      .gte('used_at', cycleStartDate.toISOString());
-
-    if (usageError) throw usageError;
-
-    const usedCount = usageLogs?.length || 0;
-    const allowedCount = entitlement.quantity_per_cycle;
-
-    const usage: ServiceUsage = {
-      service_id: serviceId,
-      service_name: service?.name || 'Unknown Service',
-      used_count: usedCount,
-      allowed_count: allowedCount,
-      package_id: activePackage.package_id,
-      cycle_days: entitlement.cycle_days
-    };
-
-    if (usedCount >= allowedCount) {
-      return { 
-        allowed: false, 
-        reason: `You've used all your available services for this cycle (${usedCount}/${allowedCount})`,
-        usage 
+      const usedCount = count || 0;
+      
+      return {
+        service_id: entitlement.allowed_service_id,
+        service_name: entitlement.service?.name || 'Unknown Service',
+        used_count: usedCount,
+        allowed_count: entitlement.quantity_per_cycle,
+        remaining_count: Math.max(0, entitlement.quantity_per_cycle - usedCount),
+        cycle_start: cycleStart.toISOString(),
+        cycle_end: new Date().toISOString()
       };
-    }
+    });
 
-    return { allowed: true, usage };
+    const results = await Promise.all(usagePromises);
+    return results.filter(result => result !== null) as ServiceUsage[];
+  } catch (error) {
+    console.error('Error getting user service usage:', error);
+    return [];
+  }
+};
+
+export const checkServiceAccess = async (userId: string, serviceId: string) => {
+  try {
+    const { data, error } = await supabase.rpc('use_package_service', {
+      p_user_id: userId,
+      p_service_id: serviceId
+    });
+
+    if (error) throw error;
+
+    return {
+      allowed: data?.success || false,
+      reason: data?.error || data?.message || 'Unknown status',
+      usageInfo: {
+        used_count: data?.used_count || 0,
+        allowed_count: data?.allowed_count || 0,
+        remaining: data?.remaining || 0
+      }
+    };
   } catch (error) {
     console.error('Error checking service access:', error);
-    return { allowed: false, reason: 'Error checking service access' };
+    return {
+      allowed: false,
+      reason: 'Error checking access'
+    };
   }
 };
 
 export const logServiceUsage = async (
-  userId: string, 
-  packageId: string, 
-  serviceId: string, 
+  userId: string,
+  packageId: string,
+  serviceId: string,
   bookingId?: string
-): Promise<boolean> => {
+) => {
   try {
     const { error } = await supabase
       .from('service_usage_logs')
@@ -135,68 +124,5 @@ export const logServiceUsage = async (
   } catch (error) {
     console.error('Error logging service usage:', error);
     return false;
-  }
-};
-
-export const getUserServiceUsage = async (userId: string): Promise<ServiceUsage[]> => {
-  try {
-    // Get user's active package
-    const { data: activePackages, error: packageError } = await supabase
-      .from('user_active_packages')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .gte('expiry_date', new Date().toISOString().split('T')[0]);
-
-    if (packageError || !activePackages || activePackages.length === 0) {
-      return [];
-    }
-
-    const activePackage = activePackages[0];
-
-    // Get all entitlements for the package with service names
-    const { data: entitlements, error: entitlementError } = await supabase
-      .from('package_entitlements')
-      .select(`
-        *,
-        services!allowed_service_id (
-          name
-        )
-      `)
-      .eq('package_id', activePackage.package_id);
-
-    if (entitlementError || !entitlements) return [];
-
-    const usageData: ServiceUsage[] = [];
-
-    for (const entitlement of entitlements) {
-      // Calculate current cycle usage
-      const cycleStartDate = new Date();
-      cycleStartDate.setDate(cycleStartDate.getDate() - entitlement.cycle_days);
-
-      const { data: usageLogs, error: usageError } = await supabase
-        .from('service_usage_logs')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('package_id', activePackage.package_id)
-        .eq('allowed_service_id', entitlement.allowed_service_id)
-        .gte('used_at', cycleStartDate.toISOString());
-
-      if (!usageError) {
-        usageData.push({
-          service_id: entitlement.allowed_service_id,
-          service_name: (entitlement as any).services?.name || 'Unknown Service',
-          used_count: usageLogs?.length || 0,
-          allowed_count: entitlement.quantity_per_cycle,
-          package_id: activePackage.package_id,
-          cycle_days: entitlement.cycle_days
-        });
-      }
-    }
-
-    return usageData;
-  } catch (error) {
-    console.error('Error getting user service usage:', error);
-    return [];
   }
 };

@@ -174,6 +174,46 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
 
       if (serviceError || !service) throw new Error('Service not found');
 
+      // Check if user has an active package and if service is covered
+      const { data: activePackage } = await supabase
+        .from('user_active_packages')
+        .select(`
+          *,
+          package:subscription_packages(
+            package_entitlements:package_entitlements(
+              allowed_service_id,
+              quantity_per_cycle
+            )
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .gte('expiry_date', new Date().toISOString().split('T')[0])
+        .maybeSingle();
+
+      let usePackageCredit = false;
+      let packageUsageResult = null;
+
+      // Check if service is covered by package
+      if (activePackage?.package?.package_entitlements) {
+        const isServiceCovered = activePackage.package.package_entitlements.some(
+          (ent: any) => ent.allowed_service_id === bookingData.serviceId
+        );
+
+        if (isServiceCovered) {
+          // Check if user can use package credit
+          const { data: usageCheck } = await supabase.rpc('use_package_service', {
+            p_user_id: user.id,
+            p_service_id: bookingData.serviceId
+          });
+
+          if (usageCheck?.success) {
+            usePackageCredit = true;
+            packageUsageResult = usageCheck;
+          }
+        }
+      }
+
       // Calculate acceptance deadline (24 hours from now)
       const acceptanceDeadline = new Date();
       acceptanceDeadline.setHours(acceptanceDeadline.getHours() + 24);
@@ -183,12 +223,12 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
         service_id: bookingData.serviceId,
         booking_date: bookingData.bookingDate,
         booking_time: bookingData.bookingTime,
-        total_amount: service.client_price,
+        total_amount: usePackageCredit ? 0 : service.client_price, // Free if using package credit
         duration_minutes: bookingData.durationMinutes,
         special_instructions: bookingData.specialInstructions,
         emergency_booking: bookingData.emergencyBooking || false,
         acceptance_deadline: acceptanceDeadline.toISOString(),
-        location_town: bookingData.locationTown || 'windhoek', // Set location
+        location_town: bookingData.locationTown || 'windhoek',
         status: 'pending'
       };
 
@@ -199,6 +239,18 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
         .single();
 
       if (error) throw error;
+
+      // Log package usage if applicable
+      if (usePackageCredit && activePackage) {
+        await supabase
+          .from('service_usage_logs')
+          .insert({
+            user_id: user.id,
+            package_id: activePackage.package_id,
+            allowed_service_id: bookingData.serviceId,
+            booking_id: data.id
+          });
+      }
 
       // Send notifications to available providers in the same location
       const { data: availableProviders, error: providersError } = await supabase
@@ -215,7 +267,7 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
             user_id: provider.id,
             notification_type: 'new_booking',
             title: 'New Booking Available',
-            message: `New ${service.name} booking for ${bookingData.bookingDate} at ${bookingData.bookingTime} in ${bookingData.locationTown || 'Windhoek'}`,
+            message: `New ${service.name} booking for ${bookingData.bookingDate} at ${bookingData.bookingTime} in ${bookingData.locationTown || 'Windhoek'}${usePackageCredit ? ' (Package Credit)' : ''}`,
             booking_id: data.id
           });
         }
@@ -223,7 +275,9 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
 
       toast({
         title: "Booking Created",
-        description: "Your booking has been created and sent to available providers in your area.",
+        description: usePackageCredit 
+          ? `Your booking has been created using package credit. ${packageUsageResult?.remaining || 0} credits remaining.`
+          : "Your booking has been created and sent to available providers in your area.",
       });
 
       return data;

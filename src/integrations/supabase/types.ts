@@ -1937,6 +1937,14 @@ export type Database = {
       }
     }
     Functions: {
+      activate_user_package: {
+        Args: {
+          p_user_id: string
+          p_package_id: string
+          p_duration_days?: number
+        }
+        Returns: Json
+      }
       approve_pending_transaction: {
         Args: { transaction_id: string; admin_notes_param?: string }
         Returns: Json
@@ -2220,6 +2228,10 @@ export type Database = {
               p_availability_hours?: string
               p_is_emergency?: boolean
             }
+        Returns: Json
+      }
+      use_package_service: {
+        Args: { p_user_id: string; p_service_id: string }
         Returns: Json
       }
     }

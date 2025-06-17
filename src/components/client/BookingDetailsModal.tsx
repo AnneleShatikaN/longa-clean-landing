@@ -136,6 +136,74 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </Card>
           )}
 
+          {/* Provider Visit Notes */}
+          {booking.visit_notes && (
+            <Card>
+              <CardContent className="p-4">
+                <h4 className="font-medium mb-2">Provider Visit Notes</h4>
+                <p className="text-gray-700 text-sm">{booking.visit_notes}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Service Photos */}
+          {(booking.before_photos?.length > 0 || booking.after_photos?.length > 0) && (
+            <Card>
+              <CardContent className="p-4">
+                <h4 className="font-medium mb-3">Service Documentation</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {booking.before_photos?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">Before Photos</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {booking.before_photos.slice(0, 4).map((photo: string, index: number) => (
+                          <img
+                            key={index}
+                            src={photo}
+                            alt={`Before ${index + 1}`}
+                            className="w-full h-20 object-cover rounded border"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {booking.after_photos?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">After Photos</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {booking.after_photos.slice(0, 4).map((photo: string, index: number) => (
+                          <img
+                            key={index}
+                            src={photo}
+                            alt={`After ${index + 1}`}
+                            className="w-full h-20 object-cover rounded border"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Issues Found */}
+          {booking.issues_found?.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <h4 className="font-medium mb-2">Issues Reported</h4>
+                <div className="space-y-1">
+                  {booking.issues_found.map((issue: string, index: number) => (
+                    <div key={index} className="text-sm text-amber-700 bg-amber-50 p-2 rounded">
+                      • {issue}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Rating & Review */}
           {booking.status === 'completed' && (
             <Card>
@@ -171,6 +239,23 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     </Button>
                   </div>
                 ) : null}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Quality Score */}
+          {booking.quality_score && (
+            <Card>
+              <CardContent className="p-4">
+                <h4 className="font-medium mb-2">Service Quality</h4>
+                <div className="flex items-center gap-2">
+                  <div className="flex">
+                    {renderStars(booking.quality_score)}
+                  </div>
+                  <span className="text-sm text-gray-600">
+                    Provider self-rated quality: {booking.quality_score}/5
+                  </span>
+                </div>
               </CardContent>
             </Card>
           )}

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { JobCompletionForm } from './JobCompletionForm';
 
 interface ProviderJobsTabProps {
   availableJobs?: any[];
@@ -31,6 +31,10 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
   const { toast } = useToast();
   const [assignedJobs, setAssignedJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [completionForm, setCompletionForm] = useState<{ isOpen: boolean; booking: any }>({
+    isOpen: false,
+    booking: null
+  });
 
   useEffect(() => {
     if (propMyJobs) {
@@ -100,31 +104,38 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
     }
   };
 
-  const handleCompleteJob = async (bookingId: string) => {
+  const handleCompleteJobWithForm = (booking: any) => {
+    setCompletionForm({ isOpen: true, booking });
+  };
+
+  const handleJobCompletion = async (completionData: {
+    visitNotes: string;
+    beforePhotos: string[];
+    afterPhotos: string[];
+    issuesFound: string[];
+    qualityScore: number;
+  }) => {
     try {
-      if (propOnCompleteJob) {
-        await propOnCompleteJob(bookingId);
-      } else {
-        const { error } = await supabase
-          .from('bookings')
-          .update({ status: 'completed' })
-          .eq('id', bookingId);
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'completed',
+          visit_notes: completionData.visitNotes,
+          before_photos: completionData.beforePhotos,
+          after_photos: completionData.afterPhotos,
+          issues_found: completionData.issuesFound,
+          quality_score: completionData.qualityScore,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', completionForm.booking.id);
 
-        if (error) throw error;
+      if (error) throw error;
 
-        toast({
-          title: "Job Completed",
-          description: "Job marked as completed successfully.",
-        });
-      }
+      setCompletionForm({ isOpen: false, booking: null });
       fetchAssignedJobs();
     } catch (error) {
       console.error('Error completing job:', error);
-      toast({
-        title: "Error",
-        description: "Failed to complete job",
-        variant: "destructive",
-      });
+      throw error;
     }
   };
 
@@ -186,11 +197,11 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleCompleteJob(job.id)}
+            onClick={() => handleCompleteJobWithForm(job)}
             className="flex items-center gap-1"
           >
             <CheckCircle className="h-3 w-3" />
-            Mark Complete
+            Complete Job
           </Button>
         );
       default:
@@ -256,6 +267,13 @@ const ProviderJobsTab: React.FC<ProviderJobsTabProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      <JobCompletionForm
+        isOpen={completionForm.isOpen}
+        onClose={() => setCompletionForm({ isOpen: false, booking: null })}
+        booking={completionForm.booking}
+        onComplete={handleJobCompletion}
+      />
     </div>
   );
 };

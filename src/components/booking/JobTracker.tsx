@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,9 @@ import {
   Star,
   Navigation,
   User,
-  Phone
+  Phone,
+  file-text,
+  AlertTriangle
 } from 'lucide-react';
 import { Booking } from '@/contexts/BookingContext';
 
@@ -228,6 +229,80 @@ export const JobTracker: React.FC<JobTrackerProps> = ({
         </Card>
       )}
 
+      {/* Service Documentation - Enhanced for completed jobs */}
+      {booking.status === 'completed' && (booking.visitNotes || booking.beforePhotos || booking.afterPhotos) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <file-text className="h-5 w-5" />
+              Service Documentation
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {booking.visitNotes && (
+              <div>
+                <h4 className="font-medium mb-2">Provider Notes</h4>
+                <div className="bg-gray-50 p-3 rounded-lg text-sm">
+                  {booking.visitNotes}
+                </div>
+              </div>
+            )}
+
+            {(booking.beforePhotos?.length > 0 || booking.afterPhotos?.length > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {booking.beforePhotos?.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2">Before Photos</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {booking.beforePhotos.slice(0, 4).map((photo: string, index: number) => (
+                        <img
+                          key={index}
+                          src={photo}
+                          alt={`Before ${index + 1}`}
+                          className="w-full h-20 object-cover rounded border"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {booking.afterPhotos?.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2">After Photos</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {booking.afterPhotos.slice(0, 4).map((photo: string, index: number) => (
+                        <img
+                          key={index}
+                          src={photo}
+                          alt={`After ${index + 1}`}
+                          className="w-full h-20 object-cover rounded border"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {booking.issuesFound?.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Issues Reported
+                </h4>
+                <div className="space-y-1">
+                  {booking.issuesFound.map((issue: string, index: number) => (
+                    <div key={index} className="text-sm text-amber-700 bg-amber-50 p-2 rounded">
+                      • {issue}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Rating & Review */}
       {booking.status === 'completed' && !booking.rating && (
         <Card>
@@ -285,6 +360,11 @@ export const JobTracker: React.FC<JobTrackerProps> = ({
               <p className="text-sm text-green-700 mt-1">
                 Thank you for choosing our service. Your rating: {booking.rating} ⭐
               </p>
+              {booking.qualityScore && (
+                <p className="text-xs text-green-600 mt-1">
+                  Provider quality score: {booking.qualityScore}/5
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

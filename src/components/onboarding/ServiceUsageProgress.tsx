@@ -71,7 +71,7 @@ export const ServiceUsageProgress: React.FC = () => {
                     <span>Current cycle</span>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      <span>{usage.cycle_days} days</span>
+                      <span>{usage.cycle_days || 30} days</span>
                     </div>
                   </div>
                 </CardContent>

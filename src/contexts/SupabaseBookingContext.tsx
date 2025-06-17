@@ -207,9 +207,11 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
             p_service_id: bookingData.serviceId
           });
 
-          if (usageCheck?.success) {
+          // Type cast the response properly
+          const usageResult = usageCheck as any;
+          if (usageResult?.success) {
             usePackageCredit = true;
-            packageUsageResult = usageCheck;
+            packageUsageResult = usageResult;
           }
         }
       }

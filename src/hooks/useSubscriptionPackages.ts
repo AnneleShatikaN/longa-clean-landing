@@ -123,13 +123,16 @@ export const useSubscriptionPackages = () => {
 
       if (error) throw error;
 
+      // Type cast the Json response to the expected structure
+      const result = data as any;
+
       return {
-        allowed: data?.success || false,
-        reason: data?.error || 'Unknown error',
+        allowed: result?.success || false,
+        reason: result?.error || 'Unknown error',
         usageInfo: {
-          used_count: data?.used_count || 0,
-          allowed_count: data?.allowed_count || 0,
-          remaining: data?.remaining || 0
+          used_count: result?.used_count || 0,
+          allowed_count: result?.allowed_count || 0,
+          remaining: result?.remaining || 0
         }
       };
     } catch (err) {

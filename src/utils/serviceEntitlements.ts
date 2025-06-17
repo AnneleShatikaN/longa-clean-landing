@@ -9,6 +9,7 @@ export interface ServiceUsage {
   remaining_count: number;
   cycle_start: string;
   cycle_end: string;
+  cycle_days: number; // Add missing property
 }
 
 export const getUserServiceUsage = async (userId: string): Promise<ServiceUsage[]> => {
@@ -64,7 +65,8 @@ export const getUserServiceUsage = async (userId: string): Promise<ServiceUsage[
         allowed_count: entitlement.quantity_per_cycle,
         remaining_count: Math.max(0, entitlement.quantity_per_cycle - usedCount),
         cycle_start: cycleStart.toISOString(),
-        cycle_end: new Date().toISOString()
+        cycle_end: new Date().toISOString(),
+        cycle_days: entitlement.cycle_days
       };
     });
 
@@ -85,13 +87,16 @@ export const checkServiceAccess = async (userId: string, serviceId: string) => {
 
     if (error) throw error;
 
+    // Type cast the Json response to the expected structure
+    const result = data as any;
+
     return {
-      allowed: data?.success || false,
-      reason: data?.error || data?.message || 'Unknown status',
+      allowed: result?.success || false,
+      reason: result?.error || result?.message || 'Unknown status',
       usageInfo: {
-        used_count: data?.used_count || 0,
-        allowed_count: data?.allowed_count || 0,
-        remaining: data?.remaining || 0
+        used_count: result?.used_count || 0,
+        allowed_count: result?.allowed_count || 0,
+        remaining: result?.remaining || 0
       }
     };
   } catch (error) {

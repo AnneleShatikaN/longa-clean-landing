@@ -1,15 +1,26 @@
-
 import React, { useState } from 'react';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, User, MapPin, DollarSign, Filter } from 'lucide-react';
+import { Calendar, Clock, User, MapPin, DollarSign, Filter, Star, ExternalLink } from 'lucide-react';
+import { ProviderRatingModal } from './ProviderRatingModal';
+import { useNavigate } from 'react-router-dom';
 
 export const BookingsTab = () => {
   const { bookings, isLoading } = useSupabaseBookings();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [ratingModal, setRatingModal] = useState<{
+    isOpen: boolean;
+    bookingId: string;
+    providerName: string;
+  }>({
+    isOpen: false,
+    bookingId: '',
+    providerName: ''
+  });
+  const navigate = useNavigate();
   
   const filteredBookings = statusFilter === 'all' 
     ? bookings 
@@ -35,6 +46,24 @@ export const BookingsTab = () => {
       case 'cancelled': return '❌';
       default: return '📋';
     }
+  };
+
+  const handleRateProvider = (bookingId: string, providerName: string) => {
+    setRatingModal({
+      isOpen: true,
+      bookingId,
+      providerName
+    });
+  };
+
+  const handleViewProviderProfile = (providerId: string) => {
+    navigate(`/provider/${providerId}`);
+  };
+
+  const canRateProvider = (booking: any) => {
+    return booking.status === 'completed' && 
+           booking.provider && 
+           !booking.rating;
   };
 
   if (isLoading) {
@@ -136,7 +165,13 @@ export const BookingsTab = () => {
                         {booking.provider && (
                           <div className="flex items-center gap-1">
                             <User className="h-3 w-3" />
-                            <span>{booking.provider.full_name}</span>
+                            <button
+                              onClick={() => handleViewProviderProfile(booking.provider!.id)}
+                              className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                            >
+                              {booking.provider.full_name}
+                              <ExternalLink className="h-3 w-3" />
+                            </button>
                           </div>
                         )}
                         {booking.location_town && (
@@ -171,16 +206,36 @@ export const BookingsTab = () => {
                     </Badge>
                   )}
 
-                  {booking.rating && (
-                    <div className="flex items-center gap-1 text-sm">
-                      <span>Your Rating:</span>
-                      {[...Array(5)].map((_, i) => (
-                        <span key={i} className={i < booking.rating! ? 'text-yellow-400' : 'text-gray-300'}>
-                          ⭐
-                        </span>
-                      ))}
+                  {/* Rating Display or Action */}
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div>
+                      {booking.rating && (
+                        <div className="flex items-center gap-1 text-sm">
+                          <span>Your Rating:</span>
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-4 w-4 ${
+                                i < booking.rating! ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
+                    
+                    {canRateProvider(booking) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRateProvider(booking.id, booking.provider!.full_name)}
+                        className="flex items-center gap-1"
+                      >
+                        <Star className="h-3 w-3" />
+                        Rate Provider
+                      </Button>
+                    )}
+                  </div>
 
                   <div className="text-xs text-gray-500 pt-2 border-t">
                     Booked on {new Date(booking.created_at).toLocaleDateString()}
@@ -191,6 +246,17 @@ export const BookingsTab = () => {
           ))}
         </div>
       )}
+
+      <ProviderRatingModal
+        isOpen={ratingModal.isOpen}
+        onClose={() => setRatingModal({ isOpen: false, bookingId: '', providerName: '' })}
+        bookingId={ratingModal.bookingId}
+        providerName={ratingModal.providerName}
+        onRatingSubmitted={() => {
+          // Refresh bookings or update local state
+          window.location.reload();
+        }}
+      />
     </div>
   );
 };

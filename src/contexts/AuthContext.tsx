@@ -9,9 +9,12 @@ interface AuthContextType {
   user: UserProfile | null;
   session: Session | null;
   loading: boolean;
+  isLoading: boolean; // Add this for ProtectedRoute compatibility
+  isInitialized: boolean; // Add this for ProtectedRoute compatibility
   signUp: (email: string, password: string, metadata: any) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  logout: () => Promise<void>; // Add this for component compatibility
   refreshUser: () => Promise<void>;
 }
 
@@ -21,6 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
@@ -35,7 +39,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return null;
       }
 
-      return data as UserProfile;
+      // Map the database data to UserProfile type
+      const userProfile: UserProfile = {
+        id: data.id,
+        email: data.email,
+        full_name: data.full_name,
+        name: data.full_name, // Map full_name to name
+        phone: data.phone,
+        role: data.role,
+        avatar_url: data.avatar_url,
+        is_active: data.is_active,
+        rating: data.rating,
+        total_jobs: data.total_jobs,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        current_work_location: data.current_work_location,
+        status: data.is_active ? 'active' : 'inactive', // Map is_active to status
+        joinDate: data.created_at, // Map created_at to joinDate
+        lastActive: data.updated_at, // Map updated_at to lastActive
+        isEmailVerified: true, // Default to true for now
+        jobsCompleted: data.total_jobs
+      };
+
+      return userProfile;
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
       return null;
@@ -63,6 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error('Error initializing auth:', error);
       } finally {
         setLoading(false);
+        setIsInitialized(true);
       }
     };
 
@@ -83,6 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         setLoading(false);
+        setIsInitialized(true);
       }
     );
 
@@ -154,14 +182,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Add logout as an alias to signOut for component compatibility
+  const logout = signOut;
+
   return (
     <AuthContext.Provider value={{
       user,
       session,
       loading,
+      isLoading: loading, // Provide isLoading as alias to loading
+      isInitialized,
       signUp,
       signIn,
       signOut,
+      logout, // Add logout method
       refreshUser,
     }}>
       {children}

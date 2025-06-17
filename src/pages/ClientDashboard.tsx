@@ -7,9 +7,11 @@ import { BookingsTab } from '@/components/client/BookingsTab';
 import { MyPackageTab } from '@/components/client/MyPackageTab';
 import { PaymentHistoryTab } from '@/components/client/PaymentHistoryTab';
 import { ProfileTab } from '@/components/client/ProfileTab';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { 
   Home, 
   Calendar, 
@@ -19,7 +21,8 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  Bell
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -28,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 
 const ClientDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -35,6 +39,7 @@ const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { bookings } = useSupabaseBookings();
+  const { unreadCount } = useNotifications();
 
   const pendingBookings = bookings.filter(b => b.status === 'pending').length;
   const completedBookings = bookings.filter(b => b.status === 'completed').length;
@@ -51,6 +56,7 @@ const ClientDashboard = () => {
   const menuItems = [
     { id: 'overview', label: 'Home', icon: Home },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
+    { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
     { id: 'package', label: 'Package', icon: Package },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'profile', label: 'Profile', icon: User },
@@ -105,7 +111,7 @@ const ClientDashboard = () => {
                       }}
                       className={`
                         w-full flex items-center px-3 py-2 rounded-lg text-left
-                        transition-colors duration-200
+                        transition-colors duration-200 relative
                         ${activeTab === item.id 
                           ? 'bg-blue-100 text-blue-700' 
                           : 'text-gray-700 hover:bg-blue-50'
@@ -115,6 +121,11 @@ const ClientDashboard = () => {
                     >
                       <item.icon className="h-4 w-4" />
                       <span className="text-sm">{item.label}</span>
+                      {item.badge && item.badge > 0 && (
+                        <Badge className="ml-auto bg-red-500 text-white text-xs h-4 w-4 p-0 flex items-center justify-center">
+                          {item.badge}
+                        </Badge>
+                      )}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right">
@@ -148,6 +159,12 @@ const ClientDashboard = () => {
                     <span className="font-medium text-green-600">{completedBookings}</span>
                     <span className="text-gray-600 ml-1">Completed</span>
                   </div>
+                  {unreadCount > 0 && (
+                    <div className="text-sm">
+                      <span className="font-medium text-red-600">{unreadCount}</span>
+                      <span className="text-gray-600 ml-1">New Notifications</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -178,6 +195,10 @@ const ClientDashboard = () => {
 
               <TabsContent value="bookings" className="mt-0">
                 <BookingsTab />
+              </TabsContent>
+
+              <TabsContent value="notifications" className="mt-0">
+                <NotificationCenter />
               </TabsContent>
 
               <TabsContent value="package" className="mt-0">

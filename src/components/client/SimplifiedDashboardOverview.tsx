@@ -1,138 +1,74 @@
 
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useServices } from '@/contexts/ServiceContext';
 import { useServiceEntitlements } from '@/hooks/useServiceEntitlements';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { Package, Calendar, Clock, CheckCircle } from 'lucide-react';
+import { Package, Calendar, Clock, Star, ArrowRight, ShoppingBag, CheckCircle, Bell } from 'lucide-react';
 
 export const SimplifiedDashboardOverview = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { services, isLoading: servicesLoading } = useServices();
   const { serviceUsage, isLoading } = useServiceEntitlements();
   const { bookings } = useSupabaseBookings();
   
   const hasActivePackage = serviceUsage.length > 0;
   const recentBookings = bookings.slice(0, 3);
-
-  // Get active services from database (limit to 3 for display)
-  const activeServices = services.filter(service => service.status === 'active').slice(0, 3);
-
-  const handleBookService = (serviceId: string) => {
-    navigate(`/one-off-booking?service_id=${serviceId}`);
-  };
-
-  if (servicesLoading) {
-    return (
-      <div className="space-y-6" style={{ background: 'linear-gradient(to right, #e6f0fa, #fff)', padding: '20px', borderRadius: '8px' }}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="bg-white border-0 animate-pulse" style={{ borderRadius: '8px', padding: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-              <CardContent className="p-0">
-                <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded mb-4"></div>
-                <div className="h-8 bg-gray-200 rounded mb-4"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const pendingBookings = bookings.filter(b => b.status === 'pending').length;
+  const completedBookings = bookings.filter(b => b.status === 'completed').length;
 
   return (
-    <div className="space-y-6" style={{ background: 'linear-gradient(to right, #e6f0fa, #fff)', padding: '20px', borderRadius: '8px' }}>
-      
-      {/* Service Cards Grid - 1x3 elegant layout */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {activeServices.length > 0 ? (
-          activeServices.map((service) => (
-            <Card 
-              key={service.id} 
-              className="bg-white border-0"
-              style={{ 
-                borderRadius: '8px', 
-                padding: '15px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)' 
-              }}
-            >
-              <CardContent className="p-0">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2" style={{ fontSize: '18px' }}>
-                  {service.name}
-                </h3>
-                <p className="text-gray-600 mb-4" style={{ fontSize: '14px' }}>
-                  {service.description}
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xl font-bold text-blue-600">N${service.clientPrice}</span>
-                  <span className="text-sm text-gray-500">
-                    {service.duration.hours}h {service.duration.minutes > 0 ? `${service.duration.minutes}m` : ''}
-                  </span>
-                </div>
-                <Button 
-                  className="w-full bg-blue-900 hover:bg-blue-800 text-white cursor-pointer"
-                  style={{ 
-                    padding: '10px',
-                    fontSize: '16px'
-                  }}
-                  onClick={() => handleBookService(service.id)}
-                >
-                  Book Now
-                </Button>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <div className="col-span-3 text-center py-8">
-            <p className="text-gray-600 mb-4">No services available at the moment.</p>
-            <Button 
-              onClick={() => navigate('/search')}
-              className="bg-blue-100 text-blue-900 hover:bg-blue-200"
-            >
-              Browse All Services
-            </Button>
-          </div>
-        )}
+    <div className="space-y-6">
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-blue-600">{bookings.length}</div>
+            <div className="text-sm text-gray-600">Total Bookings</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-green-600">{completedBookings}</div>
+            <div className="text-sm text-gray-600">Completed</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-orange-600">{pendingBookings}</div>
+            <div className="text-sm text-gray-600">Pending</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-purple-600">{serviceUsage.length}</div>
+            <div className="text-sm text-gray-600">Package Services</div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Browse All Services Button */}
-      {activeServices.length > 0 && (
-        <div className="flex justify-center">
-          <Button 
-            onClick={() => navigate('/search')}
-            className="bg-blue-100 text-blue-900 hover:bg-blue-200"
-            style={{ fontSize: '16px', padding: '12px 24px' }}
-          >
-            Browse All Services
-          </Button>
-        </div>
-      )}
-
-      {/* Package Status */}
-      {hasActivePackage && (
-        <Card className="bg-white border-0" style={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <CardHeader style={{ padding: '15px' }}>
-            <CardTitle className="flex items-center gap-2 text-green-600" style={{ fontSize: '18px' }}>
+      {/* Package Status or Individual Booking Promotion */}
+      {hasActivePackage ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-600">
               <Package className="h-5 w-5" />
               Active Package
             </CardTitle>
           </CardHeader>
-          <CardContent style={{ padding: '15px', paddingTop: '0' }}>
+          <CardContent>
             <div className="space-y-4">
-              <p className="text-gray-600" style={{ fontSize: '14px' }}>
+              <p className="text-gray-600">
                 You have access to {serviceUsage.length} services in your package.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {serviceUsage.slice(0, 4).map((usage) => (
                   <div key={usage.service_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
-                      <div className="font-medium" style={{ fontSize: '14px' }}>{usage.service_name}</div>
+                      <div className="font-medium">{usage.service_name}</div>
                       <div className="text-sm text-gray-600">
                         {usage.used_count}/{usage.allowed_count} used
                       </div>
@@ -154,14 +90,51 @@ export const SimplifiedDashboardOverview = () => {
             </div>
           </CardContent>
         </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-6">
+            <div className="mb-4">
+              <ShoppingBag className="h-12 w-12 text-blue-500 mx-auto mb-3" />
+              <h3 className="text-lg font-semibold mb-2 text-center">Ready to Book a Service?</h3>
+              <p className="text-gray-600 mb-4 text-center">
+                Browse our available services and book what you need, when you need it.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <Button onClick={() => navigate('/search')} className="w-full">
+                Browse All Services
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/subscription-packages')}
+                className="w-full"
+              >
+                <Package className="h-4 w-4 mr-2" />
+                View Packages & Save
+              </Button>
+              <p className="text-xs text-gray-500 text-center">
+                Packages offer better value and priority booking
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Recent Bookings */}
       {recentBookings.length > 0 && (
-        <Card className="bg-white border-0" style={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <CardHeader style={{ padding: '15px' }}>
+        <Card>
+          <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2" style={{ fontSize: '18px' }}>
+              <span className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 Recent Bookings
               </span>
@@ -172,13 +145,13 @@ export const SimplifiedDashboardOverview = () => {
               )}
             </CardTitle>
           </CardHeader>
-          <CardContent style={{ padding: '15px', paddingTop: '0' }}>
+          <CardContent>
             <div className="space-y-3">
               {recentBookings.map((booking) => (
                 <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium" style={{ fontSize: '14px' }}>{booking.service?.name}</h4>
+                      <h4 className="font-medium">{booking.service?.name}</h4>
                       <Badge variant={
                         booking.status === 'completed' ? 'default' : 
                         booking.status === 'pending' ? 'secondary' : 
@@ -212,23 +185,32 @@ export const SimplifiedDashboardOverview = () => {
         </Card>
       )}
 
-      {/* Enhanced Footer Navigation */}
-      <div className="flex justify-center" style={{ padding: '20px' }}>
-        <Card className="bg-white border-0" style={{ borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <CardContent className="text-center" style={{ padding: '20px' }}>
-            <Button 
-              onClick={() => navigate('/subscription-packages')}
-              className="bg-blue-600 hover:bg-blue-700 text-white mb-3"
-              style={{ fontSize: '16px', padding: '12px 24px' }}
-            >
-              Explore Packages & Bookings
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Button onClick={() => navigate('/search')} className="justify-start">
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              Browse Services
             </Button>
-            <p className="text-gray-500" style={{ fontSize: '12px' }}>
-              Packages offer better value and priority booking
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+            <Button variant="outline" onClick={() => navigate('/subscription-packages')} className="justify-start">
+              <Package className="h-4 w-4 mr-2" />
+              View Packages
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/bookings')} className="justify-start">
+              <Calendar className="h-4 w-4 mr-2" />
+              My Bookings
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/profile')} className="justify-start">
+              <Star className="h-4 w-4 mr-2" />
+              My Profile
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

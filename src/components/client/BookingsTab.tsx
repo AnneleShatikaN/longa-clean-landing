@@ -40,8 +40,8 @@ export const BookingsTab: React.FC = () => {
     setRebookData({
       providerId,
       serviceId,
-      providerName: selectedBooking?.users?.full_name,
-      serviceName: selectedBooking?.services?.name
+      providerName: selectedBooking?.provider?.full_name,
+      serviceName: selectedBooking?.service?.name
     });
     setShowDetailsModal(false);
     setShowRebookModal(true);
@@ -91,7 +91,7 @@ export const BookingsTab: React.FC = () => {
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
-                      <h4 className="font-medium">{booking.services?.name}</h4>
+                      <h4 className="font-medium">{booking.service?.name}</h4>
                       <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
@@ -112,14 +112,14 @@ export const BookingsTab: React.FC = () => {
                     </Badge>
                   </div>
 
-                  {booking.users && (
+                  {booking.provider && (
                     <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
                       <User className="h-3 w-3" />
-                      <span>Provider: {booking.users.full_name}</span>
-                      {booking.users.rating > 0 && (
+                      <span>Provider: {booking.provider.full_name}</span>
+                      {booking.provider.rating > 0 && (
                         <>
                           <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                          <span>{booking.users.rating}</span>
+                          <span>{booking.provider.rating}</span>
                         </>
                       )}
                     </div>
@@ -184,7 +184,7 @@ export const BookingsTab: React.FC = () => {
           isOpen={showRatingModal}
           onClose={() => setShowRatingModal(false)}
           bookingId={selectedBooking.id}
-          providerName={selectedBooking.users?.full_name || 'Provider'}
+          providerName={selectedBooking.provider?.full_name || 'Provider'}
           onRatingSubmitted={handleRatingSubmitted}
         />
       )}

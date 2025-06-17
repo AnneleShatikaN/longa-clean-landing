@@ -64,8 +64,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <CardContent className="p-4">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 className="text-lg font-semibold">{booking.services?.name}</h3>
-                  <p className="text-gray-600">{booking.services?.description}</p>
+                  <h3 className="text-lg font-semibold">{booking.service?.name}</h3>
+                  <p className="text-gray-600">{booking.service?.description}</p>
                 </div>
                 <Badge className={getStatusColor(booking.status)}>
                   {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
@@ -94,7 +94,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </Card>
 
           {/* Provider Info */}
-          {booking.users && (
+          {booking.provider && (
             <Card>
               <CardContent className="p-4">
                 <h4 className="font-medium mb-3 flex items-center gap-2">
@@ -103,11 +103,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 </h4>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">{booking.users.full_name}</p>
+                    <p className="font-medium">{booking.provider.full_name}</p>
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <span>{booking.users.rating || 0} rating</span>
-                      <span>• {booking.users.total_jobs || 0} jobs</span>
+                      <span>{booking.provider.rating || 0} rating</span>
+                      <span>• {booking.provider.total_jobs || 0} jobs</span>
                     </div>
                   </div>
                   {canRebook && (

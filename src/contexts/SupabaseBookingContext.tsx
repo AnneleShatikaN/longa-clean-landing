@@ -41,6 +41,7 @@ interface SupabaseBookingContextType {
   getAvailableJobs: () => Promise<BookingWithRelations[]>;
   checkAvailability: (providerId: string, date: string, time: string, duration: number) => Promise<boolean>;
   markNotificationAsRead: (notificationId: string) => Promise<void>;
+  refetchBookings: () => Promise<void>;
 }
 
 const SupabaseBookingContext = createContext<SupabaseBookingContextType | undefined>(undefined);
@@ -497,7 +498,8 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
     cancelBooking,
     getAvailableJobs,
     checkAvailability,
-    markNotificationAsRead
+    markNotificationAsRead,
+    refetchBookings: fetchBookings
   };
 
   return (

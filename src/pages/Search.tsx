@@ -10,15 +10,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { useServiceEntitlements } from '@/hooks/useServiceEntitlements';
-import { Search as SearchIcon, Grid, Package, ArrowLeft, Info } from 'lucide-react';
+import { useLocation } from '@/contexts/LocationContext';
+import { LocationSelector } from '@/components/location/LocationSelector';
+import { Search as SearchIcon, Grid, Package, ArrowLeft, Info, MapPin } from 'lucide-react';
 
 const Search = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { serviceUsage } = useServiceEntitlements();
+  const { selectedLocation, availableLocations } = useLocation();
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
 
   const hasActivePackage = serviceUsage.length > 0;
+  const selectedLocationLabel = availableLocations.find(
+    loc => loc.value === selectedLocation
+  )?.label || 'Unknown Location';
 
   const handleServiceSelection = (serviceId: string) => {
     setSelectedServiceId(serviceId);
@@ -60,11 +66,17 @@ const Search = () => {
           </Button>
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900">Browse Services</h1>
-            <p className="text-gray-600 mt-2">Find and book individual services or explore packages</p>
+            <div className="flex items-center gap-2 mt-2">
+              <MapPin className="h-4 w-4 text-gray-600" />
+              <p className="text-gray-600">Showing services in {selectedLocationLabel}</p>
+            </div>
           </div>
-          <Badge variant={hasActivePackage ? "default" : "secondary"}>
-            {hasActivePackage ? "Package Member" : "Individual Booking"}
-          </Badge>
+          <div className="flex items-center gap-4">
+            <LocationSelector />
+            <Badge variant={hasActivePackage ? "default" : "secondary"}>
+              {hasActivePackage ? "Package Member" : "Individual Booking"}
+            </Badge>
+          </div>
         </div>
 
         {/* Package Promotion for Non-Package Users */}

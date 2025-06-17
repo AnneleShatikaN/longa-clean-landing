@@ -1,11 +1,14 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useServices } from '@/contexts/ServiceContext';
 import { useServiceEntitlements } from '@/hooks/useServiceEntitlements';
+import { useLocationServices } from '@/hooks/useLocationServices';
+import { useLocation } from '@/contexts/LocationContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, DollarSign, Package, ShoppingBag, Users } from 'lucide-react';
+import { LocationSelector } from '@/components/location/LocationSelector';
+import { Clock, DollarSign, Package, ShoppingBag, Users, MapPin } from 'lucide-react';
 
 interface ServiceDisplayWithEntitlementsProps {
   onBookService: (serviceId: string) => void;
@@ -18,17 +21,25 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
   showBookingButton = true,
   allowIndividualBooking = false
 }) => {
-  const { getActiveServices, isLoading: servicesLoading } = useServices();
+  const { isLoading: servicesLoading } = useServices();
   const { serviceUsage, checkAccess } = useServiceEntitlements();
+  const { services: locationServices, isLoading: locationLoading, getServicesByLocation } = useLocationServices();
+  const { selectedLocation } = useLocation();
   
-  const activeServices = getActiveServices();
   const hasActivePackage = serviceUsage.length > 0;
 
-  const formatDuration = (hours: number, minutes: number) => {
+  // Fetch services based on selected location
+  useEffect(() => {
+    getServicesByLocation(selectedLocation);
+  }, [selectedLocation, getServicesByLocation]);
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
     if (hours > 0) {
-      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
     }
-    return `${minutes}m`;
+    return `${mins}m`;
   };
 
   const getServiceUsage = (serviceId: string) => {
@@ -63,7 +74,7 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
     return "default";
   };
 
-  if (servicesLoading) {
+  if (servicesLoading || locationLoading) {
     return (
       <div className="text-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -72,15 +83,18 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
     );
   }
 
-  if (activeServices.length === 0) {
+  if (locationServices.length === 0) {
     return (
       <Card>
         <CardContent className="text-center py-12">
-          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold mb-2">No Services Available</h3>
-          <p className="text-muted-foreground">
-            No services are currently available. Please check back later.
+          <p className="text-muted-foreground mb-4">
+            No services are currently available in your selected location.
           </p>
+          <div className="flex justify-center">
+            <LocationSelector />
+          </div>
         </CardContent>
       </Card>
     );
@@ -90,13 +104,16 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Available Services</h2>
-        <Badge variant="secondary">
-          {activeServices.length} service{activeServices.length !== 1 ? 's' : ''} available
-        </Badge>
+        <div className="flex items-center gap-4">
+          <LocationSelector />
+          <Badge variant="secondary">
+            {locationServices.length} service{locationServices.length !== 1 ? 's' : ''} available
+          </Badge>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {activeServices.map((service) => {
+        {locationServices.map((service) => {
           const usage = getServiceUsage(service.id);
           const canBook = canBookService(service.id);
           const isPackageService = usage !== undefined;
@@ -107,8 +124,8 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-lg">{service.name}</CardTitle>
                   <div className="flex flex-col gap-1">
-                    <Badge variant={service.type === 'one-off' ? 'default' : 'secondary'}>
-                      {service.type}
+                    <Badge variant={service.service_type === 'one-off' ? 'default' : 'secondary'}>
+                      {service.service_type}
                     </Badge>
                     {isPackageService && (
                       <Badge variant="outline" className="text-xs">
@@ -128,11 +145,15 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1">
                     <DollarSign className="h-4 w-4" />
-                    <span>N${service.clientPrice}</span>
+                    <span>N${service.client_price}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    <span>{formatDuration(service.duration.hours, service.duration.minutes)}</span>
+                    <span>{formatDuration(service.duration_minutes)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    <span>{service.provider_count} providers</span>
                   </div>
                 </div>
 
@@ -151,6 +172,14 @@ export const ServiceDisplayWithEntitlements: React.FC<ServiceDisplayWithEntitlem
                         style={{ width: `${(usage.used_count / usage.allowed_count) * 100}%` }}
                       />
                     </div>
+                  </div>
+                )}
+
+                {/* Coverage Areas */}
+                {service.coverage_areas && service.coverage_areas.length > 0 && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>Available in {service.coverage_areas.length} area{service.coverage_areas.length !== 1 ? 's' : ''}</span>
                   </div>
                 )}
 

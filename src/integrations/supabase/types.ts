@@ -1422,6 +1422,7 @@ export type Database = {
         Row: {
           client_price: number
           commission_percentage: number | null
+          coverage_areas: string[] | null
           created_at: string | null
           description: string | null
           duration_minutes: number
@@ -1436,6 +1437,7 @@ export type Database = {
         Insert: {
           client_price: number
           commission_percentage?: number | null
+          coverage_areas?: string[] | null
           created_at?: string | null
           description?: string | null
           duration_minutes: number
@@ -1450,6 +1452,7 @@ export type Database = {
         Update: {
           client_price?: number
           commission_percentage?: number | null
+          coverage_areas?: string[] | null
           created_at?: string | null
           description?: string | null
           duration_minutes?: number
@@ -1827,6 +1830,7 @@ export type Database = {
           phone: string | null
           rating: number | null
           role: string
+          service_coverage_areas: string[] | null
           total_jobs: number | null
           updated_at: string | null
         }
@@ -1842,6 +1846,7 @@ export type Database = {
           phone?: string | null
           rating?: number | null
           role: string
+          service_coverage_areas?: string[] | null
           total_jobs?: number | null
           updated_at?: string | null
         }
@@ -1857,6 +1862,7 @@ export type Database = {
           phone?: string | null
           rating?: number | null
           role?: string
+          service_coverage_areas?: string[] | null
           total_jobs?: number | null
           updated_at?: string | null
         }
@@ -2035,12 +2041,37 @@ export type Database = {
           growth_rate: number
         }[]
       }
+      get_providers_by_location: {
+        Args: { location_filter?: string; service_id_filter?: string }
+        Returns: {
+          id: string
+          full_name: string
+          rating: number
+          total_jobs: number
+          current_work_location: string
+          service_coverage_areas: string[]
+        }[]
+      }
       get_search_suggestions: {
         Args: { partial_query: string; limit_results?: number }
         Returns: {
           suggestion: string
           category: string
           popularity: number
+        }[]
+      }
+      get_services_by_location: {
+        Args: { location_filter?: string }
+        Returns: {
+          id: string
+          name: string
+          description: string
+          service_type: string
+          client_price: number
+          duration_minutes: number
+          tags: string[]
+          coverage_areas: string[]
+          provider_count: number
         }[]
       }
       gtrgm_compress: {

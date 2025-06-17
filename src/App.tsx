@@ -1,144 +1,82 @@
-
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/toaster';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient } from 'react-query';
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/contexts/AuthContext';
 import { UserProvider } from '@/contexts/UserContext';
 import { DataModeProvider } from '@/contexts/DataModeContext';
+import { DataProvider } from '@/contexts/DataContext';
 import { ServiceProvider } from '@/contexts/ServiceContext';
 import { PayoutProvider } from '@/contexts/PayoutContext';
 import { SupabaseBookingProvider } from '@/contexts/SupabaseBookingContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
-import Index from '@/pages/Index';
-import Auth from '@/pages/Auth';
-import Search from '@/pages/Search';
-import SubscriptionPackages from '@/pages/SubscriptionPackages';
-import OneOffBooking from '@/pages/OneOffBooking';
-import BookingConfirmation from '@/pages/BookingConfirmation';
-import NotificationCenter from '@/pages/NotificationCenter';
-import ClientDashboard from '@/pages/ClientDashboard';
-import ProviderDashboard from '@/pages/ProviderDashboard';
-import AdminDashboard from '@/pages/AdminDashboard';
-import AdminSetup from '@/pages/AdminSetup';
-import NotFound from '@/pages/NotFound';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
-
-import ProviderProfile from '@/pages/ProviderProfile';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import Home from './pages/Home';
+import About from './pages/About';
+import Contact from './pages/Contact';
+import Services from './pages/Services';
+import Auth from './pages/Auth';
+import ClientDashboard from './pages/ClientDashboard';
+import ProviderDashboard from './pages/ProviderDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import UserProfile from './pages/UserProfile';
+import ServiceDetails from './pages/ServiceDetails';
+import BookingPage from './pages/BookingPage';
+import OneOffBooking from './pages/OneOffBooking';
+import SubscriptionPackages from './pages/SubscriptionPackages';
+import Search from './pages/Search';
+import ProviderAvailability from './pages/ProviderAvailability';
+import { LocationProvider } from '@/contexts/LocationContext';
 
 function App() {
   return (
-    <Router>
-      <QueryClientProvider client={new QueryClient()}>
-        <AuthProvider>
-          <UserProvider>
-            <DataModeProvider>
-              <NotificationProvider>
-                <ServiceProvider>
-                  <PayoutProvider>
-                    <SupabaseBookingProvider>
-                      <div className="min-h-screen bg-gray-50">
-                        <Toaster />
-                        <Routes>
-                          <Route path="/" element={<Index />} />
-                          <Route path="/auth" element={<Auth />} />
-                          <Route path="/search" element={<Search />} />
-                          <Route path="/subscription-packages" element={<SubscriptionPackages />} />
-                          <Route path="/one-off-booking" element={<OneOffBooking />} />
-                          <Route path="/booking-confirmation" element={
-                            <ProtectedRoute allowedRoles={['client']}>
-                              <BookingConfirmation />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/provider/:providerId" element={<ProviderProfile />} />
-                          
-                          {/* Notifications route - accessible to all authenticated users */}
-                          <Route
-                            path="/notifications"
-                            element={
-                              <ProtectedRoute allowedRoles={['client', 'provider', 'admin']}>
-                                <NotificationCenter />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="/notification-center"
-                            element={
-                              <ProtectedRoute allowedRoles={['client', 'provider', 'admin']}>
-                                <NotificationCenter />
-                              </ProtectedRoute>
-                            }
-                          />
-                          
-                          {/* Protected Routes */}
-                          <Route
-                            path="/client-dashboard"
-                            element={
-                              <ProtectedRoute allowedRoles={['client']}>
-                                <ClientDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="/dashboard/client"
-                            element={
-                              <ProtectedRoute allowedRoles={['client']}>
-                                <ClientDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="/provider-dashboard"
-                            element={
-                              <ProtectedRoute allowedRoles={['provider']}>
-                                <ProviderDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="/dashboard/provider"
-                            element={
-                              <ProtectedRoute allowedRoles={['provider']}>
-                                <ProviderDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="/admin-dashboard"
-                            element={
-                              <ProtectedRoute allowedRoles={['admin']}>
-                                <AdminDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="/dashboard/admin"
-                            element={
-                              <ProtectedRoute allowedRoles={['admin']}>
-                                <AdminDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="/admin-setup"
-                            element={
-                              <ProtectedRoute allowedRoles={['admin']}>
-                                <AdminSetup />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
-                      </div>
-                    </SupabaseBookingProvider>
-                  </PayoutProvider>
-                </ServiceProvider>
-              </NotificationProvider>
-            </DataModeProvider>
-          </UserProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </Router>
+    <QueryClient>
+      <BrowserRouter>
+        <TooltipProvider>
+          <AuthProvider>
+            <UserProvider>
+              <DataModeProvider>
+                <DataProvider>
+                  <ServiceProvider>
+                    <LocationProvider>
+                      <PayoutProvider>
+                        <SupabaseBookingProvider>
+                          <NotificationProvider>
+                            <ErrorBoundary>
+                              <div className="min-h-screen bg-background">
+                                <Routes>
+                                  <Route path="/" element={<Home />} />
+                                  <Route path="/about" element={<About />} />
+                                  <Route path="/contact" element={<Contact />} />
+                                  <Route path="/services" element={<Services />} />
+                                  <Route path="/auth" element={<Auth />} />
+                                  <Route path="/profile" element={<UserProfile />} />
+                                  <Route path="/client-dashboard" element={<ClientDashboard />} />
+                                  <Route path="/provider-dashboard" element={<ProviderDashboard />} />
+                                  <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                                  <Route path="/service/:id" element={<ServiceDetails />} />
+                                  <Route path="/booking" element={<BookingPage />} />
+                                  <Route path="/one-off-booking" element={<OneOffBooking />} />
+                                  <Route path="/subscription-packages" element={<SubscriptionPackages />} />
+                                  <Route path="/search" element={<Search />} />
+                                  <Route path="/provider-availability" element={<ProviderAvailability />} />
+                                </Routes>
+                                <Toaster />
+                              </div>
+                            </ErrorBoundary>
+                          </NotificationProvider>
+                        </SupabaseBookingProvider>
+                      </PayoutProvider>
+                    </LocationProvider>
+                  </ServiceProvider>
+                </DataProvider>
+              </DataModeProvider>
+            </UserProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </BrowserRouter>
+    </QueryClient>
   );
 }
 

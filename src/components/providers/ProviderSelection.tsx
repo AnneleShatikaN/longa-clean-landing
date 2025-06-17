@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ProviderProfile } from './ProviderProfile';
-import { useProviderSearch } from '@/hooks/useProviderSearch';
+import { useLocationServices } from '@/hooks/useLocationServices';
+import { useLocation } from '@/contexts/LocationContext';
 import { Search, MapPin, Star, Users } from 'lucide-react';
 
 interface ProviderSelectionProps {
@@ -17,7 +18,7 @@ interface ProviderSelectionProps {
 
 export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
   serviceId,
-  location = 'windhoek',
+  location,
   onProviderSelected,
   selectedProviderId
 }) => {
@@ -25,16 +26,16 @@ export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
   const [sortBy, setSortBy] = useState<'rating' | 'jobs' | 'availability'>('rating');
   const [selectedProvider, setSelectedProvider] = useState<string | undefined>(selectedProviderId);
   
-  const { searchProviders, providers, isLoading } = useProviderSearch();
+  const { providers, isLoading, getProvidersByLocation } = useLocationServices();
+  const { selectedLocation } = useLocation();
+
+  // Use provided location or fall back to context location
+  const effectiveLocation = location || selectedLocation;
 
   useEffect(() => {
     // Search for providers when component mounts or filters change
-    searchProviders({
-      serviceType: 'one-off', // You can make this dynamic based on service
-      minRating: 0,
-      maxDistance: 50
-    });
-  }, [searchProviders]);
+    getProvidersByLocation(effectiveLocation, serviceId);
+  }, [getProvidersByLocation, effectiveLocation, serviceId]);
 
   const handleProviderSelect = (providerId: string) => {
     setSelectedProvider(providerId);
@@ -62,7 +63,8 @@ export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
       case 'jobs':
         return b.total_jobs - a.total_jobs;
       case 'availability':
-        return Number(b.available) - Number(a.available);
+        // For now, just sort by rating when availability is selected
+        return b.rating - a.rating;
       default:
         return 0;
     }
@@ -134,10 +136,10 @@ export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
           </Select>
         </div>
         
-        {location && (
+        {effectiveLocation && (
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4" />
-            <span>Showing providers in {location.charAt(0).toUpperCase() + location.slice(1)}</span>
+            <span>Showing providers in {effectiveLocation.charAt(0).toUpperCase() + effectiveLocation.slice(1)}</span>
           </div>
         )}
       </CardHeader>
@@ -152,7 +154,7 @@ export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
                 full_name={provider.full_name}
                 rating={provider.rating}
                 total_jobs={provider.total_jobs}
-                isAvailable={provider.available}
+                isAvailable={true} // We can enhance this with real availability checking
                 onSelectProvider={handleProviderSelect}
                 onMessageProvider={handleMessageProvider}
                 onCheckAvailability={handleCheckAvailability}
@@ -167,7 +169,7 @@ export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
             <p className="text-gray-600">
               {searchTerm 
                 ? "Try adjusting your search criteria"
-                : "No providers are currently available for this service"
+                : "No providers are currently available for this service in your location"
               }
             </p>
           </div>

@@ -59,23 +59,30 @@ export const ImprovedBookingsTab: React.FC = () => {
       if (error) throw error;
 
       // Safely process the data with proper type handling
-      const processedBookings: Booking[] = (data || []).map(booking => ({
-        id: booking.id,
-        booking_date: booking.booking_date,
-        booking_time: booking.booking_time,
-        status: booking.status,
-        total_amount: booking.total_amount,
-        location_town: booking.location_town,
-        service: booking.service && typeof booking.service === 'object' && 'name' in booking.service 
-          ? { name: booking.service.name } 
-          : null,
-        provider: booking.provider && 
-                 typeof booking.provider === 'object' && 
-                 booking.provider !== null &&
-                 'full_name' in booking.provider
-          ? { full_name: booking.provider.full_name }
-          : null
-      }));
+      const processedBookings: Booking[] = (data || []).map(booking => {
+        // Handle provider data safely
+        let providerData: { full_name: string } | null = null;
+        if (booking.provider && 
+            typeof booking.provider === 'object' && 
+            booking.provider !== null &&
+            'full_name' in booking.provider &&
+            typeof booking.provider.full_name === 'string') {
+          providerData = { full_name: booking.provider.full_name };
+        }
+
+        return {
+          id: booking.id,
+          booking_date: booking.booking_date,
+          booking_time: booking.booking_time,
+          status: booking.status,
+          total_amount: booking.total_amount,
+          location_town: booking.location_town,
+          service: booking.service && typeof booking.service === 'object' && 'name' in booking.service 
+            ? { name: booking.service.name } 
+            : null,
+          provider: providerData
+        };
+      });
 
       setBookings(processedBookings);
     } catch (err: any) {

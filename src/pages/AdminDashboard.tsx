@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AdminOverview } from '@/components/admin/AdminOverview';
-import { ServiceManagement } from '@/components/admin/ServiceManagement';
+import ServiceManagement from '@/components/admin/ServiceManagement';
 import { EnhancedBookingManager } from '@/components/admin/EnhancedBookingManager';
 import { PayoutSystemTabs } from '@/components/admin/PayoutSystemTabs';
 import { ProviderVerificationManagement } from '@/components/admin/ProviderVerificationManagement';

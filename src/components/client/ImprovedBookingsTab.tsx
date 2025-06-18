@@ -63,7 +63,9 @@ export const ImprovedBookingsTab: React.FC = () => {
         // Handle provider data safely
         let providerData: { full_name: string } | null = null;
         const providerObj = booking.provider;
-        if (providerObj !== null && 
+        
+        // Fixed null check
+        if (providerObj && 
             typeof providerObj === 'object' && 
             'full_name' in providerObj &&
             typeof (providerObj as { full_name: unknown }).full_name === 'string') {

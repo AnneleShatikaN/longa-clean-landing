@@ -2500,6 +2500,10 @@ export type Database = {
         Args: { service_id: string; client_price: number }
         Returns: number
       }
+      cancel_booking_with_refund: {
+        Args: { p_booking_id: string; p_reason: string }
+        Returns: undefined
+      }
       check_booking_conflicts: {
         Args: {
           provider_id: string
@@ -2657,12 +2661,33 @@ export type Database = {
         Args: { check_date: string }
         Returns: boolean
       }
+      mark_client_no_show: {
+        Args: { p_booking_id: string; p_reason: string }
+        Returns: undefined
+      }
+      mark_provider_no_show: {
+        Args: { p_booking_id: string; p_reason: string }
+        Returns: undefined
+      }
       perform_financial_reconciliation: {
         Args: { start_date: string; end_date: string }
         Returns: string
       }
+      reassign_booking_provider: {
+        Args: {
+          p_booking_id: string
+          p_new_provider_id: string
+          p_reassignment_reason: string
+          p_old_provider_id?: string
+        }
+        Returns: undefined
+      }
       refresh_service_analytics: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      rollback_booking_status: {
+        Args: { p_booking_id: string; p_new_status: string; p_reason: string }
         Returns: undefined
       }
       search_bookings: {
@@ -2783,6 +2808,20 @@ export type Database = {
       unaccent_init: {
         Args: { "": unknown }
         Returns: unknown
+      }
+      update_booking_details: {
+        Args: {
+          p_booking_id: string
+          p_booking_date?: string
+          p_booking_time?: string
+          p_service_id?: string
+          p_total_amount?: number
+          p_special_instructions?: string
+          p_location_town?: string
+          p_duration_minutes?: number
+          p_emergency_booking?: boolean
+        }
+        Returns: undefined
       }
       update_global_setting: {
         Args: { setting_key: string; setting_value: Json }

@@ -127,18 +127,21 @@ export const BookingEditModal: React.FC<BookingEditModalProps> = ({
 
     setIsLoading(true);
     try {
-      // Call the update booking function
-      const { error } = await supabase.rpc('update_booking_details', {
-        p_booking_id: booking.id,
-        p_booking_date: formData.booking_date,
-        p_booking_time: formData.booking_time,
-        p_service_id: formData.service_id,
-        p_total_amount: formData.total_amount,
-        p_special_instructions: formData.special_instructions,
-        p_location_town: formData.location_town,
-        p_duration_minutes: formData.duration_minutes,
-        p_emergency_booking: formData.emergency_booking
-      });
+      // Update booking details directly
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          booking_date: formData.booking_date,
+          booking_time: formData.booking_time,
+          service_id: formData.service_id,
+          total_amount: formData.total_amount,
+          special_instructions: formData.special_instructions,
+          location_town: formData.location_town,
+          duration_minutes: formData.duration_minutes,
+          emergency_booking: formData.emergency_booking,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
 
       if (error) throw error;
 

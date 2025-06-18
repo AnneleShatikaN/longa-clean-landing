@@ -75,16 +75,26 @@ export const useBookingActions = () => {
     });
   };
 
-  // New enhanced booking actions
+  // New enhanced booking actions using direct SQL
   const updateBookingDetails = async (bookingId: string, updates: any) => {
     setIsLoading(bookingId);
     setError(null);
 
     try {
-      const { error } = await supabase.rpc('update_booking_details', {
-        p_booking_id: bookingId,
-        ...updates
-      });
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          booking_date: updates.p_booking_date,
+          booking_time: updates.p_booking_time,
+          service_id: updates.p_service_id,
+          total_amount: updates.p_total_amount,
+          special_instructions: updates.p_special_instructions,
+          location_town: updates.p_location_town,
+          duration_minutes: updates.p_duration_minutes,
+          emergency_booking: updates.p_emergency_booking,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
 
       if (error) throw error;
 
@@ -117,14 +127,29 @@ export const useBookingActions = () => {
     setError(null);
 
     try {
-      const { error } = await supabase.rpc('reassign_booking_provider', {
-        p_booking_id: bookingId,
-        p_new_provider_id: newProviderId,
-        p_reassignment_reason: reason,
-        p_old_provider_id: oldProviderId
-      });
+      // Update the booking with new provider
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({
+          provider_id: newProviderId,
+          assigned_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Log the reassignment
+      const { error: assignmentError } = await supabase
+        .from('booking_assignments')
+        .insert({
+          booking_id: bookingId,
+          provider_id: newProviderId,
+          assignment_reason: reason,
+          auto_assigned: false
+        });
+
+      if (assignmentError) console.warn('Assignment logging failed:', assignmentError);
 
       toast({
         title: "Provider Reassigned",
@@ -155,11 +180,13 @@ export const useBookingActions = () => {
     setError(null);
 
     try {
-      const { error } = await supabase.rpc('rollback_booking_status', {
-        p_booking_id: bookingId,
-        p_new_status: newStatus,
-        p_reason: reason
-      });
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
 
       if (error) throw error;
 
@@ -192,11 +219,20 @@ export const useBookingActions = () => {
     setError(null);
 
     try {
-      const rpcFunction = type === 'client' ? 'mark_client_no_show' : 'mark_provider_no_show';
-      const { error } = await supabase.rpc(rpcFunction, {
-        p_booking_id: bookingId,
-        p_reason: reason
-      });
+      const updateData: any = {
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      };
+
+      if (type === 'provider') {
+        updateData.provider_id = null;
+        updateData.assigned_at = null;
+      }
+
+      const { error } = await supabase
+        .from('bookings')
+        .update(updateData)
+        .eq('id', bookingId);
 
       if (error) throw error;
 
@@ -229,10 +265,13 @@ export const useBookingActions = () => {
     setError(null);
 
     try {
-      const { error } = await supabase.rpc('cancel_booking_with_refund', {
-        p_booking_id: bookingId,
-        p_reason: reason
-      });
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
 
       if (error) throw error;
 

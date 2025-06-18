@@ -50,31 +50,33 @@ export const BookingStatusManager: React.FC<BookingStatusManagerProps> = ({
 
     setIsLoading(true);
     try {
-      let rpcFunction = '';
-      let params: any = {
-        p_booking_id: booking.id,
-        p_reason: reason
+      let updateData: any = {
+        updated_at: new Date().toISOString()
       };
 
       switch (actionType) {
         case 'rollback':
-          rpcFunction = 'rollback_booking_status';
-          params.p_new_status = 'in_progress';
+          updateData.status = 'in_progress';
           break;
         case 'cancel_with_refund':
-          rpcFunction = 'cancel_booking_with_refund';
+          updateData.status = 'cancelled';
           break;
         case 'mark_no_show_client':
-          rpcFunction = 'mark_client_no_show';
+          updateData.status = 'cancelled';
           break;
         case 'mark_no_show_provider':
-          rpcFunction = 'mark_provider_no_show';
+          updateData.status = 'cancelled';
+          updateData.provider_id = null;
+          updateData.assigned_at = null;
           break;
         default:
           throw new Error('Invalid action type');
       }
 
-      const { error } = await supabase.rpc(rpcFunction, params);
+      const { error } = await supabase
+        .from('bookings')
+        .update(updateData)
+        .eq('id', booking.id);
 
       if (error) throw error;
 

@@ -134,14 +134,29 @@ export const BookingReassignmentModal: React.FC<BookingReassignmentModalProps> =
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.rpc('reassign_booking_provider', {
-        p_booking_id: booking.id,
-        p_new_provider_id: selectedProvider,
-        p_reassignment_reason: reassignmentReason,
-        p_old_provider_id: booking.provider_id
-      });
+      // Update the booking with new provider
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({
+          provider_id: selectedProvider,
+          assigned_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Log the reassignment
+      const { error: assignmentError } = await supabase
+        .from('booking_assignments')
+        .insert({
+          booking_id: booking.id,
+          provider_id: selectedProvider,
+          assignment_reason: reassignmentReason,
+          auto_assigned: false
+        });
+
+      if (assignmentError) console.warn('Assignment logging failed:', assignmentError);
 
       toast({
         title: "Booking Reassigned",

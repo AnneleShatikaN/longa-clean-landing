@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Users, 
   Star, 
@@ -45,6 +45,7 @@ export const BookingReassignmentModal: React.FC<BookingReassignmentModalProps> =
   onReassignmentComplete
 }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [filteredProviders, setFilteredProviders] = useState<Provider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>('');
@@ -132,6 +133,15 @@ export const BookingReassignmentModal: React.FC<BookingReassignmentModalProps> =
       return;
     }
 
+    if (!user?.id) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to perform this action",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Update the booking with new provider
@@ -146,12 +156,13 @@ export const BookingReassignmentModal: React.FC<BookingReassignmentModalProps> =
 
       if (updateError) throw updateError;
 
-      // Log the reassignment
+      // Log the reassignment with assigned_by field
       const { error: assignmentError } = await supabase
         .from('booking_assignments')
         .insert({
           booking_id: booking.id,
           provider_id: selectedProvider,
+          assigned_by: user.id,
           assignment_reason: reassignmentReason,
           auto_assigned: false
         });

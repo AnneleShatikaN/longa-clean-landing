@@ -64,7 +64,7 @@ export const ImprovedBookingsTab: React.FC = () => {
         let providerData: { full_name: string } | null = null;
         const providerObj = booking.provider;
         
-        // Fixed null check
+        // Fixed null check - ensure providerObj is not null before accessing properties
         if (providerObj && 
             typeof providerObj === 'object' && 
             'full_name' in providerObj &&

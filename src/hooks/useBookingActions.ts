@@ -1,12 +1,13 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useBookingActions = () => {
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const updateBookingStatus = async (bookingId: string, newStatus: string, additionalData?: any) => {
     setIsLoading(bookingId);
@@ -123,6 +124,17 @@ export const useBookingActions = () => {
   };
 
   const reassignProvider = async (bookingId: string, newProviderId: string, reason: string, oldProviderId?: string) => {
+    if (!user?.id) {
+      const errorMessage = 'You must be logged in to perform this action';
+      setError(errorMessage);
+      toast({
+        title: "Authentication Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      return { success: false, error: errorMessage };
+    }
+
     setIsLoading(bookingId);
     setError(null);
 
@@ -139,12 +151,13 @@ export const useBookingActions = () => {
 
       if (updateError) throw updateError;
 
-      // Log the reassignment
+      // Log the reassignment with assigned_by field
       const { error: assignmentError } = await supabase
         .from('booking_assignments')
         .insert({
           booking_id: bookingId,
           provider_id: newProviderId,
+          assigned_by: user.id,
           assignment_reason: reason,
           auto_assigned: false
         });
@@ -183,7 +196,7 @@ export const useBookingActions = () => {
       const { error } = await supabase
         .from('bookings')
         .update({
-          status: newStatus,
+          status: newStatus as 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled',
           updated_at: new Date().toISOString()
         })
         .eq('id', bookingId);

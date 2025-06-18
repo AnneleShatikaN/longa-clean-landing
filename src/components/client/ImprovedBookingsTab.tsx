@@ -62,12 +62,12 @@ export const ImprovedBookingsTab: React.FC = () => {
       const processedBookings: Booking[] = (data || []).map(booking => {
         // Handle provider data safely
         let providerData: { full_name: string } | null = null;
-        if (booking.provider && 
-            typeof booking.provider === 'object' && 
-            booking.provider !== null &&
-            'full_name' in booking.provider &&
-            typeof (booking.provider as any).full_name === 'string') {
-          providerData = { full_name: (booking.provider as any).full_name };
+        const providerObj = booking.provider;
+        if (providerObj && 
+            typeof providerObj === 'object' && 
+            'full_name' in providerObj &&
+            typeof (providerObj as any).full_name === 'string') {
+          providerData = { full_name: (providerObj as any).full_name };
         }
 
         return {

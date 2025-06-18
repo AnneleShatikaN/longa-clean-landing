@@ -61,16 +61,17 @@ export const ImprovedBookingsTab: React.FC = () => {
 
       // Safely process the data with proper type handling
       const processedBookings: Booking[] = (data || []).map(booking => {
-        // Handle provider data safely
+        // Handle provider data safely with proper null checking
         let providerData: { full_name: string } | null = null;
         const providerObj = booking.provider;
         
-        // Fixed TypeScript null check
+        // Enhanced null check that TypeScript will understand
         if (providerObj !== null && 
+            providerObj !== undefined &&
             typeof providerObj === 'object' && 
             'full_name' in providerObj &&
-            typeof (providerObj as any).full_name === 'string') {
-          providerData = { full_name: (providerObj as any).full_name };
+            typeof providerObj.full_name === 'string') {
+          providerData = { full_name: providerObj.full_name };
         }
 
         return {

@@ -76,9 +76,15 @@ export const useAutomatedPayouts = () => {
 
   const createPayoutRule = useCallback(async (ruleData: Partial<PayoutRule>) => {
     try {
+      // Ensure rule_name is provided since it's required
+      const ruleToInsert = {
+        ...ruleData,
+        rule_name: ruleData.rule_name || 'Default Rule'
+      };
+
       const { data, error } = await supabase
         .from('payout_automation_rules')
-        .insert([ruleData])
+        .insert(ruleToInsert)
         .select()
         .single();
 
@@ -168,11 +174,11 @@ export const useAutomatedPayouts = () => {
       // Create a new automated batch
       const { data: batchData, error: batchError } = await supabase
         .from('automated_payout_batches')
-        .insert([{
+        .insert({
           batch_name: `AUTO_BATCH_${new Date().toISOString().split('T')[0]}`,
           batch_type: 'scheduled',
           status: 'processing'
-        }])
+        })
         .select()
         .single();
 

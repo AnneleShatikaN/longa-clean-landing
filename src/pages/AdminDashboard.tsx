@@ -2,8 +2,7 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AdminOverview } from '@/components/admin/AdminOverview';
-import ServiceManagement from '@/components/admin/ServiceManagement';
-import { EnhancedBookingManager } from '@/components/admin/EnhancedBookingManager';
+import { default as ServiceManagement } from '@/components/admin/ServiceManagement';
 import { PayoutSystemTabs } from '@/components/admin/PayoutSystemTabs';
 import { ProviderVerificationManagement } from '@/components/admin/ProviderVerificationManagement';
 import { PackageManager } from '@/components/admin/PackageManager';
@@ -12,6 +11,7 @@ import { EnhancedFinancialDashboard } from '@/components/financial/EnhancedFinan
 import { AdminSettings } from '@/components/admin/AdminSettings';
 import { SupportSystem } from '@/components/admin/support/SupportSystem';
 import { LaunchDashboard } from '@/components/admin/launch/LaunchDashboard';
+import { useAdminData } from '@/hooks/useAdminData';
 import { 
   LayoutDashboard, 
   Settings, 
@@ -27,6 +27,7 @@ import {
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const { data, isLoading } = useAdminData();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -37,7 +38,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-10 lg:grid-cols-10">
+          <TabsList className="grid w-full grid-cols-9 lg:grid-cols-9">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden md:inline">Overview</span>
@@ -45,10 +46,6 @@ const AdminDashboard = () => {
             <TabsTrigger value="services" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               <span className="hidden md:inline">Services</span>
-            </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span className="hidden md:inline">Bookings</span>
             </TabsTrigger>
             <TabsTrigger value="financial" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
@@ -81,15 +78,11 @@ const AdminDashboard = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            <AdminOverview />
+            <AdminOverview data={data} isLoading={isLoading} />
           </TabsContent>
 
           <TabsContent value="services" className="space-y-6">
             <ServiceManagement />
-          </TabsContent>
-
-          <TabsContent value="bookings" className="space-y-6">
-            <EnhancedBookingManager />
           </TabsContent>
 
           <TabsContent value="financial" className="space-y-6">

@@ -65,12 +65,12 @@ export const ImprovedBookingsTab: React.FC = () => {
         let providerData: { full_name: string } | null = null;
         const providerObj = booking.provider;
         
-        // Improved null check - ensure providerObj exists and has the required property
+        // Fixed TypeScript null check
         if (providerObj !== null && 
             typeof providerObj === 'object' && 
             'full_name' in providerObj &&
-            typeof providerObj.full_name === 'string') {
-          providerData = { full_name: providerObj.full_name };
+            typeof (providerObj as any).full_name === 'string') {
+          providerData = { full_name: (providerObj as any).full_name };
         }
 
         return {

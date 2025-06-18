@@ -9,6 +9,124 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      automated_payout_batches: {
+        Row: {
+          approval_notes: string | null
+          approved_at: string | null
+          approved_by: string | null
+          batch_name: string
+          batch_type: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          payout_count: number
+          processed_at: string | null
+          processed_by: string | null
+          processing_notes: string | null
+          scheduled_date: string | null
+          status: string | null
+          total_amount: number
+        }
+        Insert: {
+          approval_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          batch_name: string
+          batch_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          payout_count?: number
+          processed_at?: string | null
+          processed_by?: string | null
+          processing_notes?: string | null
+          scheduled_date?: string | null
+          status?: string | null
+          total_amount?: number
+        }
+        Update: {
+          approval_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          batch_name?: string
+          batch_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          payout_count?: number
+          processed_at?: string | null
+          processed_by?: string | null
+          processing_notes?: string | null
+          scheduled_date?: string | null
+          status?: string | null
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automated_payout_batches_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "automated_payout_batches_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "automated_payout_batches_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automated_payout_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "automated_payout_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "automated_payout_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automated_payout_batches_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "automated_payout_batches_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "automated_payout_batches_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_assignments: {
         Row: {
           assigned_at: string | null
@@ -49,6 +167,13 @@ export type Database = {
             foreignKeyName: "booking_assignments_assigned_by_fkey"
             columns: ["assigned_by"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "booking_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -64,6 +189,13 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "booking_assignments_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -172,6 +304,13 @@ export type Database = {
             foreignKeyName: "bookings_assigned_by_fkey"
             columns: ["assigned_by"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "bookings_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -186,6 +325,13 @@ export type Database = {
             foreignKeyName: "bookings_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -194,6 +340,13 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "bookings_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -209,6 +362,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "analytics_service_popularity"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_profitability"
+            referencedColumns: ["service_id"]
           },
           {
             foreignKeyName: "bookings_service_id_fkey"
@@ -258,6 +418,82 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      customer_analytics: {
+        Row: {
+          avg_booking_value: number | null
+          avg_rating_given: number | null
+          churn_risk_score: number | null
+          client_id: string | null
+          completed_bookings: number | null
+          created_at: string | null
+          customer_lifetime_value: number | null
+          first_booking_date: string | null
+          id: string
+          last_booking_date: string | null
+          last_calculated_at: string | null
+          preferred_locations: string[] | null
+          preferred_services: string[] | null
+          total_bookings: number | null
+          total_spent: number | null
+        }
+        Insert: {
+          avg_booking_value?: number | null
+          avg_rating_given?: number | null
+          churn_risk_score?: number | null
+          client_id?: string | null
+          completed_bookings?: number | null
+          created_at?: string | null
+          customer_lifetime_value?: number | null
+          first_booking_date?: string | null
+          id?: string
+          last_booking_date?: string | null
+          last_calculated_at?: string | null
+          preferred_locations?: string[] | null
+          preferred_services?: string[] | null
+          total_bookings?: number | null
+          total_spent?: number | null
+        }
+        Update: {
+          avg_booking_value?: number | null
+          avg_rating_given?: number | null
+          churn_risk_score?: number | null
+          client_id?: string | null
+          completed_bookings?: number | null
+          created_at?: string | null
+          customer_lifetime_value?: number | null
+          first_booking_date?: string | null
+          id?: string
+          last_booking_date?: string | null
+          last_calculated_at?: string | null
+          preferred_locations?: string[] | null
+          preferred_services?: string[] | null
+          total_bookings?: number | null
+          total_spent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_analytics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "customer_analytics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "customer_analytics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       docs_links: {
         Row: {
@@ -398,6 +634,13 @@ export type Database = {
             foreignKeyName: "financial_reconciliation_reconciled_by_fkey"
             columns: ["reconciled_by"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "financial_reconciliation_reconciled_by_fkey"
+            columns: ["reconciled_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -437,6 +680,13 @@ export type Database = {
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "global_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -504,6 +754,13 @@ export type Database = {
             foreignKeyName: "messages_recipient_id_fkey"
             columns: ["recipient_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -512,6 +769,13 @@ export type Database = {
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -628,6 +892,13 @@ export type Database = {
             foreignKeyName: "notification_preferences_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -707,6 +978,13 @@ export type Database = {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -741,6 +1019,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "analytics_service_popularity"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_entitlements_allowed_service_id_fkey"
+            columns: ["allowed_service_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_profitability"
+            referencedColumns: ["service_id"]
           },
           {
             foreignKeyName: "package_entitlements_allowed_service_id_fkey"
@@ -804,6 +1089,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "analytics_service_popularity"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_service_inclusions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_profitability"
+            referencedColumns: ["service_id"]
           },
           {
             foreignKeyName: "package_service_inclusions_service_id_fkey"
@@ -918,6 +1210,83 @@ export type Database = {
             foreignKeyName: "payout_analytics_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payout_analytics_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payout_automation_rules: {
+        Row: {
+          auto_approve_under_amount: number | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          minimum_payout_amount: number | null
+          payout_day: number | null
+          payout_frequency: string | null
+          performance_bonus_enabled: boolean | null
+          performance_bonus_percentage: number | null
+          performance_bonus_threshold: number | null
+          provider_id: string | null
+          rule_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_approve_under_amount?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          minimum_payout_amount?: number | null
+          payout_day?: number | null
+          payout_frequency?: string | null
+          performance_bonus_enabled?: boolean | null
+          performance_bonus_percentage?: number | null
+          performance_bonus_threshold?: number | null
+          provider_id?: string | null
+          rule_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_approve_under_amount?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          minimum_payout_amount?: number | null
+          payout_day?: number | null
+          payout_frequency?: string | null
+          performance_bonus_enabled?: boolean | null
+          performance_bonus_percentage?: number | null
+          performance_bonus_threshold?: number | null
+          provider_id?: string | null
+          rule_name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_automation_rules_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payout_automation_rules_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payout_automation_rules_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -981,6 +1350,13 @@ export type Database = {
             foreignKeyName: "payout_batches_approved_by_fkey"
             columns: ["approved_by"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payout_batches_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -995,6 +1371,13 @@ export type Database = {
             foreignKeyName: "payout_batches_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payout_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1003,6 +1386,13 @@ export type Database = {
             columns: ["processed_by"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payout_batches_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -1108,6 +1498,13 @@ export type Database = {
             foreignKeyName: "payouts_approved_by_fkey"
             columns: ["approved_by"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payouts_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1137,6 +1534,13 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payouts_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -1215,6 +1619,13 @@ export type Database = {
             foreignKeyName: "fk_pending_transactions_approved_by"
             columns: ["approved_by"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "fk_pending_transactions_approved_by"
+            columns: ["approved_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1236,6 +1647,13 @@ export type Database = {
             foreignKeyName: "fk_pending_transactions_service_id"
             columns: ["service_id"]
             isOneToOne: false
+            referencedRelation: "analytics_service_profitability"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "fk_pending_transactions_service_id"
+            columns: ["service_id"]
+            isOneToOne: false
             referencedRelation: "service_search_analytics"
             referencedColumns: ["id"]
           },
@@ -1251,6 +1669,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "fk_pending_transactions_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -1306,6 +1731,13 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_availability_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -1378,6 +1810,13 @@ export type Database = {
             foreignKeyName: "provider_banking_details_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_banking_details_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1386,6 +1825,13 @@ export type Database = {
             columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_banking_details_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -1455,6 +1901,13 @@ export type Database = {
             foreignKeyName: "provider_documents_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_documents_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1463,6 +1916,13 @@ export type Database = {
             columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_documents_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -1526,6 +1986,13 @@ export type Database = {
             foreignKeyName: "provider_earnings_summaries_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_earnings_summaries_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1583,6 +2050,13 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_payment_methods_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -1655,6 +2129,13 @@ export type Database = {
             foreignKeyName: "provider_references_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_references_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1663,6 +2144,13 @@ export type Database = {
             columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_references_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -1714,6 +2202,13 @@ export type Database = {
             foreignKeyName: "provider_specializations_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_specializations_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1723,6 +2218,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "analytics_service_popularity"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_specializations_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_profitability"
+            referencedColumns: ["service_id"]
           },
           {
             foreignKeyName: "provider_specializations_service_id_fkey"
@@ -1786,7 +2288,91 @@ export type Database = {
             foreignKeyName: "provider_time_off_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_time_off_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      revenue_forecasts: {
+        Row: {
+          accuracy_score: number | null
+          actual_bookings: number | null
+          actual_revenue: number | null
+          confidence_level: number | null
+          created_at: string | null
+          factors: Json | null
+          forecast_date: string
+          forecast_type: string
+          id: string
+          location: string | null
+          predicted_bookings: number
+          predicted_revenue: number
+          service_id: string | null
+        }
+        Insert: {
+          accuracy_score?: number | null
+          actual_bookings?: number | null
+          actual_revenue?: number | null
+          confidence_level?: number | null
+          created_at?: string | null
+          factors?: Json | null
+          forecast_date: string
+          forecast_type: string
+          id?: string
+          location?: string | null
+          predicted_bookings: number
+          predicted_revenue: number
+          service_id?: string | null
+        }
+        Update: {
+          accuracy_score?: number | null
+          actual_bookings?: number | null
+          actual_revenue?: number | null
+          confidence_level?: number | null
+          created_at?: string | null
+          factors?: Json | null
+          forecast_date?: string
+          forecast_type?: string
+          id?: string
+          location?: string | null
+          predicted_bookings?: number
+          predicted_revenue?: number
+          service_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_forecasts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_popularity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_forecasts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_profitability"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "revenue_forecasts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_search_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_forecasts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
@@ -1828,6 +2414,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "search_analytics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -1876,6 +2469,13 @@ export type Database = {
             foreignKeyName: "service_usage_logs_allowed_service_id_fkey"
             columns: ["allowed_service_id"]
             isOneToOne: false
+            referencedRelation: "analytics_service_profitability"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "service_usage_logs_allowed_service_id_fkey"
+            columns: ["allowed_service_id"]
+            isOneToOne: false
             referencedRelation: "service_search_analytics"
             referencedColumns: ["id"]
           },
@@ -1892,6 +2492,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "analytics_service_popularity"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_usage_logs_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_service_profitability"
+            referencedColumns: ["service_id"]
           },
           {
             foreignKeyName: "service_usage_logs_package_id_fkey"
@@ -1997,6 +2604,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "subscription_packages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -2133,6 +2747,13 @@ export type Database = {
             foreignKeyName: "support_ticket_responses_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "support_ticket_responses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -2196,6 +2817,13 @@ export type Database = {
             foreignKeyName: "support_tickets_assigned_to_fkey"
             columns: ["assigned_to"]
             isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "support_tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -2211,6 +2839,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "support_tickets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -2297,6 +2932,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "user_behavior_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
             referencedColumns: ["provider_id"]
           },
           {
@@ -2395,6 +3037,18 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_financial_overview: {
+        Row: {
+          avg_booking_value: number | null
+          completed_bookings: number | null
+          month: string | null
+          platform_commission: number | null
+          provider_payouts: number | null
+          revenue: number | null
+          total_bookings: number | null
+        }
+        Relationships: []
+      }
       analytics_provider_performance: {
         Row: {
           avg_rating: number | null
@@ -2404,6 +3058,21 @@ export type Database = {
           provider_id: string | null
           provider_name: string | null
           total_earnings: number | null
+          total_jobs: number | null
+        }
+        Relationships: []
+      }
+      analytics_provider_rankings: {
+        Row: {
+          bookings_30_days: number | null
+          completed_30_days: number | null
+          completion_rate: number | null
+          overall_rating: number | null
+          provider_id: string | null
+          provider_name: string | null
+          recent_rating: number | null
+          revenue_30_days: number | null
+          service_coverage_areas: string[] | null
           total_jobs: number | null
         }
         Relationships: []
@@ -2427,6 +3096,22 @@ export type Database = {
           name: string | null
           service_type: string | null
           total_bookings: number | null
+          total_revenue: number | null
+        }
+        Relationships: []
+      }
+      analytics_service_profitability: {
+        Row: {
+          avg_price: number | null
+          avg_rating: number | null
+          completed_bookings: number | null
+          coverage_areas: string[] | null
+          profit_margin: number | null
+          service_id: string | null
+          service_name: string | null
+          service_type: string | null
+          total_bookings: number | null
+          total_payouts: number | null
           total_revenue: number | null
         }
         Relationships: []
@@ -2480,6 +3165,10 @@ export type Database = {
         }
         Returns: Json
       }
+      calculate_customer_ltv: {
+        Args: { client_id_param: string }
+        Returns: number
+      }
       calculate_enhanced_payout: {
         Args:
           | { service_id: string; client_price: number; is_emergency?: boolean }
@@ -2499,6 +3188,16 @@ export type Database = {
       calculate_provider_payout: {
         Args: { service_id: string; client_price: number }
         Returns: number
+      }
+      calculate_revenue_forecast: {
+        Args: { forecast_months?: number; service_id_filter?: string }
+        Returns: {
+          month: string
+          predicted_revenue: number
+          predicted_bookings: number
+          confidence_level: number
+          growth_trend: number
+        }[]
       }
       cancel_booking_with_refund: {
         Args: { p_booking_id: string; p_reason: string }

@@ -65,6 +65,7 @@ export const ImprovedBookingsTab: React.FC = () => {
         const providerObj = booking.provider;
         if (providerObj && 
             typeof providerObj === 'object' && 
+            providerObj !== null &&
             'full_name' in providerObj &&
             typeof (providerObj as any).full_name === 'string') {
           providerData = { full_name: (providerObj as any).full_name };
@@ -99,7 +100,7 @@ export const ImprovedBookingsTab: React.FC = () => {
 
   const filteredBookings = bookings.filter(booking => {
     const matchesSearch = booking.service?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         booking.provider?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
+                         (booking.provider && booking.provider.full_name?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
     
     return matchesSearch && matchesStatus;

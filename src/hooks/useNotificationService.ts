@@ -39,17 +39,30 @@ export const useNotificationService = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Fetch notification templates
+  // Fetch notification templates from email_templates table (existing)
   const fetchTemplates = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('notification_templates')
+        .from('email_templates')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTemplates(data || []);
+      
+      // Transform email_templates to match NotificationTemplate interface
+      const transformedTemplates: NotificationTemplate[] = (data || []).map(template => ({
+        id: template.id,
+        name: template.name,
+        type: 'email' as const,
+        subject: template.subject,
+        content: template.html_content || template.text_content || '',
+        variables: template.variables ? Object.keys(template.variables) : [],
+        language: 'en',
+        is_active: template.is_active
+      }));
+      
+      setTemplates(transformedTemplates);
     } catch (err: any) {
       console.error('Error fetching templates:', err);
       toast({
@@ -75,7 +88,7 @@ export const useNotificationService = () => {
     } = {}
   ) => {
     try {
-      // Get user preferences
+      // Get user preferences from notification_preferences table
       const { data: preferences } = await supabase
         .from('notification_preferences')
         .select('*')
@@ -83,7 +96,7 @@ export const useNotificationService = () => {
 
       const userPrefs = preferences?.[0] || {};
       
-      // Get template
+      // Get template from our templates array
       const template = templates.find(t => t.id === templateId);
       if (!template) throw new Error('Template not found');
 
@@ -105,7 +118,7 @@ export const useNotificationService = () => {
         await handleEscalation(userId, templateId, variables, results);
       }
 
-      // Log communication analytics
+      // Log communication analytics using notifications table
       await logCommunicationAttempt({
         user_id: userId,
         template_id: templateId,
@@ -261,18 +274,23 @@ export const useNotificationService = () => {
     }
   };
 
-  // Log communication attempt for analytics
+  // Log communication attempt for analytics using notifications table
   const logCommunicationAttempt = async (data: any) => {
     try {
       await supabase
-        .from('communication_analytics')
+        .from('notifications')
         .insert({
           user_id: data.user_id,
-          template_id: data.template_id,
-          channels: data.channels,
+          type: 'system',
+          title: 'Communication Log',
+          message: `Attempted delivery via ${data.channels.join(', ')}`,
+          channel: 'system',
           priority: data.priority,
-          delivery_results: data.results,
-          attempted_at: new Date().toISOString()
+          data: {
+            channels: data.channels,
+            results: data.results,
+            attempted_at: new Date().toISOString()
+          }
         });
     } catch (error) {
       console.error('Error logging communication attempt:', error);
@@ -289,21 +307,19 @@ export const useNotificationService = () => {
     return result;
   };
 
-  // Fetch communication analytics
+  // Fetch communication analytics using notifications table
   const fetchAnalytics = useCallback(async () => {
     try {
       const { data, error } = await supabase
-        .from('communication_analytics')
+        .from('notifications')
         .select('*')
-        .gte('attempted_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 
       if (error) throw error;
 
       // Calculate analytics
       const totalAttempts = data?.length || 0;
-      const successfulDeliveries = data?.filter(d => 
-        d.delivery_results?.some((r: any) => r.success)
-      ).length || 0;
+      const successfulDeliveries = data?.filter(d => d.delivered).length || 0;
 
       setAnalytics({
         delivery_rate: totalAttempts > 0 ? (successfulDeliveries / totalAttempts) * 100 : 0,

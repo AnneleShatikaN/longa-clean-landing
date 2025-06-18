@@ -61,7 +61,7 @@ export const ImprovedBookingsTab: React.FC = () => {
 
       // Safely process the data with proper type handling
       const processedBookings: Booking[] = (data || []).map(booking => {
-        // Handle provider data safely with proper null checking
+        // Handle provider data safely with comprehensive null checking
         let providerData: { full_name: string } | null = null;
         const providerObj = booking.provider;
         

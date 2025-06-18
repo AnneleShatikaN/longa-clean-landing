@@ -258,7 +258,7 @@ export const TemplateManager: React.FC = () => {
                 className="min-h-[120px]"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Use {{variable_name}} for dynamic content
+                Use {`{{variable_name}}`} for dynamic content
               </p>
             </div>
 

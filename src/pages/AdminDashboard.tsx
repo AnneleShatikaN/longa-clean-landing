@@ -11,7 +11,10 @@ import { EnhancedFinancialDashboard } from '@/components/financial/EnhancedFinan
 import { AdminSettings } from '@/components/admin/AdminSettings';
 import { SupportSystem } from '@/components/admin/support/SupportSystem';
 import { LaunchDashboard } from '@/components/admin/launch/LaunchDashboard';
+import { MobileAdminDashboard } from '@/components/admin/mobile/MobileAdminDashboard';
+import { CommunicationDashboard } from '@/components/admin/communication/CommunicationDashboard';
 import { useAdminData } from '@/hooks/useAdminData';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   LayoutDashboard, 
   Settings, 
@@ -22,12 +25,19 @@ import {
   BarChart3, 
   HeadphonesIcon,
   Rocket,
-  Brain
+  Brain,
+  MessageSquare
 } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const { data, isLoading } = useAdminData();
+  const isMobile = useIsMobile();
+
+  // Show mobile-optimized dashboard on mobile devices
+  if (isMobile) {
+    return <MobileAdminDashboard data={data} isLoading={isLoading} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -38,7 +48,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9 lg:grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10 lg:grid-cols-10">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden md:inline">Overview</span>
@@ -66,6 +76,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden md:inline">Analytics</span>
+            </TabsTrigger>
+            <TabsTrigger value="communication" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              <span className="hidden md:inline">Communication</span>
             </TabsTrigger>
             <TabsTrigger value="support" className="flex items-center gap-2">
               <HeadphonesIcon className="h-4 w-4" />
@@ -103,6 +117,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="analytics" className="space-y-6">
             <AnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="communication" className="space-y-6">
+            <CommunicationDashboard />
           </TabsContent>
 
           <TabsContent value="support" className="space-y-6">

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -64,12 +65,12 @@ export const ImprovedBookingsTab: React.FC = () => {
         let providerData: { full_name: string } | null = null;
         const providerObj = booking.provider;
         
-        // Fixed null check - ensure providerObj is not null before accessing properties
-        if (providerObj && 
+        // Improved null check - ensure providerObj exists and has the required property
+        if (providerObj !== null && 
             typeof providerObj === 'object' && 
             'full_name' in providerObj &&
-            typeof (providerObj as { full_name: unknown }).full_name === 'string') {
-          providerData = { full_name: (providerObj as { full_name: string }).full_name };
+            typeof providerObj.full_name === 'string') {
+          providerData = { full_name: providerObj.full_name };
         }
 
         return {

@@ -66,8 +66,8 @@ export const ImprovedBookingsTab: React.FC = () => {
         if (providerObj !== null && 
             typeof providerObj === 'object' && 
             'full_name' in providerObj &&
-            typeof (providerObj as any).full_name === 'string') {
-          providerData = { full_name: (providerObj as any).full_name };
+            typeof (providerObj as { full_name: unknown }).full_name === 'string') {
+          providerData = { full_name: (providerObj as { full_name: string }).full_name };
         }
 
         return {

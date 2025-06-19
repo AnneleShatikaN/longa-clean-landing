@@ -12,7 +12,6 @@ import {
   Mail, 
   MapPin, 
   Star, 
-  Calendar,
   Save,
   Edit,
   ShieldCheck,
@@ -30,7 +29,6 @@ interface ProfileData {
   verification_status: string;
   rating: number;
   total_jobs: number;
-  bio: string;
   avatar_url: string;
 }
 
@@ -47,7 +45,6 @@ export const ProviderProfilePage: React.FC = () => {
     verification_status: 'pending',
     rating: 0,
     total_jobs: 0,
-    bio: '',
     avatar_url: ''
   });
 
@@ -72,7 +69,6 @@ export const ProviderProfilePage: React.FC = () => {
           verification_status: data.verification_status || 'pending',
           rating: data.rating || 0,
           total_jobs: data.total_jobs || 0,
-          bio: data.bio || '',
           avatar_url: data.avatar_url || ''
         });
       }
@@ -96,7 +92,6 @@ export const ProviderProfilePage: React.FC = () => {
           full_name: profileData.full_name,
           phone: profileData.phone,
           current_work_location: profileData.current_work_location,
-          bio: profileData.bio,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
@@ -255,16 +250,6 @@ export const ProviderProfilePage: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Input
-                  id="bio"
-                  value={profileData.bio}
-                  onChange={(e) => handleInputChange('bio', e.target.value)}
-                  placeholder="Tell clients about yourself..."
-                />
-              </div>
-
               <div className="flex space-x-2">
                 <Button
                   onClick={handleSaveProfile}
@@ -315,16 +300,6 @@ export const ProviderProfilePage: React.FC = () => {
                   <p className="font-medium">{profileData.current_work_location || 'Not set'}</p>
                 </div>
               </div>
-
-              {profileData.bio && (
-                <div className="flex items-start space-x-3">
-                  <User className="h-4 w-4 text-gray-500 mt-1" />
-                  <div>
-                    <p className="text-sm text-gray-600">Bio</p>
-                    <p className="font-medium">{profileData.bio}</p>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </CardContent>

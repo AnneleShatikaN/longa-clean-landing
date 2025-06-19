@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -68,6 +67,7 @@ export const ImprovedBookingsTab: React.FC = () => {
         // Enhanced null check with proper type guard
         if (providerObj && 
             typeof providerObj === 'object' && 
+            !Array.isArray(providerObj) &&
             'full_name' in providerObj && 
             typeof providerObj.full_name === 'string') {
           providerData = { full_name: providerObj.full_name };

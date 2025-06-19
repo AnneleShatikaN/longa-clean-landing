@@ -32,12 +32,12 @@ export const useServicesEnhanced = () => {
 
     try {
       if (dataMode === 'mock' && mockData?.admin?.services) {
-        // Use mock data
+        // Use mock data with proper type casting
         const mockServices = mockData.admin.services.map((service: any) => ({
           id: service.id,
           name: service.name,
           description: service.description || '',
-          service_type: service.service_type,
+          service_type: (service.service_type === 'subscription' ? 'subscription' : 'one-off') as 'one-off' | 'subscription',
           client_price: service.client_price,
           provider_fee: service.provider_fee,
           commission_percentage: service.commission_percentage,

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,8 +11,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { 
   Calendar, 
-  Dol
-Sign, ArrowLeft } from 'lucide-react';
+  DollarSign, 
+  ArrowLeft 
+} from 'lucide-react';
 
 const ProviderDashboard = () => {
   const { user } = useAuth();

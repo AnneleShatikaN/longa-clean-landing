@@ -50,7 +50,7 @@ export const useServicesEnhanced = () => {
         }));
         setServices(mockServices);
       } else if (dataMode === 'live') {
-        // Fetch from Supabase
+        // Fetch from Supabase with proper type casting
         const { data, error } = await supabase
           .from('services')
           .select('*')
@@ -58,7 +58,25 @@ export const useServicesEnhanced = () => {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setServices(data || []);
+        
+        // Transform Supabase data to match ServiceData interface
+        const transformedServices: ServiceData[] = (data || []).map((service: any) => ({
+          id: service.id,
+          name: service.name,
+          description: service.description || '',
+          service_type: (service.service_type === 'subscription' ? 'subscription' : 'one-off') as 'one-off' | 'subscription',
+          client_price: service.client_price,
+          provider_fee: service.provider_fee,
+          commission_percentage: service.commission_percentage,
+          duration_minutes: service.duration_minutes,
+          is_active: service.is_active,
+          tags: service.tags || [],
+          coverage_areas: service.coverage_areas || ['windhoek'],
+          created_at: service.created_at || new Date().toISOString(),
+          updated_at: service.updated_at || new Date().toISOString()
+        }));
+        
+        setServices(transformedServices);
       } else {
         // No data mode
         setServices([]);

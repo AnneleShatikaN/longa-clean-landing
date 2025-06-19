@@ -38,10 +38,29 @@ export const useFAQSystem = () => {
       });
 
       if (error) throw error;
-      setFaqs(data || []);
+      
+      // Map the data to match our FAQ interface
+      const mappedFaqs = data?.map((item: any) => ({
+        id: item.id,
+        question: item.question,
+        answer: item.answer,
+        category: item.category,
+        views: item.views,
+        priority: item.priority,
+        visibility_rules: typeof item.visibility_rules === 'string' 
+          ? JSON.parse(item.visibility_rules) 
+          : item.visibility_rules,
+        is_active: true,
+        created_at: item.created_at,
+        updated_at: item.created_at,
+        created_by: item.created_by,
+        last_updated_by: item.last_updated_by
+      })) || [];
+
+      setFaqs(mappedFaqs);
 
       // Extract unique categories
-      const uniqueCategories = [...new Set(data?.map(faq => faq.category) || [])];
+      const uniqueCategories = [...new Set(mappedFaqs.map(faq => faq.category))];
       setCategories(uniqueCategories);
     } catch (error) {
       console.error('Error fetching FAQs:', error);
@@ -56,7 +75,15 @@ export const useFAQSystem = () => {
       const { data, error } = await supabase
         .from('support_faqs')
         .insert([{
-          ...faqData,
+          question: faqData.question!,
+          answer: faqData.answer!,
+          category: faqData.category || 'General',
+          priority: faqData.priority || 0,
+          visibility_rules: faqData.visibility_rules || {
+            show_all: true,
+            user_roles: ['client', 'provider', 'admin'],
+            pages: ['all']
+          },
           created_by: user?.id,
           last_updated_by: user?.id
         }])
@@ -65,9 +92,26 @@ export const useFAQSystem = () => {
 
       if (error) throw error;
       
-      setFaqs(prev => [data, ...prev]);
+      const mappedFaq: FAQ = {
+        id: data.id,
+        question: data.question,
+        answer: data.answer,
+        category: data.category,
+        views: data.views || 0,
+        priority: data.priority || 0,
+        visibility_rules: typeof data.visibility_rules === 'string' 
+          ? JSON.parse(data.visibility_rules) 
+          : data.visibility_rules,
+        is_active: data.is_active,
+        created_at: data.created_at,
+        updated_at: data.updated_at || data.created_at,
+        created_by: data.created_by,
+        last_updated_by: data.last_updated_by
+      };
+
+      setFaqs(prev => [mappedFaq, ...prev]);
       toast.success('FAQ created successfully');
-      return data;
+      return mappedFaq;
     } catch (error: any) {
       toast.error(error.message);
       throw error;
@@ -79,7 +123,11 @@ export const useFAQSystem = () => {
       const { data, error } = await supabase
         .from('support_faqs')
         .update({
-          ...updates,
+          question: updates.question,
+          answer: updates.answer,
+          category: updates.category,
+          priority: updates.priority,
+          visibility_rules: updates.visibility_rules,
           last_updated_by: user?.id,
           updated_at: new Date().toISOString()
         })
@@ -89,9 +137,26 @@ export const useFAQSystem = () => {
 
       if (error) throw error;
 
-      setFaqs(prev => prev.map(faq => faq.id === id ? data : faq));
+      const mappedFaq: FAQ = {
+        id: data.id,
+        question: data.question,
+        answer: data.answer,
+        category: data.category,
+        views: data.views || 0,
+        priority: data.priority || 0,
+        visibility_rules: typeof data.visibility_rules === 'string' 
+          ? JSON.parse(data.visibility_rules) 
+          : data.visibility_rules,
+        is_active: data.is_active,
+        created_at: data.created_at,
+        updated_at: data.updated_at || data.created_at,
+        created_by: data.created_by,
+        last_updated_by: data.last_updated_by
+      };
+
+      setFaqs(prev => prev.map(faq => faq.id === id ? mappedFaq : faq));
       toast.success('FAQ updated successfully');
-      return data;
+      return mappedFaq;
     } catch (error: any) {
       toast.error(error.message);
       throw error;

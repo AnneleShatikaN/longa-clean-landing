@@ -34,7 +34,7 @@ export const AuthCallback = () => {
         navigate('/auth');
       } else {
         // Default callback handling
-        const { error } = await supabase.auth.getSessionFromUrl();
+        const { error } = await supabase.auth.exchangeCodeForSession(window.location.search);
         if (error) {
           toast.error('Authentication failed');
           navigate('/auth');

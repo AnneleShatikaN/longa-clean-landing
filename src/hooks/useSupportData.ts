@@ -47,7 +47,28 @@ export const useSupportData = () => {
         .order('views', { ascending: false });
 
       if (error) throw error;
-      setFaqs(data || []);
+      
+      // Map the data to match our FAQ interface
+      const mappedFaqs = data?.map((item: any) => ({
+        id: item.id,
+        question: item.question,
+        answer: item.answer,
+        category: item.category,
+        views: item.views || 0,
+        priority: item.priority || 0,
+        visibility_rules: typeof item.visibility_rules === 'string' 
+          ? JSON.parse(item.visibility_rules) 
+          : item.visibility_rules || {
+              show_all: true,
+              user_roles: ['client', 'provider', 'admin'],
+              pages: ['all']
+            },
+        is_active: item.is_active,
+        created_at: item.created_at,
+        updated_at: item.updated_at || item.created_at
+      })) || [];
+
+      setFaqs(mappedFaqs);
     } catch (error) {
       console.error('Error fetching FAQs:', error);
       toast({
@@ -97,12 +118,27 @@ export const useSupportData = () => {
 
       if (error) throw error;
 
-      setFaqs(prev => [data, ...prev]);
+      const mappedFaq: FAQ = {
+        id: data.id,
+        question: data.question,
+        answer: data.answer,
+        category: data.category,
+        views: data.views || 0,
+        priority: data.priority || 0,
+        visibility_rules: typeof data.visibility_rules === 'string' 
+          ? JSON.parse(data.visibility_rules) 
+          : data.visibility_rules,
+        is_active: data.is_active,
+        created_at: data.created_at,
+        updated_at: data.updated_at || data.created_at
+      };
+
+      setFaqs(prev => [mappedFaq, ...prev]);
       toast({
         title: "Success",
         description: "FAQ added successfully",
       });
-      return data;
+      return mappedFaq;
     } catch (error) {
       console.error('Error adding FAQ:', error);
       toast({
@@ -118,19 +154,40 @@ export const useSupportData = () => {
     try {
       const { data, error } = await supabase
         .from('support_faqs')
-        .update(updates)
+        .update({
+          question: updates.question,
+          answer: updates.answer,
+          category: updates.category,
+          priority: updates.priority,
+          visibility_rules: updates.visibility_rules
+        })
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
 
-      setFaqs(prev => prev.map(faq => faq.id === id ? data : faq));
+      const mappedFaq: FAQ = {
+        id: data.id,
+        question: data.question,
+        answer: data.answer,
+        category: data.category,
+        views: data.views || 0,
+        priority: data.priority || 0,
+        visibility_rules: typeof data.visibility_rules === 'string' 
+          ? JSON.parse(data.visibility_rules) 
+          : data.visibility_rules,
+        is_active: data.is_active,
+        created_at: data.created_at,
+        updated_at: data.updated_at || data.created_at
+      };
+
+      setFaqs(prev => prev.map(faq => faq.id === id ? mappedFaq : faq));
       toast({
         title: "Success",
         description: "FAQ updated successfully",
       });
-      return data;
+      return mappedFaq;
     } catch (error) {
       console.error('Error updating FAQ:', error);
       toast({
@@ -274,11 +331,117 @@ export const useSupportData = () => {
     isLoading,
     addFAQ,
     updateFAQ,
-    deleteFAQ,
-    addDocLink,
-    updateDocLink,
-    deleteDocLink,
-    incrementFAQViews,
+    deleteFAQ: async (id: string) => {
+      try {
+        const { error } = await supabase
+          .from('support_faqs')
+          .update({ is_active: false })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        setFaqs(prev => prev.filter(faq => faq.id !== id));
+        toast({
+          title: "Success",
+          description: "FAQ deleted successfully",
+        });
+      } catch (error) {
+        console.error('Error deleting FAQ:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete FAQ",
+          variant: "destructive",
+        });
+        throw error;
+      }
+    },
+    addDocLink: async (docData: Omit<DocLink, 'id' | 'is_active' | 'sort_order'>) => {
+      try {
+        const { data, error } = await supabase
+          .from('docs_links')
+          .insert([{ ...docData, is_active: true, sort_order: 0 }])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setDocLinks(prev => [data, ...prev]);
+        toast({
+          title: "Success",
+          description: "Document added successfully",
+        });
+        return data;
+      } catch (error) {
+        console.error('Error adding document:', error);
+        toast({
+          title: "Error",
+          description: "Failed to add document",
+          variant: "destructive",
+        });
+        throw error;
+      }
+    },
+    updateDocLink: async (id: string, updates: Partial<DocLink>) => {
+      try {
+        const { data, error } = await supabase
+          .from('docs_links')
+          .update(updates)
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setDocLinks(prev => prev.map(doc => doc.id === id ? data : doc));
+        toast({
+          title: "Success",
+          description: "Document updated successfully",
+        });
+        return data;
+      } catch (error) {
+        console.error('Error updating document:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update document",
+          variant: "destructive",
+        });
+        throw error;
+      }
+    },
+    deleteDocLink: async (id: string) => {
+      try {
+        const { error } = await supabase
+          .from('docs_links')
+          .update({ is_active: false })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        setDocLinks(prev => prev.filter(doc => doc.id !== id));
+        toast({
+          title: "Success",
+          description: "Document deleted successfully",
+        });
+      } catch (error) {
+        console.error('Error deleting document:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete document",
+          variant: "destructive",
+        });
+        throw error;
+      }
+    },
+    incrementFAQViews: async (id: string) => {
+      try {
+        await supabase.rpc('increment_faq_views', { faq_id: id });
+        setFaqs(prev => prev.map(faq => 
+          faq.id === id ? { ...faq, views: faq.views + 1 } : faq
+        ));
+      } catch (error) {
+        console.error('Error incrementing FAQ views:', error);
+      }
+    },
     refetch: () => Promise.all([fetchFAQs(), fetchDocLinks()])
   };
 };

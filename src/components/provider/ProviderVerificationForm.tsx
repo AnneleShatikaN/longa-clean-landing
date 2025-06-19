@@ -8,14 +8,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Upload, FileText } from 'lucide-react';
+import { Upload, FileText, CheckCircle } from 'lucide-react';
 
 export const ProviderVerificationForm: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   
-  // Document upload state - only two documents needed
+  // Document upload state
   const [documents, setDocuments] = useState({
     national_id: null as File | null,
     police_clearance: null as File | null
@@ -31,7 +32,7 @@ export const ProviderVerificationForm: React.FC = () => {
     if (!user) return null;
 
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}/${docType}.${fileExt}`;
+    const fileName = `${user.id}/${docType}_${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
       .from('verification-documents')
@@ -74,13 +75,11 @@ export const ProviderVerificationForm: React.FC = () => {
         background_check_consent: backgroundCheckConsent
       }).eq('id', user.id);
 
+      setIsSubmitted(true);
       toast({
         title: "Verification Submitted",
         description: "Your verification application has been submitted and is under review.",
       });
-
-      // Refresh the page to show new status
-      window.location.reload();
 
     } catch (error) {
       console.error('Verification submission error:', error);
@@ -102,6 +101,36 @@ export const ProviderVerificationForm: React.FC = () => {
   const handleConsentChange = (checked: boolean | "indeterminate") => {
     setBackgroundCheckConsent(checked === true);
   };
+
+  if (isSubmitted) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 p-3 bg-green-100 rounded-full w-fit">
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+            <CardTitle className="text-2xl text-green-600">Verification Submitted!</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-gray-600 text-lg">
+              Your verification documents have been submitted successfully.
+            </p>
+            <p className="text-gray-500">
+              Our admin team will review your documents within 2-3 business days. 
+              You'll receive a notification once the review is complete.
+            </p>
+            <Button 
+              onClick={() => window.location.href = '/provider-dashboard'}
+              className="mt-6"
+            >
+              Return to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

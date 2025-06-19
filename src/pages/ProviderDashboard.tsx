@@ -1,195 +1,151 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { DashboardNavigation } from '@/components/common/DashboardNavigation';
-import { SimplifiedProviderDashboard } from '@/components/provider/SimplifiedProviderDashboard';
-import ProviderOverviewTab from '@/components/provider/ProviderOverviewTab';
-import ProviderJobsTab from '@/components/provider/ProviderJobsTab';
-import ProviderPayoutsTab from '@/components/provider/ProviderPayoutsTab';
-import ProviderProfileTab from '@/components/provider/ProviderProfileTab';
+import { ProviderDashboardHome } from '@/components/provider/ProviderDashboardHome';
+import { ProviderMyJobs } from '@/components/provider/ProviderMyJobs';
+import { ProviderAvailabilityPage } from '@/components/provider/ProviderAvailabilityPage';
+import { ProviderEarningsPage } from '@/components/provider/ProviderEarningsPage';
+import { ProviderProfilePage } from '@/components/provider/ProviderProfilePage';
+import { ProviderNotifications } from '@/components/provider/ProviderNotifications';
 import { Button } from '@/components/ui/button';
-import { useProviderData } from '@/hooks/useProviderData';
-import { useToast } from '@/hooks/use-toast';
+import { Bell, User, Menu } from 'lucide-react';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 const ProviderDashboard = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('overview');
-  
-  const {
-    data,
-    isLoading,
-    error,
-    updateJobStatus,
-    isValidProvider
-  } = useProviderData();
+  const { user, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-  // Extract data from the nested structure
-  const profile = data?.profile;
-  const jobs = data?.jobs || [];
-  const monthlyEarnings = data?.monthlyEarnings || [];
-  
-  // Filter jobs by status
-  const availableJobs = jobs.filter(job => job.status === 'requested');
-  const myJobs = jobs.filter(job => job.status !== 'requested');
-  const completedJobs = jobs.filter(job => job.status === 'completed');
-  
-  // Calculate stats
-  const stats = {
-    totalEarnings: completedJobs.reduce((sum, job) => sum + job.expectedPayout, 0),
-    pendingPayouts: myJobs.filter(job => job.payoutStatus === 'pending').reduce((sum, job) => sum + job.expectedPayout, 0),
-    thisWeekEarnings: completedJobs
-      .filter(job => {
-        const jobDate = new Date(job.completedDate || job.date);
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        return jobDate >= weekAgo;
-      })
-      .reduce((sum, job) => sum + job.expectedPayout, 0),
-    availableJobs: availableJobs.length,
-    completedJobs: completedJobs.length,
-    averageRating: profile?.rating || 0
-  };
-
-  const handleAcceptJob = async (jobId: string) => {
-    try {
-      await updateJobStatus(jobId, 'accepted');
-      toast({
-        title: "Job Accepted",
-        description: "You have successfully accepted the job.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to accept job. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDeclineJob = async (jobId: string) => {
-    try {
-      await updateJobStatus(jobId, 'cancelled');
-      toast({
-        title: "Job Declined",
-        description: "You have declined the job.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to decline job. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleCompleteJob = async (jobId: string) => {
-    try {
-      await updateJobStatus(jobId, 'completed');
-      toast({
-        title: "Job Completed",
-        description: "Job marked as completed successfully.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to complete job. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleUpdateProfile = async (data: any) => {
-    try {
-      // For now, just show success - actual implementation would need backend integration
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been updated successfully.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive"
-      });
-    }
+  const handleLogout = async () => {
+    await logout();
   };
 
   const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading...</div>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-red-600">{error}</div>
-        </div>
-      );
-    }
-
-    if (!isValidProvider) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">You need to be an active provider to access this dashboard.</div>
-        </div>
-      );
-    }
-
     switch (activeTab) {
-      case 'overview':
-        return <ProviderOverviewTab profile={profile} stats={stats} />;
+      case 'dashboard':
+        return <ProviderDashboardHome />;
       case 'jobs':
-        return (
-          <ProviderJobsTab
-            availableJobs={availableJobs}
-            myJobs={myJobs}
-            onAcceptJob={handleAcceptJob}
-            onDeclineJob={handleDeclineJob}
-            onCompleteJob={handleCompleteJob}
-            isAvailable={true}
-          />
-        );
-      case 'payouts':
-        return (
-          <ProviderPayoutsTab
-            monthlyEarnings={monthlyEarnings}
-            completedJobs={completedJobs}
-            pendingPayouts={stats.pendingPayouts}
-            totalEarnings={stats.totalEarnings}
-          />
-        );
+        return <ProviderMyJobs />;
+      case 'availability':
+        return <ProviderAvailabilityPage />;
+      case 'earnings':
+        return <ProviderEarningsPage />;
       case 'profile':
-        return (
-          <ProviderProfileTab
-            profile={profile}
-            onUpdateProfile={handleUpdateProfile}
-          />
-        );
+        return <ProviderProfilePage />;
+      case 'notifications':
+        return <ProviderNotifications />;
       default:
-        return <ProviderOverviewTab profile={profile} stats={stats} />;
+        return <ProviderDashboardHome />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
-      <DashboardNavigation
-        userRole="provider"
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        dashboardTitle="Provider Dashboard"
-      />
-      
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4">
+    <ProtectedRoute requiredRole="provider">
+      <div className="min-h-screen bg-white">
+        {/* Top Navigation */}
+        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
+          <div className="flex items-center space-x-2">
+            <h1 className="text-2xl font-bold text-purple-600">Longa</h1>
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab('notifications')}
+              className="relative"
+            >
+              <Bell className="h-5 w-5" />
+            </Button>
+            
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center space-x-2"
+              >
+                <User className="h-5 w-5" />
+                <span className="hidden sm:inline text-sm">{user?.full_name || user?.name}</span>
+              </Button>
+              
+              {showProfileMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setActiveTab('profile');
+                        setShowProfileMenu(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Profile Settings
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="pb-20">
           {renderContent()}
-        </div>
+        </main>
+
+        {/* Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
+          <div className="flex justify-around">
+            <Button
+              variant={activeTab === 'dashboard' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('dashboard')}
+              className="flex flex-col items-center space-y-1 min-w-0 flex-1"
+            >
+              <span className="text-xs">Dashboard</span>
+            </Button>
+            <Button
+              variant={activeTab === 'jobs' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('jobs')}
+              className="flex flex-col items-center space-y-1 min-w-0 flex-1"
+            >
+              <span className="text-xs">My Jobs</span>
+            </Button>
+            <Button
+              variant={activeTab === 'availability' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('availability')}
+              className="flex flex-col items-center space-y-1 min-w-0 flex-1"
+            >
+              <span className="text-xs">Availability</span>
+            </Button>
+            <Button
+              variant={activeTab === 'earnings' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('earnings')}
+              className="flex flex-col items-center space-y-1 min-w-0 flex-1"
+            >
+              <span className="text-xs">Earnings</span>
+            </Button>
+            <Button
+              variant={activeTab === 'profile' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('profile')}
+              className="flex flex-col items-center space-y-1 min-w-0 flex-1"
+            >
+              <span className="text-xs">Profile</span>
+            </Button>
+          </div>
+        </nav>
       </div>
-    </div>
+    </ProtectedRoute>
   );
 };
 

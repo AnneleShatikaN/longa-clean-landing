@@ -10,42 +10,30 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface Availability {
-  monday: boolean;
-  tuesday: boolean;
-  wednesday: boolean;
-  thursday: boolean;
-  friday: boolean;
-  saturday: boolean;
-  sunday: boolean;
+interface AvailabilitySlot {
+  id?: string;
+  day_of_week: number;
   start_time: string;
   end_time: string;
+  is_available: boolean;
 }
 
 export const ProviderAvailabilityPage: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [availability, setAvailability] = useState<Availability>({
-    monday: true,
-    tuesday: true,
-    wednesday: true,
-    thursday: true,
-    friday: true,
-    saturday: false,
-    sunday: false,
-    start_time: '08:00',
-    end_time: '16:00'
-  });
+  const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
+  const [defaultStartTime, setDefaultStartTime] = useState('08:00');
+  const [defaultEndTime, setDefaultEndTime] = useState('16:00');
 
   const daysOfWeek = [
-    { key: 'monday', label: 'Monday' },
-    { key: 'tuesday', label: 'Tuesday' },
-    { key: 'wednesday', label: 'Wednesday' },
-    { key: 'thursday', label: 'Thursday' },
-    { key: 'friday', label: 'Friday' },
-    { key: 'saturday', label: 'Saturday' },
-    { key: 'sunday', label: 'Sunday' }
+    { key: 0, label: 'Sunday' },
+    { key: 1, label: 'Monday' },
+    { key: 2, label: 'Tuesday' },
+    { key: 3, label: 'Wednesday' },
+    { key: 4, label: 'Thursday' },
+    { key: 5, label: 'Friday' },
+    { key: 6, label: 'Saturday' }
   ];
 
   const timeOptions = [
@@ -58,28 +46,35 @@ export const ProviderAvailabilityPage: React.FC = () => {
 
     try {
       const { data, error } = await supabase
-        .from('user_availability')
+        .from('provider_availability')
         .select('*')
-        .eq('user_id', user.id)
-        .single();
+        .eq('provider_id', user.id)
+        .order('day_of_week');
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
 
-      if (data) {
-        setAvailability({
-          monday: data.monday,
-          tuesday: data.tuesday,
-          wednesday: data.wednesday,
-          thursday: data.thursday,
-          friday: data.friday,
-          saturday: data.saturday,
-          sunday: data.sunday,
-          start_time: data.start_time || '08:00',
-          end_time: data.end_time || '16:00'
-        });
+      if (data && data.length > 0) {
+        setAvailabilitySlots(data);
+      } else {
+        // Initialize with default weekday availability if no data exists
+        const defaultSlots: AvailabilitySlot[] = [];
+        for (let day = 1; day <= 5; day++) { // Monday to Friday
+          defaultSlots.push({
+            day_of_week: day,
+            start_time: defaultStartTime,
+            end_time: defaultEndTime,
+            is_available: true
+          });
+        }
+        setAvailabilitySlots(defaultSlots);
       }
     } catch (error) {
       console.error('Error fetching availability:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load availability data.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -87,18 +82,56 @@ export const ProviderAvailabilityPage: React.FC = () => {
     fetchAvailability();
   }, [user]);
 
-  const handleDayToggle = (day: string, enabled: boolean) => {
-    setAvailability(prev => ({
-      ...prev,
-      [day]: enabled
-    }));
+  const getDayAvailability = (dayOfWeek: number): AvailabilitySlot | null => {
+    return availabilitySlots.find(slot => slot.day_of_week === dayOfWeek) || null;
   };
 
-  const handleTimeChange = (timeType: 'start_time' | 'end_time', value: string) => {
-    setAvailability(prev => ({
-      ...prev,
-      [timeType]: value
-    }));
+  const handleDayToggle = (dayOfWeek: number, enabled: boolean) => {
+    setAvailabilitySlots(prev => {
+      const existing = prev.find(slot => slot.day_of_week === dayOfWeek);
+      if (existing) {
+        return prev.map(slot => 
+          slot.day_of_week === dayOfWeek 
+            ? { ...slot, is_available: enabled }
+            : slot
+        );
+      } else {
+        return [...prev, {
+          day_of_week: dayOfWeek,
+          start_time: defaultStartTime,
+          end_time: defaultEndTime,
+          is_available: enabled
+        }];
+      }
+    });
+  };
+
+  const handleTimeChange = (dayOfWeek: number, timeType: 'start_time' | 'end_time', value: string) => {
+    setAvailabilitySlots(prev => {
+      const existing = prev.find(slot => slot.day_of_week === dayOfWeek);
+      if (existing) {
+        return prev.map(slot => 
+          slot.day_of_week === dayOfWeek 
+            ? { ...slot, [timeType]: value }
+            : slot
+        );
+      } else {
+        return [...prev, {
+          day_of_week: dayOfWeek,
+          start_time: timeType === 'start_time' ? value : defaultStartTime,
+          end_time: timeType === 'end_time' ? value : defaultEndTime,
+          is_available: true
+        }];
+      }
+    });
+  };
+
+  const handleDefaultTimeChange = (timeType: 'start' | 'end', value: string) => {
+    if (timeType === 'start') {
+      setDefaultStartTime(value);
+    } else {
+      setDefaultEndTime(value);
+    }
   };
 
   const handleSaveAvailability = async () => {
@@ -106,17 +139,30 @@ export const ProviderAvailabilityPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('user_availability')
-        .upsert({
-          user_id: user.id,
-          ...availability,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        });
+      // Delete existing availability for this provider
+      await supabase
+        .from('provider_availability')
+        .delete()
+        .eq('provider_id', user.id);
 
-      if (error) throw error;
+      // Insert new availability slots
+      const slotsToInsert = availabilitySlots
+        .filter(slot => slot.is_available)
+        .map(slot => ({
+          provider_id: user.id,
+          day_of_week: slot.day_of_week,
+          start_time: slot.start_time,
+          end_time: slot.end_time,
+          is_available: slot.is_available
+        }));
+
+      if (slotsToInsert.length > 0) {
+        const { error } = await supabase
+          .from('provider_availability')
+          .insert(slotsToInsert);
+
+        if (error) throw error;
+      }
 
       toast({
         title: "Availability Updated",
@@ -141,41 +187,19 @@ export const ProviderAvailabilityPage: React.FC = () => {
         <p className="text-gray-600">Set your working days and hours</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Calendar className="h-5 w-5" />
-            <span>Working Days</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {daysOfWeek.map(day => (
-            <div key={day.key} className="flex items-center justify-between">
-              <Label htmlFor={day.key} className="text-base font-medium">
-                {day.label}
-              </Label>
-              <Switch
-                id={day.key}
-                checked={availability[day.key as keyof Availability] as boolean}
-                onCheckedChange={(checked) => handleDayToggle(day.key, checked)}
-              />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
+      {/* Default Time Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Clock className="h-5 w-5" />
-            <span>Working Hours</span>
+            <span>Default Working Hours</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="start-time">Start Time</Label>
-              <Select value={availability.start_time} onValueChange={(value) => handleTimeChange('start_time', value)}>
+              <Label htmlFor="default-start-time">Default Start Time</Label>
+              <Select value={defaultStartTime} onValueChange={(value) => handleDefaultTimeChange('start', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select start time" />
                 </SelectTrigger>
@@ -188,8 +212,8 @@ export const ProviderAvailabilityPage: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="end-time">End Time</Label>
-              <Select value={availability.end_time} onValueChange={(value) => handleTimeChange('end_time', value)}>
+              <Label htmlFor="default-end-time">Default End Time</Label>
+              <Select value={defaultEndTime} onValueChange={(value) => handleDefaultTimeChange('end', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select end time" />
                 </SelectTrigger>
@@ -201,6 +225,75 @@ export const ProviderAvailabilityPage: React.FC = () => {
               </Select>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Working Days */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Calendar className="h-5 w-5" />
+            <span>Working Days</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {daysOfWeek.map(day => {
+            const dayAvailability = getDayAvailability(day.key);
+            const isAvailable = dayAvailability?.is_available || false;
+            
+            return (
+              <div key={day.key} className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor={`day-${day.key}`} className="text-base font-medium">
+                    {day.label}
+                  </Label>
+                  <Switch
+                    id={`day-${day.key}`}
+                    checked={isAvailable}
+                    onCheckedChange={(checked) => handleDayToggle(day.key, checked)}
+                  />
+                </div>
+                
+                {isAvailable && (
+                  <div className="grid grid-cols-2 gap-4 ml-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm">Start Time</Label>
+                      <Select 
+                        value={dayAvailability?.start_time || defaultStartTime} 
+                        onValueChange={(value) => handleTimeChange(day.key, 'start_time', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeOptions.map(time => (
+                            <SelectItem key={time} value={time}>{time}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-sm">End Time</Label>
+                      <Select 
+                        value={dayAvailability?.end_time || defaultEndTime} 
+                        onValueChange={(value) => handleTimeChange(day.key, 'end_time', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeOptions.map(time => (
+                            <SelectItem key={time} value={time}>{time}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 

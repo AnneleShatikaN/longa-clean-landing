@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -156,6 +155,10 @@ export const ProviderVerificationForm: React.FC = () => {
     const hasBankingDetails = bankingDetails.bank_name && bankingDetails.account_number;
     const hasReferences = references.some(ref => ref.reference_name && ref.reference_phone);
     return hasDocuments && hasBankingDetails && hasReferences && backgroundCheckConsent;
+  };
+
+  const handleConsentChange = (checked: boolean | "indeterminate") => {
+    setBackgroundCheckConsent(checked === true);
   };
 
   return (
@@ -338,7 +341,7 @@ export const ProviderVerificationForm: React.FC = () => {
               <Checkbox
                 id="consent"
                 checked={backgroundCheckConsent}
-                onCheckedChange={setBackgroundCheckConsent}
+                onCheckedChange={handleConsentChange}
               />
               <Label htmlFor="consent" className="text-sm">
                 I consent to background checks and verification of the information provided

@@ -1,222 +1,269 @@
 
 import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { SimplifiedDashboardOverview } from '@/components/client/SimplifiedDashboardOverview';
-import { BookingsTab } from '@/components/client/BookingsTab';
-import { MyPackageTab } from '@/components/client/MyPackageTab';
-import { PaymentHistoryTab } from '@/components/client/PaymentHistoryTab';
-import { ProfileTab } from '@/components/client/ProfileTab';
-import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ServiceGrid } from '@/components/services/ServiceGrid';
+import { PackagePurchaseFlow } from '@/components/packages/PackagePurchaseFlow';
+import { EmailVerificationBanner } from '@/components/auth/EmailVerificationBanner';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
-import { useNotifications } from '@/contexts/NotificationContext';
+import { useSubscriptionPackages } from '@/hooks/useSubscriptionPackages';
+import { useServicesEnhanced } from '@/hooks/useServicesEnhanced';
+import { useEnhancedNotifications } from '@/hooks/useEnhancedNotifications';
 import { 
-  Home, 
-  Calendar, 
   Package, 
+  Calendar, 
   CreditCard, 
   User, 
-  LogOut,
-  Menu,
-  X,
-  ChevronDown,
-  Bell
+  Settings,
+  Star,
+  Clock,
+  MapPin,
+  ArrowRight
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 
 const ClientDashboard = () => {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { bookings } = useSupabaseBookings();
-  const { unreadCount } = useNotifications();
+  const { userActivePackage, packages, isLoading: packagesLoading } = useSubscriptionPackages();
+  const { services, isLoading: servicesLoading } = useServicesEnhanced();
+  const { notifyBookingSuccess } = useEnhancedNotifications();
+  
+  const [showPackagePurchase, setShowPackagePurchase] = useState(false);
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('');
 
-  const pendingBookings = bookings.filter(b => b.status === 'pending').length;
-  const completedBookings = bookings.filter(b => b.status === 'completed').length;
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/');
-    } catch (error) {
-      console.error('Logout error:', error);
+  const handleServiceBook = (serviceId: string) => {
+    const service = services.find(s => s.id === serviceId);
+    if (service) {
+      notifyBookingSuccess(service.name);
+      navigate(`/service/${serviceId}`);
     }
   };
 
-  const menuItems = [
-    { id: 'overview', label: 'Home', icon: Home },
-    { id: 'bookings', label: 'Bookings', icon: Calendar },
-    { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
-    { id: 'package', label: 'Package', icon: Package },
-    { id: 'payments', label: 'Payments', icon: CreditCard },
-    { id: 'profile', label: 'Profile', icon: User },
-  ];
+  const handlePackagePurchase = (packageId?: string) => {
+    if (packageId) setSelectedPackageId(packageId);
+    setShowPackagePurchase(true);
+  };
 
-  return (
-    <TooltipProvider>
-      <div className="min-h-screen bg-gradient-to-r from-blue-50 to-white flex">
-        {/* Mobile Hamburger Menu */}
-        <div className="md:hidden fixed top-4 left-4 z-50">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
-        </div>
+  const handlePurchaseSuccess = () => {
+    setShowPackagePurchase(false);
+    // Refresh package data
+    window.location.reload();
+  };
 
-        {/* Mobile Overlay */}
-        {sidebarOpen && (
-          <div 
-            className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        {/* Sidebar - Reduced width to 180px */}
-        <div className={`
-          fixed md:relative
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          transition-transform duration-300 ease-in-out
-          w-45 h-screen bg-blue-50 z-40
-          flex flex-col
-        `} style={{ width: '180px', backgroundColor: '#e6f0fa' }}>
-          {/* Logo/Brand */}
-          <div className="p-4 border-b border-blue-100">
-            <h1 className="text-lg font-semibold text-gray-900">Longa</h1>
-            <p className="text-xs text-gray-600">Client Dashboard</p>
-          </div>
-
-          {/* Navigation Menu */}
-          <nav className="flex-1 p-4">
-            <div className="space-y-2">
-              {menuItems.map((item) => (
-                <Tooltip key={item.id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => {
-                        setActiveTab(item.id);
-                        setSidebarOpen(false);
-                      }}
-                      className={`
-                        w-full flex items-center px-3 py-2 rounded-lg text-left
-                        transition-colors duration-200 relative
-                        ${activeTab === item.id 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'text-gray-700 hover:bg-blue-50'
-                        }
-                      `}
-                      style={{ gap: '5px' }}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span className="text-sm">{item.label}</span>
-                      {item.badge && item.badge > 0 && (
-                        <Badge className="ml-auto bg-red-500 text-white text-xs h-4 w-4 p-0 flex items-center justify-center">
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p>{item.label}</p>
-                  </TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-          </nav>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 md:ml-0">
-          {/* Streamlined Header */}
-          <div className="bg-white border-b border-gray-200 px-5 py-4">
-            <div className="flex justify-between items-center">
-              {/* Left side - Title and Welcome */}
-              <div className="pt-12 md:pt-0">
-                <h1 className="text-lg font-semibold text-gray-900 mb-2">Longa Client Dashboard</h1>
-                <p className="text-base text-gray-600">
-                  Welcome back, {user?.full_name || 'User'}. Book services quickly and easily
-                </p>
-                
-                {/* Status Bar - Bookings and Completed counters */}
-                <div className="flex items-center mt-3" style={{ gap: '10px' }}>
-                  <div className="text-sm">
-                    <span className="font-medium text-blue-600">{pendingBookings}</span>
-                    <span className="text-gray-600 ml-1">Bookings</span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="font-medium text-green-600">{completedBookings}</span>
-                    <span className="text-gray-600 ml-1">Completed</span>
-                  </div>
-                  {unreadCount > 0 && (
-                    <div className="text-sm">
-                      <span className="font-medium text-red-600">{unreadCount}</span>
-                      <span className="text-gray-600 ml-1">New Notifications</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right side - User Profile Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          {/* Content Area */}
-          <div className="px-5 pb-5" style={{ margin: '20px', padding: '15px' }}>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsContent value="overview" className="mt-0">
-                <SimplifiedDashboardOverview />
-              </TabsContent>
-
-              <TabsContent value="bookings" className="mt-0">
-                <BookingsTab />
-              </TabsContent>
-
-              <TabsContent value="notifications" className="mt-0">
-                <NotificationCenter />
-              </TabsContent>
-
-              <TabsContent value="package" className="mt-0">
-                <MyPackageTab />
-              </TabsContent>
-
-              <TabsContent value="payments" className="mt-0">
-                <PaymentHistoryTab />
-              </TabsContent>
-
-              <TabsContent value="profile" className="mt-0">
-                <ProfileTab />
-              </TabsContent>
-            </Tabs>
-          </div>
+  if (packagesLoading || servicesLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
-    </TooltipProvider>
+    );
+  }
+
+  if (showPackagePurchase) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white">
+        <PackagePurchaseFlow
+          packageId={selectedPackageId}
+          onClose={() => setShowPackagePurchase(false)}
+          onSuccess={handlePurchaseSuccess}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white">
+      <div className="container mx-auto px-4 py-8">
+        {/* Email Verification Banner */}
+        <EmailVerificationBanner />
+
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome back, {user?.full_name || user?.email}!
+          </h1>
+          <p className="text-gray-600">Manage your bookings and services</p>
+        </div>
+
+        {/* Active Package Alert */}
+        {userActivePackage && (
+          <Card className="mb-8 bg-gradient-to-r from-green-50 to-green-100 border-green-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-green-800 text-lg flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Active Package: {userActivePackage.package.name}
+                  </h3>
+                  <p className="text-green-700 mt-1">
+                    Valid until <strong>{new Date(userActivePackage.expiry_date).toLocaleDateString()}</strong>
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="border-green-300 text-green-700 hover:bg-green-50"
+                >
+                  View Usage
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Tabs defaultValue="services" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="services">Browse Services</TabsTrigger>
+            <TabsTrigger value="packages">Packages</TabsTrigger>
+            <TabsTrigger value="bookings">My Bookings</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="services" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Available Services</h2>
+              <Button onClick={() => navigate('/search')}>
+                View All Services
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+            
+            <ServiceGrid
+              maxItems={6}
+              onBookService={handleServiceBook}
+              showBookingButton={true}
+            />
+          </TabsContent>
+
+          <TabsContent value="packages" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Subscription Packages</h2>
+              <Button onClick={() => navigate('/subscription-packages')}>
+                View All Packages
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+
+            {!userActivePackage ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {packages.slice(0, 3).map((pkg) => (
+                  <Card key={pkg.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between">
+                        <span>{pkg.name}</span>
+                        <Badge className="bg-purple-100 text-purple-800">
+                          N${pkg.price}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-600 mb-4">{pkg.description}</p>
+                      <ul className="space-y-2 mb-4">
+                        {pkg.entitlements?.slice(0, 3).map((ent, index) => (
+                          <li key={index} className="flex items-center text-sm">
+                            <div className="w-2 h-2 bg-purple-600 rounded-full mr-2"></div>
+                            {ent.quantity_per_cycle}× {ent.service?.name || 'Service'}
+                          </li>
+                        ))}
+                      </ul>
+                      <Button 
+                        onClick={() => handlePackagePurchase(pkg.id)}
+                        className="w-full"
+                      >
+                        Purchase Package
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <Package className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">You have an active package!</h3>
+                  <p className="text-gray-600">
+                    Your {userActivePackage.package.name} is active until{' '}
+                    {new Date(userActivePackage.expiry_date).toLocaleDateString()}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="bookings" className="space-y-6">
+            <h2 className="text-2xl font-bold">My Bookings</h2>
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No bookings yet</h3>
+                <p className="text-gray-600 mb-4">
+                  Start by booking a service or purchasing a package
+                </p>
+                <Button onClick={() => navigate('/search')}>
+                  Browse Services
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="profile" className="space-y-6">
+            <h2 className="text-2xl font-bold">Profile Settings</h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Account Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Name</label>
+                    <p className="text-gray-900">{user?.full_name || 'Not set'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Email</label>
+                    <p className="text-gray-900">{user?.email}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Phone</label>
+                    <p className="text-gray-900">{user?.phone || 'Not set'}</p>
+                  </div>
+                  <Button variant="outline" className="w-full">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Star className="h-4 w-4 mr-2" />
+                    Rate Recent Services
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Update Service Areas
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Clock className="h-4 w-4 mr-2" />
+                    Booking History
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
   );
 };
 

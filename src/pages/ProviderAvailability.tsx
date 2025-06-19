@@ -3,11 +3,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Clock, Calendar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ProviderAvailabilityManager } from '@/components/provider/ProviderAvailabilityManager';
-import { ProviderSpecializationManager } from '@/components/provider/ProviderSpecializationManager';
 
 const ProviderAvailability = () => {
   const navigate = useNavigate();
@@ -40,24 +37,54 @@ const ProviderAvailability = () => {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Provider Settings</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Availability Settings</h1>
         </div>
 
-        <div className="max-w-6xl mx-auto">
-          <Tabs defaultValue="availability" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="availability">Availability & Schedule</TabsTrigger>
-              <TabsTrigger value="specializations">Service Specializations</TabsTrigger>
-            </TabsList>
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 p-3 bg-blue-100 rounded-full w-fit">
+                <Calendar className="h-8 w-8 text-blue-600" />
+              </div>
+              <CardTitle className="text-2xl">Availability Management</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-gray-600 text-lg">
+                Coming Soon!
+              </p>
+              <p className="text-gray-500">
+                We're working on a comprehensive availability management system that will allow you to:
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  <span className="text-sm">Set working hours</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  <span className="text-sm">Block specific dates</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  <span className="text-sm">Manage time slots</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  <span className="text-sm">Set recurring schedules</span>
+                </div>
+              </div>
 
-            <TabsContent value="availability">
-              <ProviderAvailabilityManager />
-            </TabsContent>
-
-            <TabsContent value="specializations">
-              <ProviderSpecializationManager />
-            </TabsContent>
-          </Tabs>
+              <div className="pt-4 border-t">
+                <p className="text-sm text-gray-500 mb-4">
+                  For now, you'll automatically receive job assignments based on your location and service areas.
+                </p>
+                <Button onClick={() => navigate('/provider-dashboard')} variant="outline">
+                  Return to Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

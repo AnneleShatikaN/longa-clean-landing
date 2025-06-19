@@ -1,59 +1,25 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Upload, FileText, CreditCard, Users } from 'lucide-react';
+import { Upload, FileText } from 'lucide-react';
 
 export const ProviderVerificationForm: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentStep, setCurrentStep] = useState('documents');
   
-  // Document upload state
+  // Document upload state - only two documents needed
   const [documents, setDocuments] = useState({
     national_id: null as File | null,
-    proof_of_residence: null as File | null,
-    bank_statement: null as File | null,
-    professional_certificate: null as File | null
+    police_clearance: null as File | null
   });
-
-  // Banking details state
-  const [bankingDetails, setBankingDetails] = useState({
-    bank_name: '',
-    account_holder_name: '',
-    account_number: '',
-    account_type: 'checking',
-    routing_number: ''
-  });
-
-  // References state
-  const [references, setReferences] = useState([
-    {
-      reference_name: '',
-      reference_phone: '',
-      reference_email: '',
-      relationship: '',
-      company_name: '',
-      years_known: 0
-    },
-    {
-      reference_name: '',
-      reference_phone: '',
-      reference_email: '',
-      relationship: '',
-      company_name: '',
-      years_known: 0
-    }
-  ]);
 
   const [backgroundCheckConsent, setBackgroundCheckConsent] = useState(false);
 
@@ -101,28 +67,6 @@ export const ProviderVerificationForm: React.FC = () => {
 
       await Promise.all(documentPromises);
 
-      // Save banking details
-      if (bankingDetails.bank_name && bankingDetails.account_number) {
-        await supabase.from('provider_banking_details').insert({
-          provider_id: user.id,
-          ...bankingDetails
-        });
-      }
-
-      // Save references
-      const validReferences = references.filter(ref => 
-        ref.reference_name && ref.reference_phone
-      );
-
-      if (validReferences.length > 0) {
-        await supabase.from('provider_references').insert(
-          validReferences.map(ref => ({
-            provider_id: user.id,
-            ...ref
-          }))
-        );
-      }
-
       // Update user verification status
       await supabase.from('users').update({
         verification_status: 'under_review',
@@ -151,10 +95,8 @@ export const ProviderVerificationForm: React.FC = () => {
   };
 
   const isFormValid = () => {
-    const hasDocuments = Object.values(documents).some(doc => doc !== null);
-    const hasBankingDetails = bankingDetails.bank_name && bankingDetails.account_number;
-    const hasReferences = references.some(ref => ref.reference_name && ref.reference_phone);
-    return hasDocuments && hasBankingDetails && hasReferences && backgroundCheckConsent;
+    const hasRequiredDocuments = documents.national_id && documents.police_clearance;
+    return hasRequiredDocuments && backgroundCheckConsent;
   };
 
   const handleConsentChange = (checked: boolean | "indeterminate") => {
@@ -162,202 +104,79 @@ export const ProviderVerificationForm: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Provider Verification Application</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Provider Verification
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Tabs value={currentStep} onValueChange={setCurrentStep}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="banking">Banking</TabsTrigger>
-              <TabsTrigger value="references">References</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="documents" className="space-y-4">
-              <h3 className="text-lg font-medium flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Required Documents
-              </h3>
-              
-              {Object.entries({
-                national_id: 'National ID or Passport',
-                proof_of_residence: 'Proof of Residence',
-                bank_statement: 'Bank Statement',
-                professional_certificate: 'Professional Certificate (Optional)'
-              }).map(([key, label]) => (
-                <div key={key} className="space-y-2">
-                  <Label>{label}</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload(key as keyof typeof documents, file);
-                      }}
-                    />
-                    {documents[key as keyof typeof documents] && (
-                      <span className="text-sm text-green-600">✓ Selected</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </TabsContent>
-
-            <TabsContent value="banking" className="space-y-4">
-              <h3 className="text-lg font-medium flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Banking Details
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Bank Name</Label>
-                  <Input
-                    value={bankingDetails.bank_name}
-                    onChange={(e) => setBankingDetails(prev => ({
-                      ...prev, bank_name: e.target.value
-                    }))}
-                    placeholder="e.g., Bank Windhoek"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Account Holder Name</Label>
-                  <Input
-                    value={bankingDetails.account_holder_name}
-                    onChange={(e) => setBankingDetails(prev => ({
-                      ...prev, account_holder_name: e.target.value
-                    }))}
-                    placeholder="Full name as on account"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Account Number</Label>
-                  <Input
-                    value={bankingDetails.account_number}
-                    onChange={(e) => setBankingDetails(prev => ({
-                      ...prev, account_number: e.target.value
-                    }))}
-                    placeholder="Account number"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Account Type</Label>
-                  <Select
-                    value={bankingDetails.account_type}
-                    onValueChange={(value) => setBankingDetails(prev => ({
-                      ...prev, account_type: value
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="checking">Checking</SelectItem>
-                      <SelectItem value="savings">Savings</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="references" className="space-y-4">
-              <h3 className="text-lg font-medium flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Professional References (Minimum 2)
-              </h3>
-              
-              {references.map((ref, index) => (
-                <Card key={index}>
-                  <CardHeader>
-                    <CardTitle className="text-base">Reference {index + 1}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Name</Label>
-                      <Input
-                        value={ref.reference_name}
-                        onChange={(e) => {
-                          const newRefs = [...references];
-                          newRefs[index].reference_name = e.target.value;
-                          setReferences(newRefs);
-                        }}
-                        placeholder="Reference name"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Phone</Label>
-                      <Input
-                        value={ref.reference_phone}
-                        onChange={(e) => {
-                          const newRefs = [...references];
-                          newRefs[index].reference_phone = e.target.value;
-                          setReferences(newRefs);
-                        }}
-                        placeholder="Phone number"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Email (Optional)</Label>
-                      <Input
-                        type="email"
-                        value={ref.reference_email}
-                        onChange={(e) => {
-                          const newRefs = [...references];
-                          newRefs[index].reference_email = e.target.value;
-                          setReferences(newRefs);
-                        }}
-                        placeholder="Email address"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Relationship</Label>
-                      <Input
-                        value={ref.relationship}
-                        onChange={(e) => {
-                          const newRefs = [...references];
-                          newRefs[index].relationship = e.target.value;
-                          setReferences(newRefs);
-                        }}
-                        placeholder="e.g., Previous employer"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </TabsContent>
-          </Tabs>
-
-          <div className="mt-6 space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="consent"
-                checked={backgroundCheckConsent}
-                onCheckedChange={handleConsentChange}
-              />
-              <Label htmlFor="consent" className="text-sm">
-                I consent to background checks and verification of the information provided
-              </Label>
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSubmitVerification}
-                disabled={!isFormValid() || isSubmitting}
-                className="flex-1"
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit Verification'}
-              </Button>
-            </div>
+        <CardContent className="space-y-6">
+          <div className="text-sm text-gray-600 mb-4">
+            <p>To become a verified provider, please upload the following two documents:</p>
           </div>
+
+          {/* Required Documents */}
+          <div className="space-y-4">
+            {Object.entries({
+              national_id: 'Valid ID or Passport',
+              police_clearance: 'Police Clearance Certificate'
+            }).map(([key, label]) => (
+              <div key={key} className="space-y-2">
+                <Label className="text-base font-medium">{label} *</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(key as keyof typeof documents, file);
+                    }}
+                    className="flex-1"
+                  />
+                  {documents[key as keyof typeof documents] && (
+                    <span className="text-sm text-green-600 flex items-center gap-1">
+                      <Upload className="h-4 w-4" />
+                      Uploaded
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Accepted formats: PDF, JPG, PNG (max 10MB)
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Consent Checkbox */}
+          <div className="flex items-start space-x-2 pt-4 border-t">
+            <Checkbox
+              id="consent"
+              checked={backgroundCheckConsent}
+              onCheckedChange={handleConsentChange}
+            />
+            <Label htmlFor="consent" className="text-sm leading-relaxed">
+              I consent to background checks and verification of the information provided. 
+              I understand that this is required to become a verified service provider.
+            </Label>
+          </div>
+
+          {/* Submit Button */}
+          <Button
+            onClick={handleSubmitVerification}
+            disabled={!isFormValid() || isSubmitting}
+            className="w-full"
+            size="lg"
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Verification'}
+          </Button>
+
+          {!isFormValid() && (
+            <p className="text-sm text-gray-500 text-center">
+              Please upload both required documents and accept the consent agreement to continue.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

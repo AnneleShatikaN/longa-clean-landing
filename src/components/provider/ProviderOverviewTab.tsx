@@ -1,191 +1,197 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Calendar, ListChecks, DollarSign, Users, ShieldCheck } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
-import { supabase } from '@/integrations/supabase/client';
-import { VerificationStatusBanner } from './VerificationStatusBanner';
+import { Badge } from '@/components/ui/badge';
+import { 
+  DollarSign, 
+  Calendar, 
+  Star, 
+  TrendingUp,
+  Briefcase,
+  Clock
+} from 'lucide-react';
 
-interface ProviderOverviewTabProps {
-  profile?: any;
-  stats?: {
-    totalEarnings: number;
-    pendingPayouts: number;
-    thisWeekEarnings: number;
-    availableJobs: number;
-    completedJobs: number;
-    averageRating: number;
-  };
+interface ProviderProfile {
+  name: string;
+  email: string;
+  phone: string;
+  rating: number;
+  totalJobs: number;
+  location: string;
+  joinDate: string;
+  lastActive: string;
 }
 
-export const ProviderOverviewTab: React.FC<ProviderOverviewTabProps> = ({ profile, stats }) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { bookings } = useSupabaseBookings();
-  const [totalJobs, setTotalJobs] = useState(0);
-  const [completedJobs, setCompletedJobs] = useState(0);
-  const [totalEarnings, setTotalEarnings] = useState(0);
-  const [verificationStatus, setVerificationStatus] = useState<string>('pending');
+interface ProviderStats {
+  totalEarnings: number;
+  pendingPayouts: number;
+  thisWeekEarnings: number;
+  availableJobs: number;
+  completedJobs: number;
+  averageRating: number;
+}
 
-  useEffect(() => {
-    if (user) {
-      fetchProviderData();
-      fetchVerificationStatus();
-    }
-  }, [user]);
+interface ProviderOverviewTabProps {
+  profile?: ProviderProfile;
+  stats: ProviderStats;
+}
 
-  const fetchVerificationStatus = async () => {
-    if (!user) return;
-    
-    try {
-      const { data } = await supabase
-        .from('users')
-        .select('verification_status')
-        .eq('id', user.id)
-        .single();
-        
-      if (data) {
-        setVerificationStatus(data.verification_status || 'pending');
-      }
-    } catch (error) {
-      console.error('Error fetching verification status:', error);
-    }
-  };
-
-  const fetchProviderData = async () => {
-    if (!user) return;
-
-    // Use passed stats if available, otherwise calculate from bookings
-    if (stats) {
-      setTotalJobs(stats.availableJobs + stats.completedJobs);
-      setCompletedJobs(stats.completedJobs);
-      setTotalEarnings(stats.totalEarnings);
-    } else {
-      // Calculate total jobs and earnings from bookings
-      const providerBookings = bookings.filter(booking => booking.provider_id === user.id);
-      const completedProviderBookings = providerBookings.filter(booking => booking.status === 'completed');
-
-      setTotalJobs(providerBookings.length);
-      setCompletedJobs(completedProviderBookings.length);
-      setTotalEarnings(completedProviderBookings.reduce((sum, booking) => sum + (booking.total_amount || 0), 0));
-    }
-  };
-
-  const isVerified = verificationStatus === 'verified';
-
+export const ProviderOverviewTab: React.FC<ProviderOverviewTabProps> = ({
+  profile,
+  stats
+}) => {
   return (
     <div className="space-y-6">
-      {/* Verification Status Banner - Always show if not verified */}
-      <VerificationStatusBanner verificationStatus={verificationStatus} />
-
-      {/* Dashboard Statistics - Show regardless of verification status */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ListChecks className="h-4 w-4" />
-              Total Jobs
-            </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalJobs}</div>
-            <p className="text-gray-500">All jobs assigned to you</p>
+            <div className="text-2xl font-bold">N$ {stats.totalEarnings.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              +N$ {stats.thisWeekEarnings.toFixed(2)} this week
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Completed Jobs
-            </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Available Jobs</CardTitle>
+            <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{completedJobs}</div>
-            <p className="text-gray-500">Jobs marked as completed</p>
+            <div className="text-2xl font-bold">{stats.availableJobs}</div>
+            <p className="text-xs text-muted-foreground">
+              Ready to accept
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Total Earnings
-            </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completed Jobs</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">N${totalEarnings}</div>
-            <p className="text-gray-500">Earnings from completed jobs</p>
+            <div className="text-2xl font-bold">{stats.completedJobs}</div>
+            <p className="text-xs text-muted-foreground">
+              Total completed
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
+            <Star className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-center gap-1">
+              {stats.averageRating.toFixed(1)}
+              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              From client reviews
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Payouts</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">N$ {stats.pendingPayouts.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              Processing soon
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Growth</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">+12%</div>
+            <p className="text-xs text-muted-foreground">
+              From last month
+            </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Profile Summary */}
+      {profile && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 className="font-medium text-gray-900 mb-2">Contact Information</h3>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p><span className="font-medium">Name:</span> {profile.name}</p>
+                  <p><span className="font-medium">Email:</span> {profile.email}</p>
+                  <p><span className="font-medium">Phone:</span> {profile.phone}</p>
+                  <p><span className="font-medium">Location:</span> {profile.location}</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-900 mb-2">Provider Stats</h3>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p><span className="font-medium">Join Date:</span> {new Date(profile.joinDate).toLocaleDateString()}</p>
+                  <p><span className="font-medium">Total Jobs:</span> {profile.totalJobs}</p>
+                  <p><span className="font-medium">Rating:</span> 
+                    <span className="ml-1 inline-flex items-center">
+                      {profile.rating.toFixed(1)} 
+                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 ml-1" />
+                    </span>
+                  </p>
+                  <p><span className="font-medium">Status:</span> 
+                    <Badge variant="outline" className="ml-1 bg-green-50 text-green-700 border-green-200">
+                      Active
+                    </Badge>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Button 
-            onClick={() => navigate('/provider-jobs')} 
-            className="flex items-center gap-2"
-            disabled={!isVerified}
-          >
-            <ListChecks className="h-4 w-4" />
-            View Available Jobs
-            {!isVerified && <span className="text-xs">(Requires Verification)</span>}
-          </Button>
-          <Button 
-            onClick={() => navigate('/provider-availability')} 
-            className="flex items-center gap-2"
-          >
-            <Calendar className="h-4 w-4" />
-            Manage Availability
-          </Button>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              <Calendar className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+              <p className="text-sm font-medium">View Calendar</p>
+            </div>
+            <div className="text-center p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              <DollarSign className="h-6 w-6 mx-auto mb-2 text-green-600" />
+              <p className="text-sm font-medium">Earnings</p>
+            </div>
+            <div className="text-center p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              <Briefcase className="h-6 w-6 mx-auto mb-2 text-purple-600" />
+              <p className="text-sm font-medium">Available Jobs</p>
+            </div>
+            <div className="text-center p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              <Star className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
+              <p className="text-sm font-medium">Reviews</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
-
-      {/* Verification Status Info */}
-      {!isVerified && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" />
-              Why Verification Matters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm text-gray-600">
-              <p>• <strong>Job Access:</strong> Only verified providers can accept job assignments</p>
-              <p>• <strong>Trust & Safety:</strong> Verification builds client confidence in your services</p>
-              <p>• <strong>Payment Processing:</strong> Required for secure payout processing</p>
-              <p>• <strong>Platform Protection:</strong> Helps maintain quality standards</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Team Performance (Example) */}
-      {isVerified && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Team Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600">
-              This section will display your performance metrics compared to other providers.
-            </p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
-
-export default ProviderOverviewTab;

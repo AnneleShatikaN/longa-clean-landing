@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -122,10 +123,12 @@ const ProviderDashboard = () => {
           </div>
         </div>
 
-        {/* Global Verification Status Banner */}
-        <div className="mb-6">
-          <VerificationStatusBanner verificationStatus={verificationStatus} />
-        </div>
+        {/* Verification Status Banner - only show if not verified */}
+        {verificationStatus !== 'verified' && (
+          <div className="mb-6">
+            <VerificationStatusBanner verificationStatus={verificationStatus} />
+          </div>
+        )}
 
         {/* Dashboard Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">

@@ -6,319 +6,357 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useAuth } from '@/contexts/AuthContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FileText, DollarSign, Users, Shield } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Upload, FileText, CreditCard, Users } from 'lucide-react';
 
 export const ProviderVerificationForm: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    bankName: '',
-    accountNumber: '',
-    accountHolderName: '',
-    routingNumber: '',
-    accountType: 'checking',
-    swiftCode: '',
-    backgroundCheckConsent: false,
-    references: [
-      { name: '', phone: '', email: '', relationship: '', company: '', yearsKnown: '' },
-      { name: '', phone: '', email: '', relationship: '', company: '', yearsKnown: '' }
-    ],
-    documents: {
-      nationalId: null as File | null,
-      proofOfResidence: null as File | null,
-      skillsCertificate: null as File | null,
-      bankStatement: null as File | null
-    }
+  const [currentStep, setCurrentStep] = useState('documents');
+  
+  // Document upload state
+  const [documents, setDocuments] = useState({
+    national_id: null as File | null,
+    proof_of_residence: null as File | null,
+    bank_statement: null as File | null,
+    professional_certificate: null as File | null
   });
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  // Banking details state
+  const [bankingDetails, setBankingDetails] = useState({
+    bank_name: '',
+    account_holder_name: '',
+    account_number: '',
+    account_type: 'checking',
+    routing_number: ''
+  });
+
+  // References state
+  const [references, setReferences] = useState([
+    {
+      reference_name: '',
+      reference_phone: '',
+      reference_email: '',
+      relationship: '',
+      company_name: '',
+      years_known: 0
+    },
+    {
+      reference_name: '',
+      reference_phone: '',
+      reference_email: '',
+      relationship: '',
+      company_name: '',
+      years_known: 0
+    }
+  ]);
+
+  const [backgroundCheckConsent, setBackgroundCheckConsent] = useState(false);
+
+  const handleFileUpload = (docType: keyof typeof documents, file: File) => {
+    setDocuments(prev => ({ ...prev, [docType]: file }));
   };
 
-  const handleReferenceChange = (index: number, field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      references: prev.references.map((ref, i) => 
-        i === index ? { ...ref, [field]: value } : ref
-      )
-    }));
-  };
+  const uploadDocument = async (file: File, docType: string) => {
+    if (!user) return null;
 
-  const handleFileChange = (documentType: string, file: File | null) => {
-    setFormData(prev => ({
-      ...prev,
-      documents: { ...prev.documents, [documentType]: file }
-    }));
-  };
-
-  const uploadDocument = async (file: File, documentType: string) => {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user!.id}/${documentType}_${Date.now()}.${fileExt}`;
-    
-    const { data, error } = await supabase.storage
-      .from('verification-documents')
-      .upload(fileName, file);
+    const fileName = `${user.id}/${docType}.${fileExt}`;
 
-    if (error) throw error;
-    return data.path;
+    const { error: uploadError } = await supabase.storage
+      .from('verification-documents')
+      .upload(fileName, file, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    // Save document record
+    const { error: dbError } = await supabase
+      .from('provider_documents')
+      .insert({
+        provider_id: user.id,
+        document_type: docType,
+        document_name: file.name,
+        file_path: fileName,
+        file_size: file.size,
+        mime_type: file.type
+      });
+
+    if (dbError) throw dbError;
+    return fileName;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmitVerification = async () => {
     if (!user) return;
 
     setIsSubmitting(true);
     try {
       // Upload documents
-      const documentPromises = Object.entries(formData.documents)
-        .filter(([_, file]) => file)
-        .map(async ([type, file]) => {
-          const filePath = await uploadDocument(file!, type);
-          return {
-            provider_id: user.id,
-            document_type: type,
-            document_name: file!.name,
-            file_path: filePath,
-            file_size: file!.size,
-            mime_type: file!.type
-          };
+      const documentPromises = Object.entries(documents)
+        .filter(([_, file]) => file !== null)
+        .map(([type, file]) => uploadDocument(file!, type));
+
+      await Promise.all(documentPromises);
+
+      // Save banking details
+      if (bankingDetails.bank_name && bankingDetails.account_number) {
+        await supabase.from('provider_banking_details').insert({
+          provider_id: user.id,
+          ...bankingDetails
         });
-
-      const uploadedDocs = await Promise.all(documentPromises);
-
-      // Insert documents
-      if (uploadedDocs.length > 0) {
-        const { error: docsError } = await supabase
-          .from('provider_documents')
-          .insert(uploadedDocs);
-        
-        if (docsError) throw docsError;
       }
 
-      // Insert banking details
-      const { error: bankingError } = await supabase
-        .from('provider_banking_details')
-        .insert({
-          provider_id: user.id,
-          bank_name: formData.bankName,
-          account_number: formData.accountNumber,
-          account_holder_name: formData.accountHolderName,
-          routing_number: formData.routingNumber,
-          account_type: formData.accountType,
-          swift_code: formData.swiftCode
-        });
+      // Save references
+      const validReferences = references.filter(ref => 
+        ref.reference_name && ref.reference_phone
+      );
 
-      if (bankingError) throw bankingError;
-
-      // Insert references
-      const references = formData.references
-        .filter(ref => ref.name && ref.phone)
-        .map(ref => ({
-          provider_id: user.id,
-          reference_name: ref.name,
-          reference_phone: ref.phone,
-          reference_email: ref.email,
-          relationship: ref.relationship,
-          company_name: ref.company,
-          years_known: ref.yearsKnown ? parseInt(ref.yearsKnown) : null
-        }));
-
-      if (references.length > 0) {
-        const { error: refsError } = await supabase
-          .from('provider_references')
-          .insert(references);
-        
-        if (refsError) throw refsError;
+      if (validReferences.length > 0) {
+        await supabase.from('provider_references').insert(
+          validReferences.map(ref => ({
+            provider_id: user.id,
+            ...ref
+          }))
+        );
       }
 
       // Update user verification status
-      const { error: userError } = await supabase
-        .from('users')
-        .update({
-          verification_status: 'under_review',
-          verification_submitted_at: new Date().toISOString(),
-          background_check_consent: formData.backgroundCheckConsent
-        })
-        .eq('id', user.id);
-
-      if (userError) throw userError;
+      await supabase.from('users').update({
+        verification_status: 'under_review',
+        verification_submitted_at: new Date().toISOString(),
+        background_check_consent: backgroundCheckConsent
+      }).eq('id', user.id);
 
       toast({
         title: "Verification Submitted",
-        description: "Your verification has been submitted and is under review.",
+        description: "Your verification application has been submitted and is under review.",
       });
 
+      // Refresh the page to show new status
+      window.location.reload();
+
     } catch (error) {
-      console.error('Error submitting verification:', error);
+      console.error('Verification submission error:', error);
       toast({
         title: "Submission Failed",
         description: "Failed to submit verification. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const isFormValid = () => {
+    const hasDocuments = Object.values(documents).some(doc => doc !== null);
+    const hasBankingDetails = bankingDetails.bank_name && bankingDetails.account_number;
+    const hasReferences = references.some(ref => ref.reference_name && ref.reference_phone);
+    return hasDocuments && hasBankingDetails && hasReferences && backgroundCheckConsent;
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Document Upload Section */}
+    <div className="max-w-4xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Document Upload
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {Object.entries({
-            nationalId: 'National ID / Passport',
-            proofOfResidence: 'Proof of Residence',
-            skillsCertificate: 'Skills Certificate (Optional)',
-            bankStatement: 'Bank Statement'
-          }).map(([key, label]) => (
-            <div key={key}>
-              <Label>{label}</Label>
-              <Input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                onChange={(e) => handleFileChange(key, e.target.files?.[0] || null)}
-                className="mt-1"
-              />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* Banking Details Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Banking Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Bank Name</Label>
-              <Input
-                value={formData.bankName}
-                onChange={(e) => handleInputChange('bankName', e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label>Account Number</Label>
-              <Input
-                value={formData.accountNumber}
-                onChange={(e) => handleInputChange('accountNumber', e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label>Account Holder Name</Label>
-              <Input
-                value={formData.accountHolderName}
-                onChange={(e) => handleInputChange('accountHolderName', e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label>Routing Number</Label>
-              <Input
-                value={formData.routingNumber}
-                onChange={(e) => handleInputChange('routingNumber', e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* References Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Professional References (Minimum 2)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {formData.references.map((ref, index) => (
-            <div key={index} className="border p-4 rounded-lg space-y-3">
-              <h4 className="font-medium">Reference {index + 1}</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <Label>Full Name</Label>
-                  <Input
-                    value={ref.name}
-                    onChange={(e) => handleReferenceChange(index, 'name', e.target.value)}
-                    required={index < 2}
-                  />
-                </div>
-                <div>
-                  <Label>Phone Number</Label>
-                  <Input
-                    value={ref.phone}
-                    onChange={(e) => handleReferenceChange(index, 'phone', e.target.value)}
-                    required={index < 2}
-                  />
-                </div>
-                <div>
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={ref.email}
-                    onChange={(e) => handleReferenceChange(index, 'email', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>Relationship</Label>
-                  <Input
-                    value={ref.relationship}
-                    onChange={(e) => handleReferenceChange(index, 'relationship', e.target.value)}
-                    placeholder="e.g., Former employer, Client"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* Consent Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Background Check Consent
-          </CardTitle>
+          <CardTitle>Provider Verification Application</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-start space-x-2">
-            <Checkbox
-              id="background-consent"
-              checked={formData.backgroundCheckConsent}
-              onCheckedChange={(checked) => handleInputChange('backgroundCheckConsent', checked)}
-              required
-            />
-            <Label htmlFor="background-consent" className="text-sm leading-5">
-              I consent to a background check being performed as part of the verification process. 
-              This may include verification of identity, employment history, and criminal background check.
-            </Label>
+          <Tabs value={currentStep} onValueChange={setCurrentStep}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="banking">Banking</TabsTrigger>
+              <TabsTrigger value="references">References</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="documents" className="space-y-4">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Required Documents
+              </h3>
+              
+              {Object.entries({
+                national_id: 'National ID or Passport',
+                proof_of_residence: 'Proof of Residence',
+                bank_statement: 'Bank Statement',
+                professional_certificate: 'Professional Certificate (Optional)'
+              }).map(([key, label]) => (
+                <div key={key} className="space-y-2">
+                  <Label>{label}</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(key as keyof typeof documents, file);
+                      }}
+                    />
+                    {documents[key as keyof typeof documents] && (
+                      <span className="text-sm text-green-600">✓ Selected</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </TabsContent>
+
+            <TabsContent value="banking" className="space-y-4">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Banking Details
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Bank Name</Label>
+                  <Input
+                    value={bankingDetails.bank_name}
+                    onChange={(e) => setBankingDetails(prev => ({
+                      ...prev, bank_name: e.target.value
+                    }))}
+                    placeholder="e.g., Bank Windhoek"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Account Holder Name</Label>
+                  <Input
+                    value={bankingDetails.account_holder_name}
+                    onChange={(e) => setBankingDetails(prev => ({
+                      ...prev, account_holder_name: e.target.value
+                    }))}
+                    placeholder="Full name as on account"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Account Number</Label>
+                  <Input
+                    value={bankingDetails.account_number}
+                    onChange={(e) => setBankingDetails(prev => ({
+                      ...prev, account_number: e.target.value
+                    }))}
+                    placeholder="Account number"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Account Type</Label>
+                  <Select
+                    value={bankingDetails.account_type}
+                    onValueChange={(value) => setBankingDetails(prev => ({
+                      ...prev, account_type: value
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="checking">Checking</SelectItem>
+                      <SelectItem value="savings">Savings</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="references" className="space-y-4">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Professional References (Minimum 2)
+              </h3>
+              
+              {references.map((ref, index) => (
+                <Card key={index}>
+                  <CardHeader>
+                    <CardTitle className="text-base">Reference {index + 1}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Name</Label>
+                      <Input
+                        value={ref.reference_name}
+                        onChange={(e) => {
+                          const newRefs = [...references];
+                          newRefs[index].reference_name = e.target.value;
+                          setReferences(newRefs);
+                        }}
+                        placeholder="Reference name"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Phone</Label>
+                      <Input
+                        value={ref.reference_phone}
+                        onChange={(e) => {
+                          const newRefs = [...references];
+                          newRefs[index].reference_phone = e.target.value;
+                          setReferences(newRefs);
+                        }}
+                        placeholder="Phone number"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Email (Optional)</Label>
+                      <Input
+                        type="email"
+                        value={ref.reference_email}
+                        onChange={(e) => {
+                          const newRefs = [...references];
+                          newRefs[index].reference_email = e.target.value;
+                          setReferences(newRefs);
+                        }}
+                        placeholder="Email address"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Relationship</Label>
+                      <Input
+                        value={ref.relationship}
+                        onChange={(e) => {
+                          const newRefs = [...references];
+                          newRefs[index].relationship = e.target.value;
+                          setReferences(newRefs);
+                        }}
+                        placeholder="e.g., Previous employer"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </TabsContent>
+          </Tabs>
+
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="consent"
+                checked={backgroundCheckConsent}
+                onCheckedChange={setBackgroundCheckConsent}
+              />
+              <Label htmlFor="consent" className="text-sm">
+                I consent to background checks and verification of the information provided
+              </Label>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSubmitVerification}
+                disabled={!isFormValid() || isSubmitting}
+                className="flex-1"
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Verification'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
-
-      <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? 'Submitting...' : 'Submit for Verification'}
-      </Button>
-    </form>
+    </div>
   );
 };
-
-export default ProviderVerificationForm;

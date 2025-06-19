@@ -1,151 +1,190 @@
 
-import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { ProviderDashboardHome } from '@/components/provider/ProviderDashboardHome';
-import { ProviderMyJobs } from '@/components/provider/ProviderMyJobs';
-import { ProviderAvailabilityPage } from '@/components/provider/ProviderAvailabilityPage';
-import { ProviderEarningsPage } from '@/components/provider/ProviderEarningsPage';
-import { ProviderProfilePage } from '@/components/provider/ProviderProfilePage';
-import { ProviderNotifications } from '@/components/provider/ProviderNotifications';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, User, Menu } from 'lucide-react';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProviderData } from '@/hooks/useProviderData';
+import { ProviderOverviewTab } from '@/components/provider/ProviderOverviewTab';
+import { RealTimeBookingManager } from '@/components/booking/RealTimeBookingManager';
+import { VerificationStatusBanner } from '@/components/provider/VerificationStatusBanner';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Calendar, 
+  Dol
+Sign, ArrowLeft } from 'lucide-react';
 
 const ProviderDashboard = () => {
-  const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { data: providerData, isLoading, error, isValidProvider } = useProviderData();
+  const [verificationStatus, setVerificationStatus] = useState<string>('pending');
 
-  const handleLogout = async () => {
-    await logout();
-  };
+  useEffect(() => {
+    if (user) {
+      fetchVerificationStatus();
+    }
+  }, [user]);
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <ProviderDashboardHome />;
-      case 'jobs':
-        return <ProviderMyJobs />;
-      case 'availability':
-        return <ProviderAvailabilityPage />;
-      case 'earnings':
-        return <ProviderEarningsPage />;
-      case 'profile':
-        return <ProviderProfilePage />;
-      case 'notifications':
-        return <ProviderNotifications />;
-      default:
-        return <ProviderDashboardHome />;
+  const fetchVerificationStatus = async () => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase
+        .from('users')
+        .select('verification_status')
+        .eq('id', user.id)
+        .single();
+        
+      if (data) {
+        setVerificationStatus(data.verification_status || 'pending');
+      }
+    } catch (error) {
+      console.error('Error fetching verification status:', error);
     }
   };
 
-  return (
-    <ProtectedRoute requiredRole="provider">
-      <div className="min-h-screen bg-white">
-        {/* Top Navigation */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-          <div className="flex items-center space-x-2">
-            <h1 className="text-2xl font-bold text-purple-600">Longa</h1>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setActiveTab('notifications')}
-              className="relative"
-            >
-              <Bell className="h-5 w-5" />
-            </Button>
-            
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center space-x-2"
-              >
-                <User className="h-5 w-5" />
-                <span className="hidden sm:inline text-sm">{user?.full_name || user?.name}</span>
-              </Button>
-              
-              {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        setActiveTab('profile');
-                        setShowProfileMenu(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Profile Settings
-                    </button>
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <main className="pb-20">
-          {renderContent()}
-        </main>
-
-        {/* Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
-          <div className="flex justify-around">
-            <Button
-              variant={activeTab === 'dashboard' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveTab('dashboard')}
-              className="flex flex-col items-center space-y-1 min-w-0 flex-1"
-            >
-              <span className="text-xs">Dashboard</span>
-            </Button>
-            <Button
-              variant={activeTab === 'jobs' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveTab('jobs')}
-              className="flex flex-col items-center space-y-1 min-w-0 flex-1"
-            >
-              <span className="text-xs">My Jobs</span>
-            </Button>
-            <Button
-              variant={activeTab === 'availability' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveTab('availability')}
-              className="flex flex-col items-center space-y-1 min-w-0 flex-1"
-            >
-              <span className="text-xs">Availability</span>
-            </Button>
-            <Button
-              variant={activeTab === 'earnings' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveTab('earnings')}
-              className="flex flex-col items-center space-y-1 min-w-0 flex-1"
-            >
-              <span className="text-xs">Earnings</span>
-            </Button>
-            <Button
-              variant={activeTab === 'profile' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveTab('profile')}
-              className="flex flex-col items-center space-y-1 min-w-0 flex-1"
-            >
-              <span className="text-xs">Profile</span>
-            </Button>
-          </div>
-        </nav>
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Please Sign In</h1>
+          <p className="text-gray-600 mb-6">You need to be logged in as a provider to access this dashboard</p>
+          <Button onClick={() => navigate('/auth')}>
+            Sign In
+          </Button>
+        </div>
       </div>
-    </ProtectedRoute>
+    );
+  }
+
+  if (!isValidProvider) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-6">This dashboard is only accessible to active service providers</p>
+          <Button onClick={() => navigate('/')}>
+            Go Home
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Dashboard</h1>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Provider Dashboard
+            </h1>
+            <p className="text-gray-600">
+              Welcome back, {providerData?.profile?.name || user.full_name}!
+            </p>
+          </div>
+        </div>
+
+        {/* Global Verification Status Banner */}
+        <div className="mb-6">
+          <VerificationStatusBanner verificationStatus={verificationStatus} />
+        </div>
+
+        {/* Dashboard Tabs */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="jobs">Jobs & Bookings</TabsTrigger>
+            <TabsTrigger value="earnings">Earnings</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview">
+            <ProviderOverviewTab 
+              profile={providerData?.profile}
+              stats={{
+                totalEarnings: providerData?.monthlyEarnings.reduce((sum, month) => sum + month.amount, 0) || 0,
+                pendingPayouts: 0,
+                thisWeekEarnings: 0,
+                availableJobs: providerData?.jobs.filter(j => j.status === 'requested').length || 0,
+                completedJobs: providerData?.jobs.filter(j => j.status === 'completed').length || 0,
+                averageRating: providerData?.profile?.rating || 0
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="jobs">
+            <RealTimeBookingManager />
+          </TabsContent>
+
+          <TabsContent value="earnings">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Earnings Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">
+                  Detailed earnings breakdown and payout history will be displayed here.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Settings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">
+                  Profile management and settings will be displayed here.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
   );
 };
 

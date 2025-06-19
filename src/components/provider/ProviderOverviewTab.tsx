@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { supabase } from '@/integrations/supabase/client';
-import { UnverifiedProviderMessage } from './UnverifiedProviderMessage';
+import { VerificationStatusBanner } from './VerificationStatusBanner';
 
 interface ProviderOverviewTabProps {
   profile?: any;
@@ -78,91 +78,111 @@ export const ProviderOverviewTab: React.FC<ProviderOverviewTabProps> = ({ profil
 
   return (
     <div className="space-y-6">
-      {/* Verification Status Alert */}
+      {/* Verification Status Banner - Always show if not verified */}
+      <VerificationStatusBanner verificationStatus={verificationStatus} />
+
+      {/* Dashboard Statistics - Show regardless of verification status */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ListChecks className="h-4 w-4" />
+              Total Jobs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalJobs}</div>
+            <p className="text-gray-500">All jobs assigned to you</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Completed Jobs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{completedJobs}</div>
+            <p className="text-gray-500">Jobs marked as completed</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Total Earnings
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">N${totalEarnings}</div>
+            <p className="text-gray-500">Earnings from completed jobs</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Button 
+            onClick={() => navigate('/provider-jobs')} 
+            className="flex items-center gap-2"
+            disabled={!isVerified}
+          >
+            <ListChecks className="h-4 w-4" />
+            View Available Jobs
+            {!isVerified && <span className="text-xs">(Requires Verification)</span>}
+          </Button>
+          <Button 
+            onClick={() => navigate('/provider-availability')} 
+            className="flex items-center gap-2"
+          >
+            <Calendar className="h-4 w-4" />
+            Manage Availability
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Verification Status Info */}
       {!isVerified && (
-        <UnverifiedProviderMessage 
-          verificationStatus={verificationStatus}
-          onStartVerification={() => navigate('/provider-verification')}
-        />
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              Why Verification Matters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm text-gray-600">
+              <p>• <strong>Job Access:</strong> Only verified providers can accept job assignments</p>
+              <p>• <strong>Trust & Safety:</strong> Verification builds client confidence in your services</p>
+              <p>• <strong>Payment Processing:</strong> Required for secure payout processing</p>
+              <p>• <strong>Platform Protection:</strong> Helps maintain quality standards</p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Only show dashboard content if verified */}
+      {/* Team Performance (Example) */}
       {isVerified && (
-        <>
-          {/* Dashboard Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ListChecks className="h-4 w-4" />
-                  Total Jobs
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalJobs}</div>
-                <p className="text-gray-500">All jobs assigned to you</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Completed Jobs
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{completedJobs}</div>
-                <p className="text-gray-500">Jobs marked as completed</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Total Earnings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">N${totalEarnings}</div>
-                <p className="text-gray-500">Earnings from completed jobs</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button onClick={() => navigate('/provider-jobs')} className="flex items-center gap-2">
-                <ListChecks className="h-4 w-4" />
-                View Available Jobs
-              </Button>
-              <Button onClick={() => navigate('/provider-availability')} className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Manage Availability
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Team Performance (Example) */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Team Performance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                This section will display your performance metrics compared to other providers.
-              </p>
-            </CardContent>
-          </Card>
-        </>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Team Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600">
+              This section will display your performance metrics compared to other providers.
+            </p>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

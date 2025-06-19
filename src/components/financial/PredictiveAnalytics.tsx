@@ -89,7 +89,15 @@ export const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ classN
     }
   };
 
-  const formatCurrency = (value: number) => `N$${value.toLocaleString()}`;
+  const formatCurrency = (value: number | null | undefined) => {
+    const safeValue = value || 0;
+    return `N$${safeValue.toLocaleString()}`;
+  };
+
+  const safeToFixed = (value: number | null | undefined, decimals: number = 1) => {
+    const safeValue = value || 0;
+    return safeValue.toFixed(decimals);
+  };
 
   const calculateGrowthRate = (data: any[], valueKey: string) => {
     if (data.length < 2) return 0;
@@ -155,7 +163,7 @@ export const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ classN
               <div>
                 <p className="text-sm font-medium text-gray-600">Revenue Growth</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold">{revenueGrowth.toFixed(1)}%</p>
+                  <p className="text-2xl font-bold">{safeToFixed(revenueGrowth)}%</p>
                   {getGrowthIndicator(revenueGrowth)}
                 </div>
               </div>
@@ -170,7 +178,7 @@ export const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ classN
               <div>
                 <p className="text-sm font-medium text-gray-600">Booking Growth</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold">{bookingsGrowth.toFixed(1)}%</p>
+                  <p className="text-2xl font-bold">{safeToFixed(bookingsGrowth)}%</p>
                   {getGrowthIndicator(bookingsGrowth)}
                 </div>
               </div>
@@ -198,7 +206,7 @@ export const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ classN
                 <p className="text-sm font-medium text-gray-600">Avg. Customer LTV</p>
                 <p className="text-2xl font-bold">
                   {formatCurrency(
-                    customerLTV.reduce((sum, customer) => sum + customer.customer_lifetime_value, 0) / 
+                    customerLTV.reduce((sum, customer) => sum + (customer.customer_lifetime_value || 0), 0) / 
                     Math.max(customerLTV.length, 1)
                   )}
                 </p>
@@ -263,11 +271,11 @@ export const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ classN
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm font-medium">Month {index + 1}</span>
                       <Badge variant="outline">
-                        {(forecast.confidence_level * 100).toFixed(0)}% Confidence
+                        {safeToFixed((forecast.confidence_level || 0) * 100, 0)}% Confidence
                       </Badge>
                     </div>
                     <p className="text-lg font-bold">{formatCurrency(forecast.predicted_revenue)}</p>
-                    <p className="text-sm text-gray-600">{forecast.predicted_bookings} bookings</p>
+                    <p className="text-sm text-gray-600">{forecast.predicted_bookings || 0} bookings</p>
                   </div>
                 ))}
               </div>
@@ -311,8 +319,8 @@ export const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ classN
                     <div>
                       <span className="font-medium">{service.service_name}</span>
                       <div className="flex gap-4 text-sm text-gray-600">
-                        <span>{service.completed_bookings} completed</span>
-                        <span>Rating: {service.avg_rating?.toFixed(1) || 'N/A'}</span>
+                        <span>{service.completed_bookings || 0} completed</span>
+                        <span>Rating: {safeToFixed(service.avg_rating)}</span>
                       </div>
                     </div>
                     <div className="text-right">
@@ -353,8 +361,8 @@ export const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ classN
                       <div>
                         <h4 className="font-medium">{provider.provider_name}</h4>
                         <div className="flex gap-4 text-sm text-gray-600">
-                          <span>{provider.completed_30_days} completed</span>
-                          <span>{provider.completion_rate.toFixed(1)}% completion rate</span>
+                          <span>{provider.completed_30_days || 0} completed</span>
+                          <span>{safeToFixed(provider.completion_rate)}% completion rate</span>
                         </div>
                       </div>
                     </div>
@@ -362,7 +370,7 @@ export const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ classN
                       <p className="font-bold">{formatCurrency(provider.revenue_30_days)}</p>
                       <div className="flex items-center gap-1">
                         <span className="text-sm text-gray-600">Rating:</span>
-                        <span className="text-sm font-medium">{provider.recent_rating?.toFixed(1) || 'N/A'}</span>
+                        <span className="text-sm font-medium">{safeToFixed(provider.recent_rating)}</span>
                       </div>
                     </div>
                   </div>
@@ -384,9 +392,9 @@ export const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ classN
                   <PieChart>
                     <Pie
                       data={[
-                        { name: 'High Value (N$1000+)', value: customerLTV.filter(c => c.customer_lifetime_value >= 1000).length },
-                        { name: 'Medium Value (N$500-999)', value: customerLTV.filter(c => c.customer_lifetime_value >= 500 && c.customer_lifetime_value < 1000).length },
-                        { name: 'Low Value (<N$500)', value: customerLTV.filter(c => c.customer_lifetime_value < 500).length }
+                        { name: 'High Value (N$1000+)', value: customerLTV.filter(c => (c.customer_lifetime_value || 0) >= 1000).length },
+                        { name: 'Medium Value (N$500-999)', value: customerLTV.filter(c => (c.customer_lifetime_value || 0) >= 500 && (c.customer_lifetime_value || 0) < 1000).length },
+                        { name: 'Low Value (<N$500)', value: customerLTV.filter(c => (c.customer_lifetime_value || 0) < 500).length }
                       ]}
                       cx="50%"
                       cy="50%"
@@ -427,12 +435,12 @@ export const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ classN
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">Customer #{index + 1}</span>
-                          {customer.churn_risk_score > 0.7 && (
+                          {(customer.churn_risk_score || 0) > 0.7 && (
                             <Badge variant="destructive" className="text-xs">High Churn Risk</Badge>
                           )}
                         </div>
                         <div className="text-sm text-gray-600">
-                          {customer.total_bookings} bookings • Avg: {formatCurrency(customer.avg_booking_value)}
+                          {customer.total_bookings || 0} bookings • Avg: {formatCurrency(customer.avg_booking_value)}
                         </div>
                       </div>
                       <div className="text-right">

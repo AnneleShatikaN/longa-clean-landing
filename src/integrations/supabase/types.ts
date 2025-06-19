@@ -419,6 +419,58 @@ export type Database = {
         }
         Relationships: []
       }
+      content_audit_log: {
+        Row: {
+          action: string
+          changes: Json | null
+          content_id: string
+          content_type: string
+          id: string
+          performed_at: string | null
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          content_id: string
+          content_type: string
+          id?: string
+          performed_at?: string | null
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          content_id?: string
+          content_type?: string
+          id?: string
+          performed_at?: string | null
+          performed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_audit_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "content_audit_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "content_audit_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_analytics: {
         Row: {
           avg_booking_value: number | null
@@ -572,6 +624,68 @@ export type Database = {
           variables?: Json | null
         }
         Relationships: []
+      }
+      email_verification_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          token: string
+          used: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          token: string
+          used?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          token?: string
+          used?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      faq_analytics: {
+        Row: {
+          faq_id: string | null
+          id: string
+          page_context: string | null
+          user_id: string | null
+          user_role: string | null
+          viewed_at: string | null
+        }
+        Insert: {
+          faq_id?: string | null
+          id?: string
+          page_context?: string | null
+          user_id?: string | null
+          user_role?: string | null
+          viewed_at?: string | null
+        }
+        Update: {
+          faq_id?: string | null
+          id?: string
+          page_context?: string | null
+          user_id?: string | null
+          user_role?: string | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faq_analytics_faq_id_fkey"
+            columns: ["faq_id"]
+            isOneToOne: false
+            referencedRelation: "support_faqs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       financial_reconciliation: {
         Row: {
@@ -1112,6 +1226,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      password_reset_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          token: string
+          used: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          token: string
+          used?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          token?: string
+          used?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
       }
       payment_method_configs: {
         Row: {
@@ -2672,9 +2813,12 @@ export type Database = {
           created_by: string | null
           id: string
           is_active: boolean | null
+          last_updated_by: string | null
+          priority: number | null
           question: string
           updated_at: string | null
           views: number | null
+          visibility_rules: Json | null
         }
         Insert: {
           answer: string
@@ -2683,9 +2827,12 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          last_updated_by?: string | null
+          priority?: number | null
           question: string
           updated_at?: string | null
           views?: number | null
+          visibility_rules?: Json | null
         }
         Update: {
           answer?: string
@@ -2694,11 +2841,36 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          last_updated_by?: string | null
+          priority?: number | null
           question?: string
           updated_at?: string | null
           views?: number | null
+          visibility_rules?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "support_faqs_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "support_faqs_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "support_faqs_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       support_ticket_responses: {
         Row: {
@@ -3221,6 +3393,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      cleanup_expired_tokens: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       decline_pending_transaction: {
         Args: { transaction_id: string; admin_notes_param?: string }
         Returns: Json
@@ -3241,6 +3417,14 @@ export type Database = {
           years_experience: number
           availability_score: number
         }[]
+      }
+      generate_reset_token: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
+      generate_verification_token: {
+        Args: { p_user_id: string }
+        Returns: string
       }
       get_analytics_summary: {
         Args: Record<PropertyKey, never>
@@ -3268,6 +3452,23 @@ export type Database = {
           completed_bookings: number
           total_packages_sold: number
           avg_booking_value: number
+        }[]
+      }
+      get_faqs_for_context: {
+        Args: {
+          p_user_role?: string
+          p_page_context?: string
+          p_category?: string
+        }
+        Returns: {
+          id: string
+          question: string
+          answer: string
+          category: string
+          views: number
+          priority: number
+          visibility_rules: Json
+          created_at: string
         }[]
       }
       get_financial_overview: {

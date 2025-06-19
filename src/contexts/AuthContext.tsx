@@ -10,12 +10,12 @@ interface AuthContextType {
   user: UserProfile | null;
   session: Session | null;
   loading: boolean;
-  isLoading: boolean; // Add this for ProtectedRoute compatibility
-  isInitialized: boolean; // Add this for ProtectedRoute compatibility
+  isLoading: boolean;
+  isInitialized: boolean;
   signUp: (email: string, password: string, metadata: any) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  logout: () => Promise<void>; // Add this for component compatibility
+  logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -45,9 +45,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         id: data.id,
         email: data.email,
         full_name: data.full_name,
-        name: data.full_name, // Map full_name to name
+        name: data.full_name,
         phone: data.phone,
-        role: data.role as UserRole, // Properly cast role to UserRole type
+        role: data.role as UserRole,
         avatar_url: data.avatar_url,
         is_active: data.is_active,
         rating: data.rating,
@@ -55,10 +55,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         created_at: data.created_at,
         updated_at: data.updated_at,
         current_work_location: data.current_work_location,
-        status: data.is_active ? 'active' : 'inactive', // Map is_active to status
-        joinDate: data.created_at, // Map created_at to joinDate
-        lastActive: data.updated_at, // Map updated_at to lastActive
-        isEmailVerified: true, // Default to true for now
+        status: data.is_active ? 'active' : 'inactive',
+        joinDate: data.created_at,
+        lastActive: data.updated_at,
+        isEmailVerified: true,
         jobsCompleted: data.total_jobs
       };
 
@@ -127,13 +127,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
+      // Prevent admin signup in public registration
+      if (metadata.role === 'admin') {
+        throw new Error('Admin registration is not available through public signup');
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             ...metadata,
-            work_location: metadata.location // Map location to work_location for consistency
+            work_location: metadata.location
           }
         }
       });
@@ -183,7 +189,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Add logout as an alias to signOut for component compatibility
   const logout = signOut;
 
   return (
@@ -191,12 +196,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user,
       session,
       loading,
-      isLoading: loading, // Provide isLoading as alias to loading
+      isLoading: loading,
       isInitialized,
       signUp,
       signIn,
       signOut,
-      logout, // Add logout method
+      logout,
       refreshUser,
     }}>
       {children}

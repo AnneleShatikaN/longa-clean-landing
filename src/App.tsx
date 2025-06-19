@@ -1,86 +1,67 @@
-
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { Toaster } from "@/components/ui/toaster"
-import { AuthProvider } from '@/contexts/AuthContext';
-import { UserProvider } from '@/contexts/UserContext';
-import { DataModeProvider } from '@/contexts/DataModeContext';
-import { DataProvider } from '@/contexts/DataContext';
-import { ServiceProvider } from '@/contexts/ServiceContext';
-import { PayoutProvider } from '@/contexts/PayoutContext';
-import { SupabaseBookingProvider } from '@/contexts/SupabaseBookingContext';
-import { NotificationProvider } from '@/contexts/NotificationContext';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import LandingPage from './pages/LandingPage';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import Services from './pages/Services';
-import Auth from './pages/Auth';
-import ClientDashboard from './pages/ClientDashboard';
-import ProviderDashboard from './pages/ProviderDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import UserProfile from './pages/UserProfile';
-import ServiceDetails from './pages/ServiceDetails';
-import BookingPage from './pages/BookingPage';
-import OneOffBooking from './pages/OneOffBooking';
-import SubscriptionPackages from './pages/SubscriptionPackages';
-import Search from './pages/Search';
-import ProviderAvailability from './pages/ProviderAvailability';
-import ProviderProfile from './pages/ProviderProfile';
-import { LocationProvider } from '@/contexts/LocationContext';
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ServiceProvider } from "@/contexts/ServiceContext";
+import { SupabaseBookingProvider } from "@/contexts/SupabaseBookingContext";
+import Auth from "@/pages/Auth";
+import Contact from "@/pages/Contact";
+import Home from "@/pages/Home";
+import Services from "@/pages/Services";
+import SubscriptionPackages from "@/pages/SubscriptionPackages";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
+import Search from "@/pages/Search";
+import ClientDashboard from "@/pages/ClientDashboard";
+import ProviderDashboard from "@/pages/ProviderDashboard";
+import AdminDashboard from "@/pages/AdminDashboard";
+import ServiceDetails from "@/pages/ServiceDetails";
+import Bookings from "@/pages/Bookings";
+import OneOffBooking from "@/pages/OneOffBooking";
+import { SessionManager } from "@/components/SessionManager";
+import { PasswordResetForm } from "@/components/auth/PasswordResetForm";
+import { AuthCallback } from "@/components/auth/AuthCallback";
 
 const queryClient = new QueryClient();
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <TooltipProvider>
-          <AuthProvider>
-            <UserProvider>
-              <DataModeProvider>
-                <DataProvider>
-                  <ServiceProvider>
-                    <LocationProvider>
-                      <PayoutProvider>
-                        <SupabaseBookingProvider>
-                          <NotificationProvider>
-                            <ErrorBoundary>
-                              <div className="min-h-screen bg-background">
-                                <Routes>
-                                  <Route path="/" element={<LandingPage />} />
-                                  <Route path="/about" element={<About />} />
-                                  <Route path="/contact" element={<Contact />} />
-                                  <Route path="/services" element={<Services />} />
-                                  <Route path="/auth" element={<Auth />} />
-                                  <Route path="/profile" element={<UserProfile />} />
-                                  <Route path="/client-dashboard" element={<ClientDashboard />} />
-                                  <Route path="/provider-dashboard" element={<ProviderDashboard />} />
-                                  <Route path="/admin-dashboard" element={<AdminDashboard />} />
-                                  <Route path="/service/:id" element={<ServiceDetails />} />
-                                  <Route path="/provider-profile/:providerId" element={<ProviderProfile />} />
-                                  <Route path="/booking" element={<BookingPage />} />
-                                  <Route path="/one-off-booking" element={<OneOffBooking />} />
-                                  <Route path="/subscription-packages" element={<SubscriptionPackages />} />
-                                  <Route path="/search" element={<Search />} />
-                                  <Route path="/provider-availability" element={<ProviderAvailability />} />
-                                </Routes>
-                                <Toaster />
-                              </div>
-                            </ErrorBoundary>
-                          </NotificationProvider>
-                        </SupabaseBookingProvider>
-                      </PayoutProvider>
-                    </LocationProvider>
-                  </ServiceProvider>
-                </DataProvider>
-              </DataModeProvider>
-            </UserProvider>
-          </AuthProvider>
-        </TooltipProvider>
-      </BrowserRouter>
+      <AuthProvider>
+        <ServiceProvider>
+          <SupabaseBookingProvider>
+            <TooltipProvider>
+              <Toaster />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/services" element={<Services />} />
+                  <Route path="/subscription-packages" element={<SubscriptionPackages />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/search" element={<Search />} />
+                  <Route path="/client-dashboard" element={<ClientDashboard />} />
+                  <Route path="/provider-dashboard" element={<ProviderDashboard />} />
+                  <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                  <Route path="/service/:serviceId" element={<ServiceDetails />} />
+                  <Route path="/bookings" element={<Bookings />} />
+                  <Route path="/one-off-booking" element={<OneOffBooking />} />
+                  <Route path="/session" element={<SessionManager />} />
+                  
+                  {/* Enhanced Auth Routes */}
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth/forgot-password" element={<PasswordResetForm />} />
+                  <Route path="/auth/reset-password" element={<PasswordResetForm />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/auth/verify" element={<AuthCallback />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </SupabaseBookingProvider>
+        </ServiceProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

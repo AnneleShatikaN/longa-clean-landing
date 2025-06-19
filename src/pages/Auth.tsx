@@ -1,15 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthEnhanced } from '@/hooks/useAuthEnhanced';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, EyeOff, User, Briefcase, Shield, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, User, Briefcase, ArrowLeft } from "lucide-react";
+import { EmailVerificationBanner } from '@/components/auth/EmailVerificationBanner';
 import { toast } from 'sonner';
 
 const NAMIBIAN_TOWNS = [
@@ -29,7 +29,8 @@ const NAMIBIAN_TOWNS = [
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, signIn, signUp, loading } = useAuth();
+  const { user, loading } = useAuth();
+  const { signIn, signUp } = useAuthEnhanced();
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,7 +41,7 @@ const Auth = () => {
     password: '',
     fullName: '',
     phone: '',
-    role: 'client' as 'client' | 'provider' | 'admin',
+    role: 'client' as 'client' | 'provider',
     location: ''
   });
 
@@ -73,7 +74,6 @@ const Auth = () => {
         return false;
       }
 
-      // Make location required for all users during signup
       if (!formData.location) {
         toast.error('Location is required');
         return false;
@@ -95,17 +95,21 @@ const Auth = () => {
     setIsSubmitting(true);
     try {
       if (isSignUp) {
-        await signUp(formData.email, formData.password, {
+        const result = await signUp(formData.email, formData.password, {
           full_name: formData.fullName,
           phone: formData.phone,
           role: formData.role,
           location: formData.location
         });
+        
+        if (result.needsVerification) {
+          toast.info('Please check your email to verify your account before signing in');
+        }
       } else {
         await signIn(formData.email, formData.password);
       }
     } catch (error: any) {
-      toast.error(error.message || 'Authentication failed');
+      // Error handling is done in the hook
     } finally {
       setIsSubmitting(false);
     }
@@ -124,12 +128,6 @@ const Auth = () => {
           icon: <Briefcase className="h-4 w-4" />,
           title: 'Service Provider',
           description: 'Offer your services and earn income'
-        };
-      case 'admin':
-        return {
-          icon: <Shield className="h-4 w-4" />,
-          title: 'Admin',
-          description: 'Manage the platform and users'
         };
       default:
         return { icon: null, title: '', description: '' };
@@ -163,6 +161,8 @@ const Auth = () => {
           </p>
         </div>
 
+        <EmailVerificationBanner />
+
         <Card>
           <CardHeader>
             <CardTitle className="text-center">
@@ -171,7 +171,7 @@ const Auth = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Role Selection for Sign Up */}
+              {/* Role Selection for Sign Up - No admin option */}
               {isSignUp && (
                 <div className="space-y-3">
                   <Label>Account Type</Label>
@@ -180,10 +180,9 @@ const Auth = () => {
                     onValueChange={(value) => handleInputChange('role', value)}
                     className="w-full"
                   >
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="client">Client</TabsTrigger>
                       <TabsTrigger value="provider">Provider</TabsTrigger>
-                      <TabsTrigger value="admin">Admin</TabsTrigger>
                     </TabsList>
                   </Tabs>
                   
@@ -296,6 +295,19 @@ const Auth = () => {
                 {isSubmitting ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
               </Button>
             </form>
+
+            {/* Forgot Password Link */}
+            {!isSignUp && (
+              <div className="mt-4 text-center">
+                <Button
+                  variant="link"
+                  className="text-purple-600"
+                  onClick={() => navigate('/auth/forgot-password')}
+                >
+                  Forgot your password?
+                </Button>
+              </div>
+            )}
 
             {/* Toggle Sign In/Up */}
             <div className="mt-6 text-center">

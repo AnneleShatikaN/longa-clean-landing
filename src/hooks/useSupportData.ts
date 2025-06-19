@@ -9,6 +9,12 @@ export interface FAQ {
   answer: string;
   category: string;
   views: number;
+  priority: number;
+  visibility_rules: {
+    show_all: boolean;
+    user_roles: string[];
+    pages: string[];
+  };
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -37,6 +43,7 @@ export const useSupportData = () => {
         .from('support_faqs')
         .select('*')
         .eq('is_active', true)
+        .order('priority', { ascending: false })
         .order('views', { ascending: false });
 
       if (error) throw error;
@@ -71,11 +78,20 @@ export const useSupportData = () => {
     }
   };
 
-  const addFAQ = async (question: string, answer: string, category: string) => {
+  const addFAQ = async (question: string, answer: string, category: string, visibilityRules?: any) => {
     try {
       const { data, error } = await supabase
         .from('support_faqs')
-        .insert([{ question, answer, category }])
+        .insert([{ 
+          question, 
+          answer, 
+          category,
+          visibility_rules: visibilityRules || {
+            show_all: true,
+            user_roles: ['client', 'provider', 'admin'],
+            pages: ['all']
+          }
+        }])
         .select()
         .single();
 
@@ -234,7 +250,6 @@ export const useSupportData = () => {
   const incrementFAQViews = async (id: string) => {
     try {
       await supabase.rpc('increment_faq_views', { faq_id: id });
-      // Update local state
       setFaqs(prev => prev.map(faq => 
         faq.id === id ? { ...faq, views: faq.views + 1 } : faq
       ));

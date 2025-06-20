@@ -12,7 +12,7 @@ interface AuthContextType {
   loading: boolean;
   isLoading: boolean;
   isInitialized: boolean;
-  signUp: (email: string, password: string, metadata: any) => Promise<void>;
+  signUp: (email: string, password: string, metadata: any) => Promise<{ needsEmailVerification?: boolean }>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   logout: () => Promise<void>;
@@ -190,10 +190,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('Sign out error during signup (continuing):', err);
       }
 
+      // Get the current origin for email redirect
+      const redirectUrl = `${window.location.origin}/auth`;
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             full_name: metadata.full_name,
             phone: metadata.phone,
@@ -205,15 +209,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) {
         console.error('Signup error:', error);
+        
+        // Handle specific error cases
+        if (error.message.includes('User already registered')) {
+          throw new Error('An account with this email already exists. Please try signing in instead.');
+        } else if (error.message.includes('Password should be at least')) {
+          throw new Error('Password must be at least 6 characters long.');
+        } else if (error.message.includes('Invalid email')) {
+          throw new Error('Please enter a valid email address.');
+        }
+        
         throw error;
       }
 
       console.log('Signup successful:', data);
 
       if (data.user) {
-        // User account was created successfully
-        console.log('User account created successfully:', data.user.id);
-        return;
+        // Check if user needs email verification
+        if (!data.session) {
+          console.log('User needs email verification');
+          return { needsEmailVerification: true };
+        } else {
+          console.log('User account created and signed in immediately');
+          return { needsEmailVerification: false };
+        }
       } else {
         throw new Error('Failed to create user account');
       }
@@ -237,11 +256,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) {
         console.error('Sign in error:', error);
+        
+        // Handle specific error cases
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password. Please check your credentials and try again.');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Please check your email and click the verification link before signing in.');
+        }
+        
         throw error;
       }
 
       if (data.user) {
         console.log('Sign in successful for user:', data.user.id);
+        
+        // Check if email is verified
+        if (!data.user.email_confirmed_at) {
+          throw new Error('Please verify your email address before signing in. Check your inbox for the verification link.');
+        }
+        
         toast.success('Signed in successfully!');
       }
     } catch (error: any) {

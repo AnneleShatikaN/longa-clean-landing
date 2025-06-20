@@ -3,10 +3,43 @@ import React from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Mail, RefreshCw } from 'lucide-react';
-import { useAuthEnhanced } from '@/hooks/useAuthEnhanced';
+import { useState } from 'react';
+import { su​pabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const EmailVerificationBanner = () => {
-  const { needsVerification, resendVerificationEmail } = useAuthEnhanced();
+  const { session } = useAuth();
+  const [isResending, setIsResending] = useState(false);
+
+  // Only show if user is signed in but email is not verified
+  const needsVerification = session?.user && !session.user.email_confirmed_at;
+
+  const handleResendVerification = async () => {
+    if (!session?.user?.email) return;
+
+    setIsResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: session.user.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth`
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success('Verification email sent! Please check your inbox.');
+    } catch (error: any) {
+      console.error('Error resending verification:', error);
+      toast.error('Failed to resend verification email. Please try again.');
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   if (!needsVerification) return null;
 
@@ -18,11 +51,21 @@ export const EmailVerificationBanner = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={resendVerificationEmail}
+          onClick={handleResendVerification}
+          disabled={isResending}
           className="ml-4"
         >
-          <RefreshCw className="h-3 w-3 mr-1" />
-          Resend
+          {isResending ? (
+            <>
+              <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+              Sending...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Resend
+            </>
+          )}
         </Button>
       </AlertDescription>
     </Alert>

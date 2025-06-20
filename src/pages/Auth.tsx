@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, EyeOff, User, Briefcase, ArrowLeft } from "lucide-react";
-import { EmailVerificationBanner } from '@/components/auth/EmailVerificationBanner';
+import { Eye, EyeOff, User, Briefcase, ArrowLeft, Mail, CheckCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from 'sonner';
 
 const NAMIBIAN_TOWNS = [
@@ -33,6 +33,8 @@ const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [signupEmail, setSignupEmail] = useState('');
   
   // Form state
   const [formData, setFormData] = useState({
@@ -108,16 +110,22 @@ const Auth = () => {
           location: formData.location
         });
 
-        await signUp(formData.email, formData.password, {
+        const result = await signUp(formData.email, formData.password, {
           full_name: formData.fullName,
           phone: formData.phone,
           role: formData.role,
           location: formData.location
         });
         
-        toast.success('Account created successfully! You can now sign in.');
+        if (result.needsEmailVerification) {
+          setSignupEmail(formData.email);
+          setShowEmailVerification(true);
+          toast.success('Account created! Please check your email to verify your account.');
+        } else {
+          toast.success('Account created and signed in successfully!');
+        }
         
-        // Reset form and switch to sign in
+        // Reset form
         setFormData({
           email: '',
           password: '',
@@ -126,7 +134,6 @@ const Auth = () => {
           role: 'client',
           location: ''
         });
-        setIsSignUp(false);
       } else {
         await signIn(formData.email, formData.password);
         // Success handling is done in the AuthContext
@@ -166,6 +173,58 @@ const Auth = () => {
     );
   }
 
+  // Email verification screen
+  if (showEmailVerification) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <Mail className="h-6 w-6 text-green-600" />
+              </div>
+              <CardTitle>Check Your Email</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-gray-600">
+                We've sent a verification link to:
+              </p>
+              <p className="font-semibold text-gray-900">{signupEmail}</p>
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Click the verification link in your email to activate your account, then return here to sign in.
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-2">
+                <Button
+                  onClick={() => {
+                    setShowEmailVerification(false);
+                    setIsSignUp(false);
+                    setFormData(prev => ({ ...prev, email: signupEmail, password: '' }));
+                  }}
+                  className="w-full"
+                >
+                  I've verified my email - Sign In
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEmailVerification(false);
+                    setSignupEmail('');
+                  }}
+                  className="w-full"
+                >
+                  Back to Sign Up
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -184,8 +243,6 @@ const Auth = () => {
             {isSignUp ? 'Create your account' : 'Welcome back'}
           </p>
         </div>
-
-        <EmailVerificationBanner />
 
         <Card>
           <CardHeader>

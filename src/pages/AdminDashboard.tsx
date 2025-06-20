@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import {
   MessageSquare,
   Calendar
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { FinancialOverview } from '@/components/admin/FinancialOverview';
 import ServiceManagement from '@/components/admin/ServiceManagement';
 import { PaymentSystemManager } from '@/components/admin/PaymentSystemManager';
@@ -25,10 +27,27 @@ import { BankingInstructionsManager } from '@/components/admin/BankingInstructio
 import PackageManagement from '@/components/admin/PackageManagement';
 import { PackageBookingManager } from '@/components/admin/PackageBookingManager';
 import { ServiceCategoryManager } from '@/components/admin/ServiceCategoryManager';
+import { AdminOverview } from '@/components/admin/AdminOverview';
 import { useAuth } from '@/contexts/AuthContext';
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // Handle tab navigation from URL params
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  // Update URL when tab changes
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -45,7 +64,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Main Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -90,109 +109,7 @@ const AdminDashboard = () => {
           </TabsList>
 
           <TabsContent value="overview">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">1,234</div>
-                  <p className="text-xs text-muted-foreground">
-                    +10% from last month
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Providers</CardTitle>
-                  <Wrench className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">89</div>
-                  <p className="text-xs text-muted-foreground">
-                    +5% from last month
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">N$45,231</div>
-                  <p className="text-xs text-muted-foreground">
-                    +20% from last month
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">12</div>
-                  <p className="text-xs text-muted-foreground">
-                    Require attention
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button className="w-full justify-start" variant="outline">
-                    <Users className="h-4 w-4 mr-2" />
-                    View All Users
-                  </Button>
-                  <Button className="w-full justify-start" variant="outline">
-                    <Shield className="h-4 w-4 mr-2" />
-                    Review Verifications
-                  </Button>
-                  <Button className="w-full justify-start" variant="outline">
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    Process Payments
-                  </Button>
-                  <Button className="w-full justify-start" variant="outline">
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Manage Banking
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>System Health</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Database Status</span>
-                    <span className="text-sm text-green-600 font-medium">Healthy</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Payment Gateway</span>
-                    <span className="text-sm text-green-600 font-medium">Connected</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Notification Service</span>
-                    <span className="text-sm text-green-600 font-medium">Active</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Backup Status</span>
-                    <span className="text-sm text-green-600 font-medium">Up to Date</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <AdminOverview />
           </TabsContent>
 
           <TabsContent value="users">

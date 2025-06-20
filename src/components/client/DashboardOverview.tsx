@@ -101,7 +101,7 @@ export const DashboardOverview = () => {
               </p>
             </div>
             <div className="space-y-3">
-              <Button onClick={() => navigate('/search')} className="w-full">
+              <Button onClick={() => navigate('/services')} className="w-full">
                 Browse All Services
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
@@ -115,7 +115,7 @@ export const DashboardOverview = () => {
               </div>
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/subscription-packages')}
+                onClick={() => navigate('/packages')}
                 className="w-full"
               >
                 <Package className="h-4 w-4 mr-2" />
@@ -139,7 +139,7 @@ export const DashboardOverview = () => {
                 Recent Bookings
               </span>
               {bookings.length > 3 && (
-                <Button variant="ghost" size="sm" onClick={() => navigate('/bookings')}>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/my-bookings')}>
                   View All
                 </Button>
               )}
@@ -192,15 +192,15 @@ export const DashboardOverview = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Button onClick={() => navigate('/search')} className="justify-start">
+            <Button onClick={() => navigate('/services')} className="justify-start">
               <ShoppingBag className="h-4 w-4 mr-2" />
               Browse Services
             </Button>
-            <Button variant="outline" onClick={() => navigate('/subscription-packages')} className="justify-start">
+            <Button variant="outline" onClick={() => navigate('/packages')} className="justify-start">
               <Package className="h-4 w-4 mr-2" />
               View Packages
             </Button>
-            <Button variant="outline" onClick={() => navigate('/bookings')} className="justify-start">
+            <Button variant="outline" onClick={() => navigate('/my-bookings')} className="justify-start">
               <Calendar className="h-4 w-4 mr-2" />
               My Bookings
             </Button>

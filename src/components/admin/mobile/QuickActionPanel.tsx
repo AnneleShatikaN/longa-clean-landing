@@ -11,13 +11,22 @@ import {
   ChevronRight,
   TrendingUp
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface QuickActionPanelProps {
   onAction: (action: string, id?: string) => void;
-  data: any;
+  data: {
+    pendingProviders?: number;
+    pendingPayouts?: number;
+    activeJobs?: number;
+    unreadMessages?: number;
+    totalRevenue?: number;
+  };
 }
 
 export const QuickActionPanel: React.FC<QuickActionPanelProps> = ({ onAction, data }) => {
+  const navigate = useNavigate();
+
   const quickActions = [
     {
       id: 'approve-providers',
@@ -25,7 +34,7 @@ export const QuickActionPanel: React.FC<QuickActionPanelProps> = ({ onAction, da
       count: data.pendingProviders || 0,
       icon: UserCheck,
       color: 'blue',
-      action: 'view-pending-providers'
+      action: () => navigate('/admin-dashboard?tab=verification')
     },
     {
       id: 'process-payouts',
@@ -33,7 +42,7 @@ export const QuickActionPanel: React.FC<QuickActionPanelProps> = ({ onAction, da
       count: data.pendingPayouts || 0,
       icon: DollarSign,
       color: 'green',
-      action: 'view-pending-payouts'
+      action: () => navigate('/admin-dashboard?tab=payments')
     },
     {
       id: 'active-jobs',
@@ -41,7 +50,7 @@ export const QuickActionPanel: React.FC<QuickActionPanelProps> = ({ onAction, da
       count: data.activeJobs || 0,
       icon: Clock,
       color: 'purple',
-      action: 'view-active-jobs'
+      action: () => navigate('/admin-dashboard?tab=bookings')
     },
     {
       id: 'messages',
@@ -49,7 +58,7 @@ export const QuickActionPanel: React.FC<QuickActionPanelProps> = ({ onAction, da
       count: data.unreadMessages || 0,
       icon: MessageSquare,
       color: 'orange',
-      action: 'view-messages'
+      action: () => navigate('/admin-dashboard?tab=users')
     }
   ];
 
@@ -78,7 +87,7 @@ export const QuickActionPanel: React.FC<QuickActionPanelProps> = ({ onAction, da
               key={action.id}
               variant="ghost"
               className="w-full h-auto p-4 justify-between touch-manipulation"
-              onClick={() => onAction(action.action)}
+              onClick={action.action}
             >
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${getColorClasses(action.color)}`}>

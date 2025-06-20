@@ -20,12 +20,14 @@ import {
   Star,
   Clock,
   MapPin,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft,
+  LogOut
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const ClientDashboard = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { userActivePackage, packages, isLoading: packagesLoading } = useSubscriptionPackages();
   const { services, isLoading: servicesLoading } = useServicesEnhanced();
@@ -51,6 +53,19 @@ const ClientDashboard = () => {
     setShowPackagePurchase(false);
     // Refresh package data
     window.location.reload();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const handleBack = () => {
+    navigate(-1);
   };
 
   if (packagesLoading || servicesLoading) {
@@ -79,16 +94,37 @@ const ClientDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white">
       <div className="container mx-auto px-4 py-8">
+        {/* Navigation Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Welcome back, {user?.full_name || user?.email}!
+              </h1>
+              <p className="text-gray-600">Manage your bookings and services</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
+        </div>
+
         {/* Email Verification Banner */}
         <EmailVerificationBanner />
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user?.full_name || user?.email}!
-          </h1>
-          <p className="text-gray-600">Manage your bookings and services</p>
-        </div>
 
         {/* Active Package Alert */}
         {userActivePackage && (

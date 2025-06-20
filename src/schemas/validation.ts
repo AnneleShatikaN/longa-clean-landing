@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 import { validateNamibianPhone } from '@/utils/locationUtils';
 
@@ -9,7 +10,7 @@ export const serviceSchema = z.object({
   clientPrice: z.number().min(50, "Minimum price is NAD 50").max(5000, "Maximum price is NAD 5000"),
   providerPrice: z.number().optional(),
   providerFee: z.number().optional(),
-  commissionPercentage: z.number().min(5, "Minimum commission is 5%").max(30, "Maximum commission is 30%").optional(),
+  commissionPercentage: z.number().min(5, "Minimum commission is 5%").optional(),
   duration: z.object({
     hours: z.number().min(0).max(8),
     minutes: z.number().min(0).max(59)

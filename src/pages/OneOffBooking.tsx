@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
-import { useServices } from '@/contexts/ServiceContext';
+import { useServicesEnhanced } from '@/hooks/useServicesEnhanced';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { useToast } from '@/hooks/use-toast';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
@@ -17,7 +17,7 @@ import { format, addDays, isBefore, startOfDay } from 'date-fns';
 const OneOffBooking = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { services } = useServices();
+  const { getServiceById, isLoading: servicesLoading } = useServicesEnhanced();
   const { createBooking } = useSupabaseBookings();
   const { toast } = useToast();
   const { settings, isLoading: settingsLoading } = useGlobalSettings();
@@ -34,13 +34,13 @@ const OneOffBooking = () => {
   const serviceId = searchParams.get('service_id');
 
   useEffect(() => {
-    if (serviceId && services.length > 0) {
-      const service = services.find(s => s.id === serviceId);
+    if (serviceId && !servicesLoading) {
+      const service = getServiceById(serviceId);
       if (service) {
         setSelectedService(service);
       }
     }
-  }, [serviceId, services]);
+  }, [serviceId, getServiceById, servicesLoading]);
 
   useEffect(() => {
     // Pre-fill client location from user profile
@@ -180,14 +180,25 @@ const OneOffBooking = () => {
     );
   }
 
-  if (!selectedService) {
+  if (servicesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Loading Service...</h1>
           <p className="text-gray-600 mb-6">Please wait while we load the service details.</p>
-          <Button onClick={() => navigate('/client-dashboard')}>
-            Back to Dashboard
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedService) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Service Not Found</h1>
+          <p className="text-gray-600 mb-6">The requested service could not be found.</p>
+          <Button onClick={() => navigate('/services')}>
+            Browse Services
           </Button>
         </div>
       </div>
@@ -195,7 +206,7 @@ const OneOffBooking = () => {
   }
 
   // Get payment instructions from settings
-  const paymentInstructions = settings.payment_instructions;
+  const paymentInstructions = settings?.payment_instructions;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
@@ -225,12 +236,12 @@ const OneOffBooking = () => {
           <CardContent>
             {/* Service Display with Pricing */}
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">{selectedService?.name}</h3>
-              <p className="text-blue-800 text-sm mb-3">{selectedService?.description}</p>
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">{selectedService.name}</h3>
+              <p className="text-blue-800 text-sm mb-3">{selectedService.description}</p>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 text-sm text-blue-700">
                   <Clock className="h-4 w-4" />
-                  <span>{Math.floor((selectedService?.duration_minutes || 180) / 60)}h {(selectedService?.duration_minutes || 180) % 60}m</span>
+                  <span>{Math.floor(selectedService.duration_minutes / 60)}h {selectedService.duration_minutes % 60}m</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-5 w-5 text-blue-900" />
@@ -343,7 +354,7 @@ const OneOffBooking = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Service:</span>
-                    <span className="font-medium">{selectedService?.name}</span>
+                    <span className="font-medium">{selectedService.name}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Date:</span>
@@ -355,7 +366,7 @@ const OneOffBooking = () => {
                   </div>
                   <div className="flex justify-between">
                     <span>Duration:</span>
-                    <span>{Math.floor((selectedService?.duration_minutes || 180) / 60)}h {(selectedService?.duration_minutes || 180) % 60}m</span>
+                    <span>{Math.floor(selectedService.duration_minutes / 60)}h {selectedService.duration_minutes % 60}m</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Location:</span>

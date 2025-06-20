@@ -110,7 +110,7 @@ const SubscriptionPackages = () => {
           <Card>
             <CardContent className="p-12 text-center">
               <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Packages Available</h3>
+              <h3 className="text-xl font-semibold mb-2">No packages available</h3>
               <p className="text-gray-600 mb-6">
                 No subscription packages are currently available. Please check back later.
               </p>

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscriptionPackages } from '@/hooks/useSubscriptionPackages';
+import { usePaymentInstructions } from '@/hooks/usePaymentInstructions';
 import { toast } from 'sonner';
 
 interface PackagePurchaseFlowProps {
@@ -36,24 +37,15 @@ export const PackagePurchaseFlow: React.FC<PackagePurchaseFlowProps> = ({
 }) => {
   const { user } = useAuth();
   const { packages, isLoading, createPackagePurchase } = useSubscriptionPackages();
+  const { paymentInstructions, generateReference } = usePaymentInstructions();
   
   const [currentStep, setCurrentStep] = useState<PurchaseStep>(packageId ? 'details' : 'selection');
   const [selectedPackageId, setSelectedPackageId] = useState<string>(packageId || '');
   const [whatsappNumber, setWhatsappNumber] = useState('');
-  const [referenceNumber, setReferenceNumber] = useState('');
-  const [paymentProof, setPaymentProof] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const selectedPackage = packages.find(p => p.id === selectedPackageId);
-
-  const bankingDetails = {
-    bankName: "Bank Windhoek",
-    accountName: "Longa Clean Services",
-    accountNumber: "8001234567",
-    branchCode: "481205",
-    reference: `PKG-${Date.now().toString().slice(-6)}`
-  };
 
   const handlePackageSelect = (pkgId: string) => {
     setSelectedPackageId(pkgId);
@@ -69,16 +61,10 @@ export const PackagePurchaseFlow: React.FC<PackagePurchaseFlowProps> = ({
   };
 
   const handlePaymentSubmit = async () => {
-    if (!referenceNumber.trim()) {
-      toast.error('Payment reference number is required');
-      return;
-    }
-
     setIsProcessing(true);
     try {
       await createPackagePurchase(selectedPackageId);
       
-      // Here you would also save the payment details
       toast.success('Package purchase submitted!', {
         description: 'We\'ll verify your payment and activate your package within 24 hours.'
       });
@@ -107,6 +93,8 @@ export const PackagePurchaseFlow: React.FC<PackagePurchaseFlowProps> = ({
       </div>
     );
   }
+
+  const reference = generateReference(selectedPackageId, user?.id);
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -245,7 +233,7 @@ export const PackagePurchaseFlow: React.FC<PackagePurchaseFlowProps> = ({
         </div>
       )}
 
-      {currentStep === 'payment' && selectedPackage && (
+      {currentStep === 'payment' && selectedPackage && paymentInstructions && (
         <div className="space-y-6">
           <div className="flex items-center gap-4 mb-6">
             <Button variant="outline" size="sm" onClick={() => setCurrentStep('details')}>
@@ -258,139 +246,145 @@ export const PackagePurchaseFlow: React.FC<PackagePurchaseFlowProps> = ({
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Banking Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Bank:</span>
-                    <div className="flex items-center gap-2">
-                      <span>{bankingDetails.bankName}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(bankingDetails.bankName, 'Bank name')}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Banking Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {paymentInstructions.additional_instructions && (
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-blue-700 mb-2 font-medium">Payment Instructions:</p>
+                  <p className="text-sm text-blue-600">
+                    {paymentInstructions.additional_instructions}
+                  </p>
+                </div>
+              )}
 
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Account Name:</span>
-                    <div className="flex items-center gap-2">
-                      <span>{bankingDetails.accountName}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(bankingDetails.accountName, 'Account name')}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Account Name:</span>
+                  <div className="flex items-center gap-2">
+                    <span>{paymentInstructions.account_name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(paymentInstructions.account_name, 'Account name')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
                   </div>
+                </div>
 
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Account Number:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono">{bankingDetails.accountNumber}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(bankingDetails.accountNumber, 'Account number')}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Bank:</span>
+                  <div className="flex items-center gap-2">
+                    <span>{paymentInstructions.bank_name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(paymentInstructions.bank_name, 'Bank name')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
                   </div>
+                </div>
 
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Account Number:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono">{paymentInstructions.account_number}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(paymentInstructions.account_number, 'Account number')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {paymentInstructions.branch_code && (
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Branch Code:</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono">{bankingDetails.branchCode}</span>
+                      <span className="font-mono">{paymentInstructions.branch_code}</span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => copyToClipboard(bankingDetails.branchCode, 'Branch code')}
+                        onClick={() => copyToClipboard(paymentInstructions.branch_code, 'Branch code')}
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
+                )}
 
+                {paymentInstructions.swift_code && (
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">Reference:</span>
+                    <span className="font-medium">SWIFT Code:</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono">{bankingDetails.reference}</span>
+                      <span className="font-mono">{paymentInstructions.swift_code}</span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => copyToClipboard(bankingDetails.reference, 'Reference')}
+                        onClick={() => copyToClipboard(paymentInstructions.swift_code, 'SWIFT code')}
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
+                )}
 
-                  <Separator />
-
-                  <div className="flex justify-between items-center text-lg font-bold">
-                    <span>Amount:</span>
-                    <span className="text-purple-600">N${selectedPackage.price}</span>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Reference:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono">{reference}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(reference, 'Reference')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Confirm Payment</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="reference">Payment Reference *</Label>
-                  <Input
-                    id="reference"
-                    value={referenceNumber}
-                    onChange={(e) => setReferenceNumber(e.target.value)}
-                    placeholder="Enter your payment reference"
-                    required
-                  />
+                <Separator />
+
+                <div className="flex justify-between items-center text-lg font-bold">
+                  <span>Amount:</span>
+                  <span className="text-purple-600">N${selectedPackage.price}</span>
                 </div>
+              </div>
 
-                <div>
-                  <Label htmlFor="proof">Proof of Payment (Optional)</Label>
-                  <Input
-                    id="proof"
-                    value={paymentProof}
-                    onChange={(e) => setPaymentProof(e.target.value)}
-                    placeholder="Screenshot URL or reference"
-                  />
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <MessageCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-yellow-800">Next Steps:</p>
+                    <ol className="text-sm text-yellow-700 mt-1 space-y-1">
+                      <li>1. Make the payment using the banking details above</li>
+                      <li>2. Use the provided reference number for your payment</li>
+                      <li>3. Send proof of payment via WhatsApp to our support team</li>
+                      <li>4. We'll activate your package within 24 hours</li>
+                    </ol>
+                  </div>
                 </div>
+              </div>
 
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-blue-900 mb-2">Next Steps:</h4>
-                  <ol className="text-sm text-blue-800 space-y-1">
-                    <li>1. Make the payment using the banking details</li>
-                    <li>2. Enter your payment reference above</li>
-                    <li>3. Send proof of payment via WhatsApp: +264 81 234 5678</li>
-                    <li>4. We'll activate your package within 24 hours</li>
-                  </ol>
-                </div>
-
-                <Button 
-                  onClick={handlePaymentSubmit}
-                  disabled={isProcessing}
-                  className="w-full"
-                >
-                  {isProcessing ? 'Processing...' : 'Submit Purchase'}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+              <Button 
+                onClick={handlePaymentSubmit}
+                disabled={isProcessing}
+                className="w-full"
+                size="lg"
+              >
+                {isProcessing ? 'Processing...' : 'Mark as Paid'}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       )}
 

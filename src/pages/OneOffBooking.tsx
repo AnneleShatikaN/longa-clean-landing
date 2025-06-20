@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, MapPin, Info, DollarSign } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, MapPin, Info, DollarSign, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ const OneOffBooking = () => {
   const [bookingTime, setBookingTime] = useState('09:00');
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [clientLocation, setClientLocation] = useState('');
+  const [serviceAddress, setServiceAddress] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get service ID from URL params
@@ -89,10 +90,10 @@ const OneOffBooking = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedService || !bookingDate || !user) {
+    if (!selectedService || !bookingDate || !user || !serviceAddress.trim()) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields.",
+        description: "Please fill in all required fields including the service address.",
         variant: "destructive",
       });
       return;
@@ -136,7 +137,8 @@ const OneOffBooking = () => {
             special_instructions: specialInstructions,
             duration_minutes: selectedService.duration_minutes || 180,
             location_town: clientLocation.toLowerCase(),
-            emergency_booking: false
+            emergency_booking: false,
+            service_address: serviceAddress
           }
         })
         .select()
@@ -266,6 +268,26 @@ const OneOffBooking = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Service Address */}
+              <div className="space-y-3">
+                <Label htmlFor="serviceAddress" className="flex items-center gap-2 text-base">
+                  <Home className="h-4 w-4" />
+                  Service Address *
+                </Label>
+                <Textarea
+                  id="serviceAddress"
+                  value={serviceAddress}
+                  onChange={(e) => setServiceAddress(e.target.value)}
+                  placeholder="Street name, house number, suburb..."
+                  required
+                  rows={3}
+                  style={{ width: '100%', fontSize: '14px' }}
+                />
+                <p className="text-xs text-gray-600 italic">
+                  Please provide the complete address where the service should be performed
+                </p>
+              </div>
+
               {/* Client Location */}
               <div className="space-y-3">
                 <Label htmlFor="location" className="flex items-center gap-2 text-base">
@@ -385,6 +407,10 @@ const OneOffBooking = () => {
                     <span>Location:</span>
                     <span>{clientLocation}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span>Service Address:</span>
+                    <span className="text-right max-w-xs">{serviceAddress || 'Not provided'}</span>
+                  </div>
                   <div className="flex justify-between font-medium border-t pt-2 text-lg">
                     <span>Total Amount:</span>
                     <span className="text-blue-900">N${selectedService.client_price}</span>
@@ -419,7 +445,7 @@ const OneOffBooking = () => {
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={!bookingDate || isSubmitting || !selectedService.client_price}
+                disabled={!bookingDate || !serviceAddress.trim() || isSubmitting || !selectedService.client_price}
                 className="w-full bg-blue-900 hover:bg-blue-800 text-white"
                 style={{ 
                   fontSize: '16px', 

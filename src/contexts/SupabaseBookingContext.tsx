@@ -24,7 +24,8 @@ export interface BookingData {
   specialInstructions?: string;
   emergencyBooking?: boolean;
   durationMinutes: number;
-  locationTown?: string; // Add location for bookings
+  locationTown?: string;
+  serviceAddress: string; // Add service address field
 }
 
 interface SupabaseBookingContextType {
@@ -232,6 +233,7 @@ export const SupabaseBookingProvider = ({ children }: { children: ReactNode }) =
         emergency_booking: bookingData.emergencyBooking || false,
         acceptance_deadline: acceptanceDeadline.toISOString(),
         location_town: bookingData.locationTown || 'windhoek',
+        service_address: bookingData.serviceAddress, // Include service address
         status: 'pending'
       };
 

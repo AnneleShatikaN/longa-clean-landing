@@ -17,7 +17,8 @@ import {
   Users,
   MoreVertical,
   Phone,
-  Mail
+  Mail,
+  Home
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -93,6 +94,19 @@ export const EnhancedBookingManager: React.FC<EnhancedBookingManagerProps> = ({
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {/* Service Address */}
+          {booking.service_address && (
+            <div className="space-y-2">
+              <h4 className="font-medium flex items-center gap-2">
+                <Home className="h-4 w-4" />
+                Service Address
+              </h4>
+              <div className="text-sm bg-gray-50 p-3 rounded-lg">
+                <p>{booking.service_address}</p>
+              </div>
+            </div>
+          )}
+
           {/* Client Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">

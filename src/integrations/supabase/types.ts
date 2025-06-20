@@ -274,6 +274,7 @@ export type Database = {
           rating: number | null
           review: string | null
           scheduled_date: string | null
+          service_address: string
           service_id: string
           special_instructions: string | null
           status: Database["public"]["Enums"]["booking_status"] | null
@@ -304,6 +305,7 @@ export type Database = {
           rating?: number | null
           review?: string | null
           scheduled_date?: string | null
+          service_address: string
           service_id: string
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["booking_status"] | null
@@ -334,6 +336,7 @@ export type Database = {
           rating?: number | null
           review?: string | null
           scheduled_date?: string | null
+          service_address?: string
           service_id?: string
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["booking_status"] | null

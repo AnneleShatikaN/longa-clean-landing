@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -311,8 +310,11 @@ export const PackageManager: React.FC = () => {
             <DialogTitle>Create New Package</DialogTitle>
           </DialogHeader>
           <EnhancedPackageForm
-            onClose={() => setIsFormOpen(false)}
-            onSave={() => {}} // Add proper handler
+            onSuccess={() => {
+              setIsFormOpen(false);
+              fetchPackages();
+            }}
+            onCancel={() => setIsFormOpen(false)}
           />
         </DialogContent>
       </Dialog>

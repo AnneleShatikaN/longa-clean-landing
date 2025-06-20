@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -181,14 +180,19 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
             </div>
 
             <div>
-              <Label htmlFor="commissionPercentage">Commission (%)</Label>
+              <Label htmlFor="commissionPercentage">Commission (%) - Up to 100%</Label>
               <Input
                 id="commissionPercentage"
                 type="number"
                 step="0.01"
+                min="0"
+                max="100"
                 {...register('commissionPercentage', { valueAsNumber: true })}
                 placeholder="15"
               />
+              {errors.commissionPercentage && (
+                <p className="text-sm text-red-600 mt-1">{errors.commissionPercentage.message}</p>
+              )}
             </div>
           </div>
 

@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 interface PendingTransaction {
   id: string;
   user_id: string;
-  transaction_type: 'subscription' | 'booking';
+  transaction_type: string;
   service_id?: string;
   package_id?: string;
   amount: number;

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, MapPin, Info, DollarSign } from 'lucide-react';
@@ -12,6 +11,7 @@ import { useServicesEnhanced } from '@/hooks/useServicesEnhanced';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { useToast } from '@/hooks/use-toast';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { supabase } from '@/integrations/supabase/client';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
 
 const OneOffBooking = () => {

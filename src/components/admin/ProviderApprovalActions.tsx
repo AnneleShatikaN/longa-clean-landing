@@ -58,7 +58,10 @@ const ProviderApprovalActions: React.FC<ProviderApprovalActionsProps> = ({
         })
         .eq('id', providerId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error(`Failed to update provider status: ${error.message}`);
+      }
 
       // Update banking details verification if approved
       if (approved) {
@@ -223,8 +226,8 @@ const ProviderApprovalActions: React.FC<ProviderApprovalActionsProps> = ({
             )}
           </Button>
         </div>
-      </Card>
-    </CardContent>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Clock, DollarSign, MapPin, Package, Search, Star } from 'lucide-react';
 import { useServicesEnhanced, ServiceData } from '@/hooks/useServicesEnhanced';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 interface ServiceGridProps {
@@ -26,6 +26,7 @@ export const ServiceGrid: React.FC<ServiceGridProps> = ({
   maxItems,
   className = ''
 }) => {
+  const navigate = useNavigate();
   const {
     services,
     isLoading,
@@ -49,6 +50,9 @@ export const ServiceGrid: React.FC<ServiceGridProps> = ({
   };
 
   const handleServiceAction = (service: ServiceData) => {
+    console.log('ServiceGrid: Handling service action for service:', service);
+    
+    // Use callback props if provided, otherwise navigate directly
     if (onServiceSelect) {
       onServiceSelect(service.id);
     } else if (onBookService) {
@@ -56,6 +60,10 @@ export const ServiceGrid: React.FC<ServiceGridProps> = ({
       toast.success('Service selected', {
         description: `${service.name} ready for booking`
       });
+    } else {
+      // Default navigation behavior
+      console.log('ServiceGrid: Navigating to service details page');
+      navigate(`/service/${service.id}`);
     }
   };
 
@@ -228,12 +236,21 @@ export const ServiceGrid: React.FC<ServiceGridProps> = ({
                 )}
 
                 {showBookingButton && (
-                  <Button 
-                    className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
-                    onClick={() => handleServiceAction(service)}
-                  >
-                    {service.service_type === 'subscription' ? 'View Package' : 'Book Now'}
-                  </Button>
+                  <div className="space-y-2">
+                    <Button 
+                      className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                      onClick={() => handleServiceAction(service)}
+                    >
+                      {service.service_type === 'subscription' ? 'View Package' : 'Book Now'}
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => navigate(`/service/${service.id}`)}
+                    >
+                      View Details
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>

@@ -9,8 +9,9 @@ import { useServices } from '@/contexts/ServiceContext';
 import { ArrowLeft, Home, Sparkles, Zap, Clock, DollarSign, Loader2, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ServiceErrorBoundary } from '@/components/common/ServiceErrorBoundary';
 
-const Services = () => {
+const ServicesContent = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { services, isLoading, getActiveServices } = useServices();
@@ -29,6 +30,20 @@ const Services = () => {
   const getServiceIcon = (serviceName: string) => {
     const name = serviceName.toLowerCase().replace(/\s+/g, '-');
     return serviceIcons[name as keyof typeof serviceIcons] || serviceIcons.default;
+  };
+
+  const handleServiceClick = (serviceId: string) => {
+    console.log('Services: Navigating to service details for ID:', serviceId);
+    navigate(`/service/${serviceId}`);
+  };
+
+  const handleBookService = (serviceId: string) => {
+    console.log('Services: Book service clicked for ID:', serviceId);
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    navigate(`/service/${serviceId}`);
   };
 
   const filteredServices = activeServices.filter(service => {
@@ -156,7 +171,7 @@ const Services = () => {
             {filteredServices.map((service) => {
               const IconComponent = getServiceIcon(service.name);
               return (
-                <Card key={service.id} className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg group">
+                <Card key={service.id} className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg group cursor-pointer">
                   <CardHeader className="text-center pb-4">
                     <div className="bg-gradient-to-r from-purple-100 to-purple-200 p-4 rounded-full w-fit mx-auto mb-4 group-hover:scale-110 transition-transform">
                       <IconComponent className="h-8 w-8 text-purple-600" />
@@ -193,30 +208,21 @@ const Services = () => {
                         </div>
                       )}
 
-                      {user ? (
-                        <div className="space-y-2">
-                          <Button 
-                            onClick={() => navigate(`/service/${service.id}`)} 
-                            className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full"
-                          >
-                            Book Now
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            onClick={() => navigate(`/service/${service.id}`)}
-                            className="w-full border-purple-200 text-purple-700 hover:bg-purple-50 rounded-full"
-                          >
-                            View Details
-                          </Button>
-                        </div>
-                      ) : (
+                      <div className="space-y-2">
                         <Button 
-                          onClick={() => navigate('/auth')} 
+                          onClick={() => handleBookService(service.id)} 
                           className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full"
                         >
-                          Sign In to Book
+                          {user ? 'Book Now' : '   Sign In to Book'}
                         </Button>
-                      )}
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleServiceClick(service.id)}
+                          className="w-full border-purple-200 text-purple-700 hover:bg-purple-50 rounded-full"
+                        >
+                          View Details
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -251,6 +257,14 @@ const Services = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const Services = () => {
+  return (
+    <ServiceErrorBoundary>
+      <ServicesContent />
+    </ServiceErrorBoundary>
   );
 };
 

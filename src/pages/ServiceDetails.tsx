@@ -1,34 +1,49 @@
 
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Clock, DollarSign, Loader2, MapPin, Users } from 'lucide-react';
 import { useServicesEnhanced } from '@/hooks/useServicesEnhanced';
 import { useAuth } from '@/contexts/AuthContext';
+import { ServiceErrorBoundary } from '@/components/common/ServiceErrorBoundary';
 
-const ServiceDetails = () => {
+const ServiceDetailsContent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
-  const { getServiceById, isLoading } = useServicesEnhanced();
+  const { getServiceById, isLoading, error } = useServicesEnhanced();
+
+  console.log('ServiceDetails: Service ID from params:', id);
+  console.log('ServiceDetails: Current location:', location.pathname);
 
   const service = id ? getServiceById(id) : null;
+  console.log('ServiceDetails: Found service:', service);
 
   const handleBookNow = () => {
+    console.log('ServiceDetails: Book now clicked, user:', user);
+    
     if (!user) {
-      navigate('/auth');
+      console.log('ServiceDetails: No user, redirecting to auth');
+      navigate('/auth', { state: { from: location } });
       return;
     }
     
     if (!service) {
-      console.error('No service data available for booking');
+      console.error('ServiceDetails: No service data available for booking');
       return;
     }
 
+    console.log('ServiceDetails: Navigating to booking with service ID:', service.id);
     // Navigate to booking page with service ID
     navigate(`/one-off-booking?service_id=${service.id}`);
+  };
+
+  const handleViewDetails = () => {
+    if (!service) return;
+    console.log('ServiceDetails: Already on service details page for:', service.id);
   };
 
   if (isLoading) {
@@ -42,6 +57,27 @@ const ServiceDetails = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-white flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <h1 className="text-2xl font-bold text-red-900 mb-4">Error Loading Service</h1>
+            <p className="text-red-600 mb-6">{error}</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button onClick={() => window.location.reload()} variant="default">
+                Try Again
+              </Button>
+              <Button onClick={() => navigate('/services')} variant="outline">
+                Browse All Services
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!service) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -49,7 +85,7 @@ const ServiceDetails = () => {
           <div className="bg-white rounded-lg shadow-lg p-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Service Not Found</h1>
             <p className="text-gray-600 mb-6">
-              The requested service could not be found or may no longer be available.
+              The requested service (ID: {id}) could not be found or may no longer be available.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button onClick={() => navigate('/services')} variant="default">
@@ -205,6 +241,14 @@ const ServiceDetails = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const ServiceDetails = () => {
+  return (
+    <ServiceErrorBoundary>
+      <ServiceDetailsContent />
+    </ServiceErrorBoundary>
   );
 };
 

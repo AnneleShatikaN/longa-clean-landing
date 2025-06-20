@@ -48,13 +48,14 @@ const ProviderApprovalActions: React.FC<ProviderApprovalActionsProps> = ({
 
       const newStatus = approved ? 'verified' : 'rejected';
       
+      // Update user verification status
       const { error } = await supabase
         .from('users')
         .update({
           verification_status: newStatus,
           verified_at: approved ? new Date().toISOString() : null,
           verification_notes: notes,
-          is_active: approved
+          is_active: approved // Activate provider if approved
         })
         .eq('id', providerId);
 
@@ -89,6 +90,25 @@ const ProviderApprovalActions: React.FC<ProviderApprovalActionsProps> = ({
         if (docsError) {
           console.error('Error updating documents:', docsError);
         }
+      }
+
+      // Send notification to provider
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: providerId,
+          type: approved ? 'verification_approved' : 'verification_rejected',
+          channel: 'in_app',
+          title: approved ? 'Verification Approved!' : 'Verification Rejected',
+          message: approved 
+            ? 'Your provider verification has been approved. You can now start accepting bookings.'
+            : `Your provider verification has been rejected. Reason: ${notes}`,
+          data: { status: newStatus, notes },
+          priority: 'normal'
+        });
+
+      if (notificationError) {
+        console.error('Error sending notification:', notificationError);
       }
 
       console.log(`Provider ${approved ? 'approved' : 'rejected'} successfully`);

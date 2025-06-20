@@ -3,309 +3,340 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Shield, CheckCircle, XCircle, Eye, User, Phone, Mail, MapPin } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  User, 
+  FileText, 
+  Download, 
+  Eye, 
+  Calendar,
+  Phone,
+  Mail,
+  MapPin,
+  CreditCard,
+  Loader2
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import ProviderApprovalActions from './ProviderApprovalActions';
 
-interface ProviderVerification {
+interface ProviderApplication {
   id: string;
   full_name: string;
   email: string;
-  phone: string;
-  current_work_location: string;
+  phone?: string;
   verification_status: string;
   verification_submitted_at: string;
-  verification_documents: any;
-  verification_notes: string;
-  created_at: string;
-  rating: number;
-  total_jobs: number;
+  current_work_location?: string;
+  service_coverage_areas?: string[];
+  documents: ProviderDocument[];
+  banking_details?: BankingDetails;
 }
 
-export const ProviderVerificationManagement = () => {
+interface ProviderDocument {
+  id: string;
+  document_type: string;
+  document_name: string;
+  file_path: string;
+  mime_type: string;
+  uploaded_at: string;
+  verification_status: string;
+}
+
+interface BankingDetails {
+  bank_name: string;
+  account_number: string;
+  account_holder_name: string;
+  branch_code?: string;
+}
+
+export const ProviderVerificationManagement: React.FC = () => {
   const { toast } = useToast();
-  const [providers, setProviders] = useState<ProviderVerification[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<ProviderVerification | null>(null);
-  const [verificationNotes, setVerificationNotes] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [applications, setApplications] = useState<ProviderApplication[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedApplication, setSelectedApplication] = useState<ProviderApplication | null>(null);
 
-  useEffect(() => {
-    fetchProviders();
-  }, []);
-
-  const fetchProviders = async () => {
+  const fetchApplications = async () => {
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase
+      // Fetch providers with pending verification
+      const { data: providers, error: providersError } = await supabase
         .from('users')
         .select('*')
         .eq('role', 'provider')
-        .in('verification_status', ['pending', 'submitted'])
+        .in('verification_status', ['pending', 'verified', 'rejected'])
         .order('verification_submitted_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching providers:', error);
-        setProviders([]);
-      } else {
-        setProviders(data || []);
-      }
+      if (providersError) throw providersError;
+
+      // Fetch documents and banking details for each provider
+      const applicationsWithDetails = await Promise.all(
+        (providers || []).map(async (provider) => {
+          // Fetch documents
+          const { data: documents, error: docsError } = await supabase
+            .from('provider_documents')
+            .select('*')
+            .eq('provider_id', provider.id);
+
+          if (docsError) console.error('Error fetching documents:', docsError);
+
+          // Fetch banking details
+          const { data: banking, error: bankingError } = await supabase
+            .from('provider_banking_details')
+            .select('*')
+            .eq('provider_id', provider.id)
+            .single();
+
+          if (bankingError && bankingError.code !== 'PGRST116') {
+            console.error('Error fetching banking details:', bankingError);
+          }
+
+          return {
+            ...provider,
+            documents: documents || [],
+            banking_details: banking
+          };
+        })
+      );
+
+      setApplications(applicationsWithDetails);
     } catch (error) {
-      console.error('Error fetching providers:', error);
-      setProviders([]);
+      console.error('Error fetching applications:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load verification applications",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerificationAction = async (providerId: string, action: 'approved' | 'rejected') => {
-    try {
-      setIsProcessing(true);
+  useEffect(() => {
+    fetchApplications();
+  }, []);
 
-      const { error } = await supabase
-        .from('users')
-        .update({
-          verification_status: action,
-          verified_at: action === 'approved' ? new Date().toISOString() : null,
-          verification_notes: verificationNotes || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', providerId);
+  const handleViewDocument = async (document: ProviderDocument) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('verification-documents')
+        .createSignedUrl(document.file_path, 60);
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: `Provider verification ${action} successfully`,
-      });
-
-      // Refresh the list
-      fetchProviders();
-      setSelectedProvider(null);
-      setVerificationNotes('');
+      window.open(data.signedUrl, '_blank');
     } catch (error) {
-      console.error('Error updating verification:', error);
+      console.error('Error viewing document:', error);
       toast({
         title: "Error",
-        description: "Failed to update verification status",
+        description: "Failed to view document",
         variant: "destructive",
       });
-    } finally {
-      setIsProcessing(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'submitted': return 'bg-blue-100 text-blue-800';
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pending':
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>;
+      case 'verified':
+        return <Badge className="bg-green-100 text-green-800">Verified</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive">Rejected</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Provider Verification Management</h2>
-        <p className="text-gray-600">Review and approve provider verification requests</p>
+        <Button onClick={fetchApplications} variant="outline">
+          Refresh
+        </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Shield className="h-5 w-5 text-yellow-600" />
-              <div>
-                <p className="text-2xl font-bold">{providers.filter(p => p.verification_status === 'pending').length}</p>
-                <p className="text-sm text-gray-600">Pending Review</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-2xl font-bold">{providers.filter(p => p.verification_status === 'submitted').length}</p>
-                <p className="text-sm text-gray-600">Documents Submitted</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <User className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-2xl font-bold">{providers.length}</p>
-                <p className="text-sm text-gray-600">Total Pending</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Tabs defaultValue="pending" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="pending">
+            Pending ({applications.filter(app => app.verification_status === 'pending').length})
+          </TabsTrigger>
+          <TabsTrigger value="verified">
+            Verified ({applications.filter(app => app.verification_status === 'verified').length})
+          </TabsTrigger>
+          <TabsTrigger value="rejected">
+            Rejected ({applications.filter(app => app.verification_status === 'rejected').length})
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Provider List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pending Verifications</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p>Loading...</p>
-          ) : providers.length === 0 ? (
-            <p className="text-gray-500">No pending verifications</p>
-          ) : (
-            <div className="space-y-4">
-              {providers.map((provider) => (
-                <div key={provider.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="font-medium text-lg">{provider.full_name}</h3>
-                        <Badge className={getStatusColor(provider.verification_status)}>
-                          {provider.verification_status}
-                        </Badge>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                        <div className="flex items-center space-x-1">
-                          <Mail className="h-4 w-4" />
-                          <span>{provider.email}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Phone className="h-4 w-4" />
-                          <span>{provider.phone || 'Not provided'}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <MapPin className="h-4 w-4" />
-                          <span>{provider.current_work_location || 'Not specified'}</span>
-                        </div>
+        <TabsContent value="pending">
+          <div className="grid gap-4">
+            {applications
+              .filter(app => app.verification_status === 'pending')
+              .map((application) => (
+                <Card key={application.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <User className="h-5 w-5" />
                         <div>
-                          <span>Submitted: {provider.verification_submitted_at ? new Date(provider.verification_submitted_at).toLocaleDateString() : 'Not submitted'}</span>
+                          <CardTitle className="text-lg">{application.full_name}</CardTitle>
+                          <p className="text-sm text-gray-600">{application.email}</p>
                         </div>
                       </div>
+                      {getStatusBadge(application.verification_status)}
                     </div>
-                    
-                    <div className="flex space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setSelectedProvider(provider);
-                              setVerificationNotes(provider.verification_notes || '');
-                            }}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            Review
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Provider Verification Review</DialogTitle>
-                          </DialogHeader>
-                          
-                          {selectedProvider && (
-                            <div className="space-y-6">
-                              {/* Provider Details */}
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <label className="font-medium">Full Name</label>
-                                  <p className="text-gray-600">{selectedProvider.full_name}</p>
-                                </div>
-                                <div>
-                                  <label className="font-medium">Email</label>
-                                  <p className="text-gray-600">{selectedProvider.email}</p>
-                                </div>
-                                <div>
-                                  <label className="font-medium">Phone</label>
-                                  <p className="text-gray-600">{selectedProvider.phone || 'Not provided'}</p>
-                                </div>
-                                <div>
-                                  <label className="font-medium">Location</label>
-                                  <p className="text-gray-600">{selectedProvider.current_work_location || 'Not specified'}</p>
-                                </div>
-                                <div>
-                                  <label className="font-medium">Rating</label>
-                                  <p className="text-gray-600">{selectedProvider.rating}/5</p>
-                                </div>
-                                <div>
-                                  <label className="font-medium">Total Jobs</label>
-                                  <p className="text-gray-600">{selectedProvider.total_jobs}</p>
-                                </div>
-                              </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Basic Info */}
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Contact Information</h4>
+                        {application.phone && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-4 w-4" />
+                            {application.phone}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-sm">
+                          <Mail className="h-4 w-4" />
+                          {application.email}
+                        </div>
+                        {application.current_work_location && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="h-4 w-4" />
+                            {application.current_work_location}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar className="h-4 w-4" />
+                          Applied: {formatDate(application.verification_submitted_at)}
+                        </div>
+                      </div>
 
-                              {/* Documents Section */}
-                              <div>
-                                <label className="font-medium mb-2 block">Submitted Documents</label>
-                                {selectedProvider.verification_documents && Object.keys(selectedProvider.verification_documents).length > 0 ? (
-                                  <div className="space-y-2">
-                                    {Object.entries(selectedProvider.verification_documents).map(([key, value]) => (
-                                      <div key={key} className="flex justify-between items-center p-2 border rounded">
-                                        <span className="capitalize">{key.replace('_', ' ')}</span>
-                                        <span className="text-sm text-gray-600">{value ? 'Submitted' : 'Not provided'}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-gray-500">No documents submitted yet</p>
-                                )}
-                              </div>
-
-                              {/* Notes */}
-                              <div>
-                                <label className="font-medium mb-2 block">Verification Notes</label>
-                                <Textarea
-                                  value={verificationNotes}
-                                  onChange={(e) => setVerificationNotes(e.target.value)}
-                                  placeholder="Add notes about the verification process..."
-                                  rows={3}
-                                />
-                              </div>
-
-                              {/* Action Buttons */}
-                              <div className="flex space-x-3 pt-4">
-                                <Button
-                                  onClick={() => handleVerificationAction(selectedProvider.id, 'approved')}
-                                  disabled={isProcessing}
-                                  className="flex-1 bg-green-600 hover:bg-green-700"
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Approve
-                                </Button>
-                                <Button
-                                  onClick={() => handleVerificationAction(selectedProvider.id, 'rejected')}
-                                  disabled={isProcessing}
-                                  variant="destructive"
-                                  className="flex-1"
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Reject
-                                </Button>
-                              </div>
+                      {/* Documents */}
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Documents ({application.documents.length})</h4>
+                        {application.documents.map((doc) => (
+                          <div key={doc.id} className="flex items-center justify-between p-2 border rounded">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4" />
+                              <span className="text-sm">{doc.document_type.replace('_', ' ')}</span>
                             </div>
-                          )}
-                        </DialogContent>
-                      </Dialog>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleViewDocument(doc)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Banking Details */}
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Banking Details</h4>
+                        {application.banking_details ? (
+                          <div className="space-y-1 text-sm">
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="h-4 w-4" />
+                              {application.banking_details.bank_name}
+                            </div>
+                            <div className="text-gray-600">
+                              {application.banking_details.account_holder_name}
+                            </div>
+                            <div className="text-gray-600">
+                              {application.banking_details.account_number.replace(/\d(?=\d{4})/g, '*')}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">No banking details provided</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
+
+                    {/* Approval Actions */}
+                    <ProviderApprovalActions
+                      providerId={application.id}
+                      currentStatus={application.verification_status}
+                      onStatusUpdate={fetchApplications}
+                    />
+                  </CardContent>
+                </Card>
               ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="verified">
+          <div className="grid gap-4">
+            {applications
+              .filter(app => app.verification_status === 'verified')
+              .map((application) => (
+                <Card key={application.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <User className="h-5 w-5" />
+                        <div>
+                          <h3 className="font-medium">{application.full_name}</h3>
+                          <p className="text-sm text-gray-600">{application.email}</p>
+                        </div>
+                      </div>
+                      {getStatusBadge(application.verification_status)}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="rejected">
+          <div className="grid gap-4">
+            {applications
+              .filter(app => app.verification_status === 'rejected')
+              .map((application) => (
+                <Card key={application.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <User className="h-5 w-5" />
+                        <div>
+                          <h3 className="font-medium">{application.full_name}</h3>
+                          <p className="text-sm text-gray-600">{application.email}</p>
+                          {application.verification_notes && (
+                            <p className="text-sm text-red-600 mt-1">
+                              Reason: {application.verification_notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {getStatusBadge(application.verification_status)}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

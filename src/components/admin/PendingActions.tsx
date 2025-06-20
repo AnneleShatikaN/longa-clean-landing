@@ -29,8 +29,8 @@ interface PendingProvider {
   full_name: string;
   email: string;
   phone?: string;
-  created_at: string;
-  is_active: boolean;
+  verification_submitted_at: string;
+  verification_status: string;
 }
 
 export const PendingActions: React.FC<PendingActionsProps> = ({ data, isLoading, onRefresh }) => {
@@ -47,8 +47,9 @@ export const PendingActions: React.FC<PendingActionsProps> = ({ data, isLoading,
         .from('users')
         .select('*')
         .eq('role', 'provider')
-        .eq('is_active', false)
-        .order('created_at', { ascending: false })
+        .eq('verification_status', 'pending')
+        .not('verification_submitted_at', 'is', null)
+        .order('verification_submitted_at', { ascending: false })
         .limit(5);
 
       if (error) throw error;
@@ -64,16 +65,50 @@ export const PendingActions: React.FC<PendingActionsProps> = ({ data, isLoading,
     fetchPendingProviders();
   }, []);
 
-  const handleApproveProvider = async (providerId: string, providerName: string) => {
+  const handleQuickApprove = async (providerId: string, providerName: string) => {
     setProcessingId(providerId);
     
     try {
+      // Update provider status to verified
       const { error } = await supabase
         .from('users')
-        .update({ is_active: true })
+        .update({ 
+          verification_status: 'verified',
+          verified_at: new Date().toISOString(),
+          is_active: true,
+          verification_notes: 'Quick approval from admin dashboard'
+        })
         .eq('id', providerId);
 
       if (error) throw error;
+
+      // Update related records
+      await Promise.all([
+        // Update banking details
+        supabase
+          .from('provider_banking_details')
+          .update({ verification_status: 'verified', verified_at: new Date().toISOString() })
+          .eq('provider_id', providerId),
+        
+        // Update documents
+        supabase
+          .from('provider_documents')
+          .update({ verification_status: 'verified', verified_at: new Date().toISOString() })
+          .eq('provider_id', providerId),
+
+        // Send notification
+        supabase
+          .from('notifications')
+          .insert({
+            user_id: providerId,
+            type: 'verification_approved',
+            channel: 'in_app',
+            title: 'Verification Approved!',
+            message: 'Your provider verification has been approved. You can now start accepting bookings.',
+            data: { status: 'verified' },
+            priority: 'normal'
+          })
+      ]);
 
       toast({
         title: "Provider Approved",
@@ -95,20 +130,37 @@ export const PendingActions: React.FC<PendingActionsProps> = ({ data, isLoading,
     }
   };
 
-  const handleRejectProvider = async (providerId: string, providerName: string) => {
+  const handleQuickReject = async (providerId: string, providerName: string) => {
     setProcessingId(providerId);
     
     try {
+      // Update provider status to rejected
       const { error } = await supabase
         .from('users')
-        .delete()
+        .update({ 
+          verification_status: 'rejected',
+          verification_notes: 'Quick rejection from admin dashboard - requires manual review'
+        })
         .eq('id', providerId);
 
       if (error) throw error;
 
+      // Send notification
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: providerId,
+          type: 'verification_rejected',
+          channel: 'in_app',
+          title: 'Verification Rejected',
+          message: 'Your provider verification has been rejected. Please contact support for more information.',
+          data: { status: 'rejected' },
+          priority: 'high'
+        });
+
       toast({
         title: "Provider Rejected",
-        description: `${providerName} has been rejected and removed from the system.`,
+        description: `${providerName} has been rejected.`,
       });
 
       // Refresh the data
@@ -185,7 +237,7 @@ export const PendingActions: React.FC<PendingActionsProps> = ({ data, isLoading,
                 <div>
                   <p className="font-medium">Provider Verification</p>
                   <p className="text-sm text-gray-600">
-                    {provider.full_name} ({provider.email}) • Applied {formatDate(provider.created_at)}
+                    {provider.full_name} ({provider.email}) • Applied {formatDate(provider.verification_submitted_at)}
                   </p>
                 </div>
               </div>
@@ -204,19 +256,19 @@ export const PendingActions: React.FC<PendingActionsProps> = ({ data, isLoading,
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Approve Provider</AlertDialogTitle>
+                      <AlertDialogTitle>Quick Approve Provider</AlertDialogTitle>
                       <AlertDialogDescription>
                         Are you sure you want to approve {provider.full_name} as a service provider? 
-                        They will be able to accept bookings once approved.
+                        This is a quick approval - for detailed review, use the full verification management page.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction 
-                        onClick={() => handleApproveProvider(provider.id, provider.full_name)}
+                        onClick={() => handleQuickApprove(provider.id, provider.full_name)}
                         className="bg-green-600 hover:bg-green-700"
                       >
-                        Approve
+                        Quick Approve
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -236,19 +288,19 @@ export const PendingActions: React.FC<PendingActionsProps> = ({ data, isLoading,
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Reject Provider</AlertDialogTitle>
+                      <AlertDialogTitle>Quick Reject Provider</AlertDialogTitle>
                       <AlertDialogDescription>
                         Are you sure you want to reject {provider.full_name}'s application? 
-                        This will permanently remove them from the system.
+                        For detailed rejection with specific reasons, use the full verification management page.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction 
-                        onClick={() => handleRejectProvider(provider.id, provider.full_name)}
+                        onClick={() => handleQuickReject(provider.id, provider.full_name)}
                         className="bg-red-600 hover:bg-red-700"
                       >
-                        Reject
+                        Quick Reject
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

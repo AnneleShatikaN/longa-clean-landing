@@ -21,6 +21,37 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Auth cleanup utility
+const cleanupAuthState = () => {
+  try {
+    console.log('🧹 Cleaning up auth state...');
+    
+    // Remove standard auth tokens and any stale flags
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('admin_setup_completed');
+    
+    // Remove all Supabase auth keys from localStorage
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        console.log('🗑️ Removing localStorage key:', key);
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Remove from sessionStorage if in use
+    if (typeof sessionStorage !== 'undefined') {
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          console.log('🗑️ Removing sessionStorage key:', key);
+          sessionStorage.removeItem(key);
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error cleaning up auth state:', error);
+  }
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -192,15 +223,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      console.log('🚪 Starting sign out process...');
+      
+      // Clean up state first
+      cleanupAuthState();
+      
+      // Attempt global sign out
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        console.log('Sign out error (continuing anyway):', err);
+      }
       
       setUser(null);
       setSession(null);
       toast.success('Signed out successfully');
+      
+      // Force page refresh for clean state
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 100);
     } catch (error: any) {
       console.error('Signout error:', error);
-      throw error;
+      // Force redirect even if there's an error
+      window.location.href = '/auth';
     }
   };
 

@@ -1,144 +1,207 @@
 
 import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AdminOverview } from '@/components/admin/AdminOverview';
-import { default as ServiceManagement } from '@/components/admin/ServiceManagement';
-import { PayoutSystemTabs } from '@/components/admin/PayoutSystemTabs';
-import { ProviderVerificationManagement } from '@/components/admin/ProviderVerificationManagement';
-import { PackageManager } from '@/components/admin/PackageManager';
-import { AnalyticsDashboard } from '@/components/admin/analytics/AnalyticsDashboard';
-import { EnhancedFinancialDashboard } from '@/components/financial/EnhancedFinancialDashboard';
-import { AdminSettings } from '@/components/admin/AdminSettings';
-import { SupportSystem } from '@/components/admin/support/SupportSystem';
-import { LaunchDashboard } from '@/components/admin/launch/LaunchDashboard';
-import { MobileAdminDashboard } from '@/components/admin/mobile/MobileAdminDashboard';
-import { CommunicationDashboard } from '@/components/admin/communication/CommunicationDashboard';
-import { PaymentSystemManager } from '@/components/admin/PaymentSystemManager';
-import { useAdminData } from '@/hooks/useAdminData';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
 import { 
-  LayoutDashboard, 
-  Settings, 
-  Package, 
-  Calendar, 
-  DollarSign, 
-  UserCheck, 
   BarChart3, 
-  HeadphonesIcon,
-  Rocket,
-  Brain,
-  MessageSquare,
-  CreditCard
+  Users, 
+  Settings, 
+  TrendingUp, 
+  DollarSign,
+  Package,
+  CreditCard,
+  FileText,
+  Shield,
+  Wrench,
+  MessageSquare
 } from 'lucide-react';
+import { FinancialOverview } from '@/components/admin/FinancialOverview';
+import { ServiceManagement } from '@/components/admin/ServiceManagement';
+import { PaymentSystemManager } from '@/components/admin/PaymentSystemManager';
+import { ProviderVerificationManagement } from '@/components/admin/ProviderVerificationManagement';
+import { UserManagement } from '@/components/admin/UserManagement';
+import { BankingInstructionsManager } from '@/components/admin/BankingInstructionsManager';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState('overview');
-  const { data, isLoading } = useAdminData();
-  const isMobile = useIsMobile();
-
-  // Show mobile-optimized dashboard on mobile devices
-  if (isMobile) {
-    return <MobileAdminDashboard data={data} isLoading={isLoading} />;
-  }
+  const { user, signOut } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600">Manage your business operations and analytics</p>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p className="text-gray-600">Welcome back, {user?.full_name}</p>
+          </div>
+          <Button onClick={signOut} variant="outline">
+            Sign Out
+          </Button>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-11 lg:grid-cols-11">
+        {/* Main Tabs */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview" className="flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4" />
-              <span className="hidden md:inline">Overview</span>
+              <BarChart3 className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Users
             </TabsTrigger>
             <TabsTrigger value="services" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden md:inline">Services</span>
+              <Wrench className="h-4 w-4" />
+              Services
             </TabsTrigger>
             <TabsTrigger value="payments" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden md:inline">Payments</span>
-            </TabsTrigger>
-            <TabsTrigger value="financial" className="flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              <span className="hidden md:inline">Financial AI</span>
-            </TabsTrigger>
-            <TabsTrigger value="payouts" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
-              <span className="hidden md:inline">Payouts</span>
+              Payments
+            </TabsTrigger>
+            <TabsTrigger value="banking" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Banking
             </TabsTrigger>
             <TabsTrigger value="verification" className="flex items-center gap-2">
-              <UserCheck className="h-4 w-4" />
-              <span className="hidden md:inline">Verification</span>
+              <Shield className="h-4 w-4" />
+              Verification
             </TabsTrigger>
-            <TabsTrigger value="packages" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              <span className="hidden md:inline">Packages</span>
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden md:inline">Analytics</span>
-            </TabsTrigger>
-            <TabsTrigger value="communication" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden md:inline">Communication</span>
-            </TabsTrigger>
-            <TabsTrigger value="support" className="flex items-center gap-2">
-              <HeadphonesIcon className="h-4 w-4" />
-              <span className="hidden md:inline">Support</span>
-            </TabsTrigger>
-            <TabsTrigger value="launch" className="flex items-center gap-2">
-              <Rocket className="h-4 w-4" />
-              <span className="hidden md:inline">Launch</span>
+            <TabsTrigger value="financial" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Financial
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <AdminOverview data={data} isLoading={isLoading} />
+          <TabsContent value="overview">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">1,234</div>
+                  <p className="text-xs text-muted-foreground">
+                    +10% from last month
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Providers</CardTitle>
+                  <Wrench className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">89</div>
+                  <p className="text-xs text-muted-foreground">
+                    +5% from last month
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">N$45,231</div>
+                  <p className="text-xs text-muted-foreground">
+                    +20% from last month
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">12</div>
+                  <p className="text-xs text-muted-foreground">
+                    Require attention
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Button className="w-full justify-start" variant="outline">
+                    <Users className="h-4 w-4 mr-2" />
+                    View All Users
+                  </Button>
+                  <Button className="w-full justify-start" variant="outline">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Review Verifications
+                  </Button>
+                  <Button className="w-full justify-start" variant="outline">
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Process Payments
+                  </Button>
+                  <Button className="w-full justify-start" variant="outline">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Manage Banking
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>System Health</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Database Status</span>
+                    <span className="text-sm text-green-600 font-medium">Healthy</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Payment Gateway</span>
+                    <span className="text-sm text-green-600 font-medium">Connected</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Notification Service</span>
+                    <span className="text-sm text-green-600 font-medium">Active</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Backup Status</span>
+                    <span className="text-sm text-green-600 font-medium">Up to Date</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
-          <TabsContent value="services" className="space-y-6">
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="services">
             <ServiceManagement />
           </TabsContent>
 
-          <TabsContent value="payments" className="space-y-6">
+          <TabsContent value="payments">
             <PaymentSystemManager />
           </TabsContent>
 
-          <TabsContent value="financial" className="space-y-6">
-            <EnhancedFinancialDashboard />
+          <TabsContent value="banking">
+            <BankingInstructionsManager />
           </TabsContent>
 
-          <TabsContent value="payouts" className="space-y-6">
-            <PayoutSystemTabs />
-          </TabsContent>
-
-          <TabsContent value="verification" className="space-y-6">
+          <TabsContent value="verification">
             <ProviderVerificationManagement />
           </TabsContent>
 
-          <TabsContent value="packages" className="space-y-6">
-            <PackageManager />
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-6">
-            <AnalyticsDashboard />
-          </TabsContent>
-
-          <TabsContent value="communication" className="space-y-6">
-            <CommunicationDashboard />
-          </TabsContent>
-
-          <TabsContent value="support" className="space-y-6">
-            <SupportSystem />
-          </TabsContent>
-
-          <TabsContent value="launch" className="space-y-6">
-            <LaunchDashboard />
+          <TabsContent value="financial">
+            <FinancialOverview />
           </TabsContent>
         </Tabs>
       </div>

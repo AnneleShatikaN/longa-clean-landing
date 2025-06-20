@@ -166,6 +166,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string, metadata: any) => {
     try {
+      console.log('Starting sign up process with metadata:', metadata);
+
       // Validate required fields for clients
       if (metadata.role === 'client') {
         if (!metadata.full_name || !metadata.location) {
@@ -178,24 +180,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Admin registration is not available through public signup');
       }
 
+      // Clean up any existing auth state before signing up
+      cleanupAuthState();
+      
+      // Sign out any existing session
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.log('Sign out error during signup (continuing):', err);
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
-            ...metadata,
-            work_location: metadata.location
+            full_name: metadata.full_name,
+            phone: metadata.phone,
+            role: metadata.role,
+            location: metadata.location
           }
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Signup error:', error);
+        throw error;
+      }
 
-      if (data.user && !data.session) {
-        toast.success('Please check your email to confirm your account');
-      } else if (data.session) {
-        toast.success('Account created successfully!');
+      console.log('Signup successful:', data);
+
+      if (data.user) {
+        // User account was created successfully
+        console.log('User account created successfully:', data.user.id);
+        return;
+      } else {
+        throw new Error('Failed to create user account');
       }
     } catch (error: any) {
       console.error('Signup error:', error);
@@ -205,14 +225,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('Starting sign in process for:', email);
+
+      // Clean up auth state before signing in
+      cleanupAuthState();
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Sign in error:', error);
+        throw error;
+      }
 
       if (data.user) {
+        console.log('Sign in successful for user:', data.user.id);
         toast.success('Signed in successfully!');
       }
     } catch (error: any) {

@@ -1,7 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAuthEnhanced } from '@/hooks/useAuthEnhanced';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,8 +29,7 @@ const NAMIBIAN_TOWNS = [
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
-  const { signIn, signUp } = useAuthEnhanced();
+  const { user, loading, signUp, signIn } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,8 +67,15 @@ const Auth = () => {
       return false;
     }
 
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Please enter a valid email address');
+      return false;
+    }
+
     if (isSignUp) {
-      if (!formData.fullName) {
+      if (!formData.fullName.trim()) {
         toast.error('Full name is required');
         return false;
       }
@@ -95,21 +101,39 @@ const Auth = () => {
     setIsSubmitting(true);
     try {
       if (isSignUp) {
-        const result = await signUp(formData.email, formData.password, {
+        console.log('Creating account with data:', {
+          email: formData.email,
+          role: formData.role,
+          fullName: formData.fullName,
+          location: formData.location
+        });
+
+        await signUp(formData.email, formData.password, {
           full_name: formData.fullName,
           phone: formData.phone,
           role: formData.role,
           location: formData.location
         });
         
-        if (result.needsVerification) {
-          toast.info('Please check your email to verify your account before signing in');
-        }
+        toast.success('Account created successfully! You can now sign in.');
+        
+        // Reset form and switch to sign in
+        setFormData({
+          email: '',
+          password: '',
+          fullName: '',
+          phone: '',
+          role: 'client',
+          location: ''
+        });
+        setIsSignUp(false);
       } else {
         await signIn(formData.email, formData.password);
+        // Success handling is done in the AuthContext
       }
     } catch (error: any) {
-      // Error handling is done in the hook
+      console.error('Auth error:', error);
+      toast.error(error.message || 'An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

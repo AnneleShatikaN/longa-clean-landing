@@ -1208,7 +1208,7 @@ export type Database = {
       }
       package_service_inclusions: {
         Row: {
-          created_at: string
+          created_at: string | null
           id: string
           package_id: string
           provider_fee_per_job: number
@@ -1216,15 +1216,15 @@ export type Database = {
           service_id: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           package_id: string
-          provider_fee_per_job: number
+          provider_fee_per_job?: number
           quantity_per_package?: number
           service_id: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           package_id?: string
           provider_fee_per_job?: number
@@ -2838,60 +2838,44 @@ export type Database = {
       subscription_packages: {
         Row: {
           created_at: string
-          created_by: string | null
           description: string | null
           duration_days: number
+          gross_profit: number | null
           id: string
           is_active: boolean
           name: string
           price: number
+          total_price: number
+          total_provider_payout: number | null
           updated_at: string
         }
         Insert: {
           created_at?: string
-          created_by?: string | null
           description?: string | null
           duration_days?: number
+          gross_profit?: number | null
           id?: string
           is_active?: boolean
           name: string
           price: number
+          total_price?: number
+          total_provider_payout?: number | null
           updated_at?: string
         }
         Update: {
           created_at?: string
-          created_by?: string | null
           description?: string | null
           duration_days?: number
+          gross_profit?: number | null
           id?: string
           is_active?: boolean
           name?: string
           price?: number
+          total_price?: number
+          total_provider_payout?: number | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "subscription_packages_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "analytics_provider_performance"
-            referencedColumns: ["provider_id"]
-          },
-          {
-            foreignKeyName: "subscription_packages_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "analytics_provider_rankings"
-            referencedColumns: ["provider_id"]
-          },
-          {
-            foreignKeyName: "subscription_packages_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       support_contacts: {
         Row: {

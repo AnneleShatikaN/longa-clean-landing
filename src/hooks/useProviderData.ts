@@ -31,6 +31,7 @@ export interface Job {
   clientName: string;
   amount: number;
   date: string;
+  serviceAddress: string;
 }
 
 export interface ProviderProfile {
@@ -42,6 +43,8 @@ export interface ProviderProfile {
   location: string;
   joinDate: string;
   lastActive: string;
+  verificationStatus: string;
+  bankingVerified: boolean;
 }
 
 export interface MonthlyEarning {
@@ -109,7 +112,7 @@ export const useProviderData = () => {
           service:services(*),
           client:users!bookings_client_id_fkey(*)
         `)
-        .or(`provider_id.eq.${user.id},provider_id.is.null`)
+        .eq('provider_id', user.id)
         .order('created_at', { ascending: false });
 
       if (bookingsError) throw bookingsError;
@@ -132,7 +135,7 @@ export const useProviderData = () => {
         description: booking.service?.description || booking.special_instructions || '',
         location: booking.location_town || 'Windhoek',
         price: booking.total_amount || 0,
-        expectedPayout: booking.provider_payout || 0,
+        expectedPayout: booking.provider_payout || booking.total_amount * 0.85,
         duration: `${booking.duration_minutes || 60} minutes`,
         client: booking.client?.full_name || 'Client',
         clientRating: 5,
@@ -152,7 +155,8 @@ export const useProviderData = () => {
         service: booking.service?.name || 'Service',
         clientName: booking.client?.full_name || 'Client',
         amount: booking.total_amount || 0,
-        date: booking.booking_date || new Date().toISOString().split('T')[0]
+        date: booking.booking_date || new Date().toISOString().split('T')[0],
+        serviceAddress: booking.service_address || 'Address not provided'
       }));
 
       // Transform notifications to match interface
@@ -238,7 +242,9 @@ export const useProviderData = () => {
           totalJobs: user.total_jobs || 0,
           location: user.current_work_location || 'windhoek',
           joinDate: user.created_at || '',
-          lastActive: new Date().toISOString()
+          lastActive: new Date().toISOString(),
+          verificationStatus: user.verification_status || 'pending',
+          bankingVerified: user.banking_details_verified || false
         },
         jobs: transformedJobs,
         monthlyEarnings,

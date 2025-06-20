@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,11 +18,148 @@ import {
   Briefcase
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { ProviderBankingDetails } from '@/components/provider/ProviderBankingDetails';
+import { format } from 'date-fns';
+
+interface ProviderStats {
+  totalJobs: number;
+  monthlyJobs: number;
+  monthlyEarnings: number;
+  rating: number;
+}
+
+interface RecentJob {
+  id: string;
+  service_name: string;
+  description: string;
+  status: string;
+  booking_date: string;
+  total_amount: number;
+}
+
+interface EarningsData {
+  thisWeek: number;
+  thisMonth: number;
+  totalEarnings: number;
+  pendingPayout: number;
+}
 
 const ProviderDashboard = () => {
   const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [stats, setStats] = useState<ProviderStats>({
+    totalJobs: 0,
+    monthlyJobs: 0,
+    monthlyEarnings: 0,
+    rating: 0
+  });
+  const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
+  const [earnings, setEarnings] = useState<EarningsData>({
+    thisWeek: 0,
+    thisMonth: 0,
+    totalEarnings: 0,
+    pendingPayout: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchProviderData = async () => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+      
+      // Fetch all bookings for this provider
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          service:services(name, description)
+        `)
+        .eq('provider_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (bookingsError) throw bookingsError;
+
+      const now = new Date();
+      const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const thisWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+
+      const completedJobs = bookings?.filter(b => b.status === 'completed') || [];
+      const monthlyJobs = completedJobs.filter(b => new Date(b.booking_date) >= thisMonth);
+      const weeklyJobs = completedJobs.filter(b => new Date(b.booking_date) >= thisWeek);
+
+      // Calculate stats
+      setStats({
+        totalJobs: completedJobs.length,
+        monthlyJobs: monthlyJobs.length,
+        monthlyEarnings: monthlyJobs.reduce((sum, job) => sum + (job.provider_payout || job.total_amount * 0.85), 0),
+        rating: user.rating || 0
+      });
+
+      // Set recent jobs
+      const recentJobsData = (bookings || []).slice(0, 3).map(job => ({
+        id: job.id,
+        service_name: job.service?.name || 'Service',
+        description: job.service?.description || 'Service booking',
+        status: job.status,
+        booking_date: job.booking_date,
+        total_amount: job.total_amount
+      }));
+      setRecentJobs(recentJobsData);
+
+      // Calculate earnings
+      const totalEarnings = completedJobs.reduce((sum, job) => sum + (job.provider_payout || job.total_amount * 0.85), 0);
+      const weeklyEarnings = weeklyJobs.reduce((sum, job) => sum + (job.provider_payout || job.total_amount * 0.85), 0);
+      const monthlyEarnings = monthlyJobs.reduce((sum, job) => sum + (job.provider_payout || job.total_amount * 0.85), 0);
+      
+      // Fetch pending payouts
+      const { data: pendingPayouts } = await supabase
+        .from('payouts')
+        .select('amount')
+        .eq('provider_id', user.id)
+        .eq('status', 'pending');
+
+      const pendingAmount = pendingPayouts?.reduce((sum, payout) => sum + payout.amount, 0) || 0;
+
+      setEarnings({
+        thisWeek: weeklyEarnings,
+        thisMonth: monthlyEarnings,
+        totalEarnings,
+        pendingPayout: pendingAmount
+      });
+
+    } catch (error) {
+      console.error('Error fetching provider data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProviderData();
+  }, [user]);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
+      case 'in_progress':
+        return <Badge className="bg-blue-100 text-blue-800">In Progress</Badge>;
+      case 'accepted':
+        return <Badge className="bg-yellow-100 text-yellow-800">Scheduled</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
@@ -36,7 +173,7 @@ const ProviderDashboard = () => {
           <div className="flex items-center gap-4">
             <Badge variant="outline" className="flex items-center gap-1">
               <Star className="h-4 w-4" />
-              {user?.rating || 0}/5
+              {stats.rating.toFixed(1)}/5
             </Badge>
             <Button onClick={signOut} variant="outline">
               Sign Out
@@ -52,7 +189,7 @@ const ProviderDashboard = () => {
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{user?.total_jobs || 0}</div>
+              <div className="text-2xl font-bold">{stats.totalJobs}</div>
               <p className="text-xs text-muted-foreground">
                 Completed successfully
               </p>
@@ -65,7 +202,7 @@ const ProviderDashboard = () => {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">8</div>
+              <div className="text-2xl font-bold">{stats.monthlyJobs}</div>
               <p className="text-xs text-muted-foreground">
                 Jobs completed
               </p>
@@ -78,7 +215,7 @@ const ProviderDashboard = () => {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">N$2,340</div>
+              <div className="text-2xl font-bold">N${stats.monthlyEarnings.toFixed(0)}</div>
               <p className="text-xs text-muted-foreground">
                 This month
               </p>
@@ -91,7 +228,7 @@ const ProviderDashboard = () => {
               <Star className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{user?.rating || 0}/5</div>
+              <div className="text-2xl font-bold">{stats.rating.toFixed(1)}/5</div>
               <p className="text-xs text-muted-foreground">
                 Average rating
               </p>
@@ -135,27 +272,28 @@ const ProviderDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 border rounded">
-                      <div>
-                        <h4 className="font-medium">Plumbing Repair</h4>
-                        <p className="text-sm text-gray-600">Kitchen sink fix</p>
+                    {recentJobs.length > 0 ? (
+                      recentJobs.map((job) => (
+                        <div key={job.id} className="flex items-center justify-between p-3 border rounded">
+                          <div>
+                            <h4 className="font-medium">{job.service_name}</h4>
+                            <p className="text-sm text-gray-600">{job.description}</p>
+                            <p className="text-xs text-gray-500">
+                              {format(new Date(job.booking_date), 'MMM dd, yyyy')}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            {getStatusBadge(job.status)}
+                            <p className="text-sm font-medium mt-1">N${job.total_amount}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Briefcase className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p>No recent jobs</p>
                       </div>
-                      <Badge variant="default">Completed</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded">
-                      <div>
-                        <h4 className="font-medium">Electrical Installation</h4>
-                        <p className="text-sm text-gray-600">Light fixture setup</p>
-                      </div>
-                      <Badge variant="secondary">In Progress</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded">
-                      <div>
-                        <h4 className="font-medium">Garden Maintenance</h4>
-                        <p className="text-sm text-gray-600">Lawn mowing</p>
-                      </div>
-                      <Badge variant="outline">Scheduled</Badge>
-                    </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -171,19 +309,19 @@ const ProviderDashboard = () => {
                   <div className="space-y-4">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">This Week</span>
-                      <span className="font-medium">N$580</span>
+                      <span className="font-medium">N${earnings.thisWeek.toFixed(0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">This Month</span>
-                      <span className="font-medium">N$2,340</span>
+                      <span className="font-medium">N${earnings.thisMonth.toFixed(0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Total Earnings</span>
-                      <span className="font-medium">N$12,450</span>
+                      <span className="font-medium">N${earnings.totalEarnings.toFixed(0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Pending Payout</span>
-                      <span className="font-medium text-orange-600">N$340</span>
+                      <span className="font-medium text-orange-600">N${earnings.pendingPayout.toFixed(0)}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -197,11 +335,31 @@ const ProviderDashboard = () => {
                 <CardTitle>Job History</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Jobs Yet</h3>
-                  <p className="text-gray-600">Your completed jobs will appear here</p>
-                </div>
+                {recentJobs.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentJobs.map((job) => (
+                      <div key={job.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <h3 className="font-medium">{job.service_name}</h3>
+                          <p className="text-sm text-gray-600">{job.description}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {format(new Date(job.booking_date), 'MMMM dd, yyyy')}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          {getStatusBadge(job.status)}
+                          <p className="text-lg font-semibold mt-1">N${job.total_amount}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Jobs Yet</h3>
+                    <p className="text-gray-600">Your completed jobs will appear here</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -225,21 +383,27 @@ const ProviderDashboard = () => {
                       <h4 className="font-medium">Identity Verification</h4>
                       <p className="text-sm text-gray-600">Upload ID document</p>
                     </div>
-                    <Badge variant="secondary">Pending</Badge>
+                    <Badge variant={user?.verification_status === 'verified' ? 'default' : 'secondary'}>
+                      {user?.verification_status === 'verified' ? 'Verified' : 'Pending'}
+                    </Badge>
                   </div>
                   <div className="flex items-center justify-between p-4 border rounded">
                     <div>
                       <h4 className="font-medium">Background Check</h4>
                       <p className="text-sm text-gray-600">Criminal background verification</p>
                     </div>
-                    <Badge variant="secondary">Pending</Badge>
+                    <Badge variant={user?.background_check_consent ? 'default' : 'secondary'}>
+                      {user?.background_check_consent ? 'Completed' : 'Pending'}
+                    </Badge>
                   </div>
                   <div className="flex items-center justify-between p-4 border rounded">
                     <div>
                       <h4 className="font-medium">Banking Details</h4>
                       <p className="text-sm text-gray-600">Verify payment information</p>
                     </div>
-                    <Badge variant="secondary">Pending</Badge>
+                    <Badge variant={user?.banking_details_verified ? 'default' : 'secondary'}>
+                      {user?.banking_details_verified ? '✓ Verified' : 'Pending'}
+                    </Badge>
                   </div>
                   <Button className="w-full">
                     Complete Verification Process
@@ -275,6 +439,18 @@ const ProviderDashboard = () => {
                     <div>
                       <label className="text-sm font-medium text-gray-600">Location</label>
                       <p className="text-sm">{user?.current_work_location || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Service Areas</label>
+                      <p className="text-sm">{user?.service_coverage_areas?.join(', ') || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Status</label>
+                      <p className="text-sm">
+                        <Badge variant={user?.is_active ? 'default' : 'secondary'}>
+                          {user?.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </p>
                     </div>
                   </div>
                   <Button variant="outline">

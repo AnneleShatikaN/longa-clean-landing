@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,61 +9,132 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSupabaseBookings } from '@/contexts/SupabaseBookingContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+
+interface Job {
+  id: string;
+  service: { name: string };
+  client: { full_name: string };
+  booking_date: string;
+  booking_time: string;
+  total_amount: number;
+  location_town: string;
+  status: string;
+  service_address: string;
+}
 
 export const SimplifiedProviderDashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isAvailable, setAvailability } = useNotifications();
-  const [currentJob, setCurrentJob] = useState<any>(null);
-  const [availableJobs, setAvailableJobs] = useState<any[]>([]);
-  const [myJobs, setMyJobs] = useState<any[]>([]);
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [currentJob, setCurrentJob] = useState<Job | null>(null);
+  const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
+  const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [view, setView] = useState<'main' | 'available' | 'current'>('main');
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchJobs = async () => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+
+      // Fetch available jobs (unassigned)
+      const { data: availableData, error: availableError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          service:services(name),
+          client:users!bookings_client_id_fkey(full_name)
+        `)
+        .is('provider_id', null)
+        .eq('status', 'pending')
+        .eq('location_town', user.current_work_location || 'windhoek')
+        .order('created_at', { ascending: false });
+
+      if (availableError) throw availableError;
+
+      // Fetch my jobs (assigned to me)
+      const { data: myJobsData, error: myJobsError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          service:services(name),
+          client:users!bookings_client_id_fkey(full_name)
+        `)
+        .eq('provider_id', user.id)
+        .in('status', ['accepted', 'in_progress'])
+        .order('booking_date', { ascending: true });
+
+      if (myJobsError) throw myJobsError;
+
+      // Transform data
+      const availableJobsTransformed = (availableData || []).map(job => ({
+        id: job.id,
+        service: { name: job.service?.name || 'Service' },
+        client: { full_name: job.client?.full_name || 'Client' },
+        booking_date: job.booking_date,
+        booking_time: job.booking_time,
+        total_amount: job.total_amount,
+        location_town: job.location_town,
+        status: job.status,
+        service_address: job.service_address || 'Address not provided'
+      }));
+
+      const myJobsTransformed = (myJobsData || []).map(job => ({
+        id: job.id,
+        service: { name: job.service?.name || 'Service' },
+        client: { full_name: job.client?.full_name || 'Client' },
+        booking_date: job.booking_date,
+        booking_time: job.booking_time,
+        total_amount: job.total_amount,
+        location_town: job.location_town,
+        status: job.status,
+        service_address: job.service_address || 'Address not provided'
+      }));
+
+      setAvailableJobs(availableJobsTransformed);
+      setMyJobs(myJobsTransformed);
+
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load jobs. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Fetch jobs - simplified version
-    // In real implementation, this would fetch from Supabase
-    setAvailableJobs([
-      {
-        id: '1',
-        service: { name: 'House Cleaning' },
-        client: { full_name: 'Sarah Johnson' },
-        booking_date: '2025-06-17',
-        booking_time: '10:00',
-        total_amount: 600,
-        location_town: 'Windhoek',
-        status: 'pending'
-      }
-    ]);
-
-    setMyJobs([
-      {
-        id: '2',
-        service: { name: 'Car Wash' },
-        client: { full_name: 'John Smith' },
-        booking_date: '2025-06-17',
-        booking_time: '14:00',
-        total_amount: 100,
-        location_town: 'Windhoek',
-        status: 'accepted'
-      }
-    ]);
-  }, []);
+    fetchJobs();
+  }, [user]);
 
   const handleAcceptJob = async (jobId: string) => {
     try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          provider_id: user?.id,
+          status: 'accepted',
+          assigned_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+
+      if (error) throw error;
+
       toast({
         title: "Job Accepted!",
         description: "You have accepted this job.",
       });
-      // Move job from available to my jobs
-      const job = availableJobs.find(j => j.id === jobId);
-      if (job) {
-        setMyJobs([...myJobs, { ...job, status: 'accepted' }]);
-        setAvailableJobs(availableJobs.filter(j => j.id !== jobId));
-      }
+      
+      await fetchJobs(); // Refresh data
       setView('main');
     } catch (error) {
+      console.error('Error accepting job:', error);
       toast({
         title: "Error",
         description: "Could not accept job. Try again.",
@@ -72,6 +144,7 @@ export const SimplifiedProviderDashboard = () => {
   };
 
   const handleDeclineJob = async (jobId: string) => {
+    // For now, just remove from available jobs locally
     setAvailableJobs(availableJobs.filter(j => j.id !== jobId));
     setView('main');
     toast({
@@ -81,30 +154,95 @@ export const SimplifiedProviderDashboard = () => {
   };
 
   const handleStartJob = async (jobId: string) => {
-    const job = myJobs.find(j => j.id === jobId);
-    if (job) {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          status: 'in_progress',
+          check_in_time: new Date().toISOString()
+        })
+        .eq('id', jobId);
+
+      if (error) throw error;
+
       setMyJobs(myJobs.map(j => 
         j.id === jobId ? { ...j, status: 'in_progress' } : j
       ));
+      
       toast({
         title: "Job Started",
         description: "Good luck with your job!",
+      });
+    } catch (error) {
+      console.error('Error starting job:', error);
+      toast({
+        title: "Error",
+        description: "Could not start job. Try again.",
+        variant: "destructive",
       });
     }
   };
 
   const handleCompleteJob = async (jobId: string) => {
-    const job = myJobs.find(j => j.id === jobId);
-    if (job) {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          status: 'completed'
+        })
+        .eq('id', jobId);
+
+      if (error) throw error;
+
       setMyJobs(myJobs.map(j => 
         j.id === jobId ? { ...j, status: 'completed' } : j
       ));
+      
       toast({
         title: "Job Completed!",
         description: "Great work! Payment processing.",
       });
+    } catch (error) {
+      console.error('Error completing job:', error);
+      toast({
+        title: "Error",
+        description: "Could not complete job. Try again.",
+        variant: "destructive",
+      });
     }
   };
+
+  const setAvailability = async (available: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ is_available: available })
+        .eq('id', user?.id);
+
+      if (error) throw error;
+
+      setIsAvailable(available);
+      toast({
+        title: available ? "You're now available" : "You're now unavailable",
+        description: available ? "You'll receive job notifications" : "You won't receive new jobs",
+      });
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      toast({
+        title: "Error",
+        description: "Could not update availability",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-green-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
 
   // Main dashboard view
   if (view === 'main') {
@@ -279,6 +417,9 @@ export const SimplifiedProviderDashboard = () => {
                         <MapPin className="h-6 w-6 text-gray-600" />
                         <span>{job.location_town}</span>
                       </div>
+                      <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                        <strong>Address:</strong> {job.service_address}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 pt-4">
@@ -291,7 +432,9 @@ export const SimplifiedProviderDashboard = () => {
                         Decline
                       </Button>
                       <Button 
-                        onClick={() => handleAcceptJob(job.id)}
+                        onClick={() =>
+
+ handleAcceptJob(job.id)}
                         className="h-16 text-lg bg-green-600 hover:bg-green-700"
                       >
                         <CheckCircle className="h-6 w-6 mr-2" />
@@ -366,6 +509,9 @@ export const SimplifiedProviderDashboard = () => {
                       <div className="flex items-center gap-3 text-lg">
                         <MapPin className="h-6 w-6 text-gray-600" />
                         <span>{job.location_town}</span>
+                      </div>
+                      <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                        <strong>Address:</strong> {job.service_address}
                       </div>
                     </div>
 

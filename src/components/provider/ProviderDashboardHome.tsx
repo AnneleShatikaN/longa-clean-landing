@@ -27,6 +27,7 @@ interface TodayJob {
   service_name: string;
   status: string;
   total_amount: number;
+  service_address: string;
 }
 
 interface NextJob {
@@ -76,6 +77,7 @@ export const ProviderDashboardHome: React.FC = () => {
           location_town,
           status,
           total_amount,
+          service_address,
           service:services(name),
           client:users!bookings_client_id_fkey(full_name, avatar_url)
         `)
@@ -95,7 +97,8 @@ export const ProviderDashboardHome: React.FC = () => {
           location_town: job.location_town || 'Windhoek',
           service_name: job.service?.name || 'Service',
           status: job.status,
-          total_amount: job.total_amount
+          total_amount: job.total_amount,
+          service_address: job.service_address || 'Address not provided'
         });
       }
 
@@ -126,13 +129,13 @@ export const ProviderDashboardHome: React.FC = () => {
       // Fetch weekly stats
       const { data: weeklyData } = await supabase
         .from('bookings')
-        .select('total_amount, status')
+        .select('total_amount, status, provider_payout')
         .eq('provider_id', user.id)
         .gte('booking_date', weekStart.toISOString().split('T')[0]);
 
       if (weeklyData) {
         const completed = weeklyData.filter(b => b.status === 'completed');
-        const totalEarnings = completed.reduce((sum, b) => sum + (b.total_amount * 0.85), 0); // 85% after commission
+        const totalEarnings = completed.reduce((sum, b) => sum + (b.provider_payout || b.total_amount * 0.85), 0);
         
         setWeeklyStats({
           totalEarnings,
@@ -205,6 +208,7 @@ export const ProviderDashboardHome: React.FC = () => {
               <div className="flex-1">
                 <p className="font-medium text-gray-900">{todayJob.client_name}</p>
                 <p className="text-sm text-gray-600">{todayJob.service_name}</p>
+                <p className="text-xs text-gray-500">{todayJob.service_address}</p>
               </div>
               <div className="text-right">
                 <p className="font-bold text-green-600">N${todayJob.total_amount}</p>

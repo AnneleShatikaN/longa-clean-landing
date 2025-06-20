@@ -27,6 +27,7 @@ interface ProviderApplication {
   phone?: string;
   verification_status: string;
   verification_submitted_at: string;
+  verification_notes?: string; // Add this property
   current_work_location?: string;
   service_coverage_areas?: string[];
   documents: ProviderDocument[];

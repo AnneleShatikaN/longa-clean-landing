@@ -45,9 +45,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check role-based access
   if (user && (requiredRole || allowedRoles)) {
+    const userRole = user.role as UserRole;
     const hasAccess = requiredRole 
-      ? user.role === requiredRole
-      : allowedRoles?.includes(user.role);
+      ? userRole === requiredRole
+      : allowedRoles?.includes(userRole);
 
     console.log('ProtectedRoute - Has access:', hasAccess);
 

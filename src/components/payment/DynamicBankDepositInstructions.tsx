@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Copy, Check, CreditCard, Phone, Building } from 'lucide-react';
-import { useBankingSettings } from '@/hooks/useBankingSettings';
+import { Copy, Check, CreditCard, Phone, Building, AlertCircle } from 'lucide-react';
+import { usePaymentInstructions } from '@/hooks/usePaymentInstructions';
 import { useToast } from '@/hooks/use-toast';
 
 interface DynamicBankDepositInstructionsProps {
@@ -21,16 +21,9 @@ export const DynamicBankDepositInstructions: React.FC<DynamicBankDepositInstruct
   packageId,
   onMarkAsPaid
 }) => {
-  const { bankingDetails, paymentInstructions, isLoading } = useBankingSettings();
+  const { paymentInstructions, isLoading, error, generateReference } = usePaymentInstructions();
   const { toast } = useToast();
   const [copiedFields, setCopiedFields] = useState<Record<string, boolean>>({});
-
-  const generateReference = () => {
-    const type = packageId ? 'PKG' : 'SVC';
-    const id = (packageId || serviceId || '').slice(0, 8).toUpperCase();
-    const timestamp = Date.now().toString().slice(-6);
-    return `${type}-${id}-${timestamp}`;
-  };
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
@@ -74,7 +67,29 @@ export const DynamicBankDepositInstructions: React.FC<DynamicBankDepositInstruct
     );
   }
 
-  const reference = generateReference();
+  if (error || !paymentInstructions) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 text-amber-600 mb-4">
+            <AlertCircle className="h-5 w-5" />
+            <h3 className="font-semibold">Payment Instructions Unavailable</h3>
+          </div>
+          <p className="text-gray-600 mb-4">
+            No payment instructions available. Please contact support for payment details.
+          </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <p className="text-sm text-amber-800">
+              <strong>What to do:</strong> Contact our support team to get the current payment details 
+              or wait for the administrator to set up payment instructions.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const reference = generateReference(serviceId || packageId);
 
   return (
     <div className="space-y-6">
@@ -86,74 +101,88 @@ export const DynamicBankDepositInstructions: React.FC<DynamicBankDepositInstruct
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <p className="text-sm text-blue-700 mb-2 font-medium">Payment Instructions:</p>
-            <p className="text-sm text-blue-600">
-              {paymentInstructions?.clientPaymentInstructions || 'Please deposit payment to our business account and send proof of payment.'}
-            </p>
-          </div>
+          {paymentInstructions.additional_instructions && (
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="text-sm text-blue-700 mb-2 font-medium">Payment Instructions:</p>
+              <p className="text-sm text-blue-600">
+                {paymentInstructions.additional_instructions}
+              </p>
+            </div>
+          )}
 
           <Separator />
 
           <div className="grid gap-4">
             <div className="flex justify-between items-center">
               <div>
-                <p className="font-medium text-gray-700">Business Name</p>
-                <p className="text-lg">{bankingDetails?.businessName || 'Longa Services'}</p>
+                <p className="font-medium text-gray-700">Account Name</p>
+                <p className="text-lg">{paymentInstructions.account_name}</p>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(bankingDetails?.businessName || 'Longa Services', 'Business Name')}
+                onClick={() => copyToClipboard(paymentInstructions.account_name, 'Account Name')}
               >
-                {copiedFields['Business Name'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copiedFields['Account Name'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
 
-            {bankingDetails?.bankName && (
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="font-medium text-gray-700">Bank Name</p>
-                  <p className="text-lg">{bankingDetails.bankName}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(bankingDetails.bankName, 'Bank Name')}
-                >
-                  {copiedFields['Bank Name'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="font-medium text-gray-700">Bank Name</p>
+                <p className="text-lg">{paymentInstructions.bank_name}</p>
               </div>
-            )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(paymentInstructions.bank_name, 'Bank Name')}
+              >
+                {copiedFields['Bank Name'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
 
-            {bankingDetails?.accountNumber && (
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="font-medium text-gray-700">Account Number</p>
-                  <p className="text-lg font-mono">{bankingDetails.accountNumber}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(bankingDetails.accountNumber, 'Account Number')}
-                >
-                  {copiedFields['Account Number'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="font-medium text-gray-700">Account Number</p>
+                <p className="text-lg font-mono">{paymentInstructions.account_number}</p>
               </div>
-            )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(paymentInstructions.account_number, 'Account Number')}
+              >
+                {copiedFields['Account Number'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
 
-            {bankingDetails?.branchCode && (
+            {paymentInstructions.branch_code && (
               <div className="flex justify-between items-center">
                 <div>
                   <p className="font-medium text-gray-700">Branch Code</p>
-                  <p className="text-lg">{bankingDetails.branchCode}</p>
+                  <p className="text-lg">{paymentInstructions.branch_code}</p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => copyToClipboard(bankingDetails.branchCode, 'Branch Code')}
+                  onClick={() => copyToClipboard(paymentInstructions.branch_code!, 'Branch Code')}
                 >
                   {copiedFields['Branch Code'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            )}
+
+            {paymentInstructions.swift_code && (
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-medium text-gray-700">SWIFT Code</p>
+                  <p className="text-lg">{paymentInstructions.swift_code}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(paymentInstructions.swift_code!, 'SWIFT Code')}
+                >
+                  {copiedFields['SWIFT Code'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
             )}
@@ -195,8 +224,7 @@ export const DynamicBankDepositInstructions: React.FC<DynamicBankDepositInstruct
               <div>
                 <p className="font-medium text-yellow-800">Send Proof of Payment</p>
                 <p className="text-sm text-yellow-700 mt-1">
-                  After making the payment, send proof to WhatsApp: 
-                  <span className="font-mono ml-1">{paymentInstructions?.whatsappNumber || '+264 XX XXX XXXX'}</span>
+                  After making the payment, send proof to our support team along with your reference number.
                 </p>
               </div>
             </div>

@@ -1368,6 +1368,73 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_instructions: {
+        Row: {
+          account_name: string
+          account_number: string
+          additional_instructions: string | null
+          bank_name: string
+          branch_code: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          reference_format: string
+          swift_code: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          additional_instructions?: string | null
+          bank_name: string
+          branch_code?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          reference_format?: string
+          swift_code?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          additional_instructions?: string | null
+          bank_name?: string
+          branch_code?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          reference_format?: string
+          swift_code?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_instructions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payment_instructions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payment_instructions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_method_configs: {
         Row: {
           api_endpoint: string | null

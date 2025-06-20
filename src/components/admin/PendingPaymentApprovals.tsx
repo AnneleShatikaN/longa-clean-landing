@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -60,7 +59,24 @@ export const PendingPaymentApprovals = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPendingTransactions(data || []);
+      
+      // Type-safe assignment with proper filtering
+      const transactions = (data || []).map(item => ({
+        id: item.id,
+        user_id: item.user_id,
+        transaction_type: item.transaction_type || '',
+        service_id: item.service_id,
+        package_id: item.package_id,
+        amount: item.amount,
+        reference_number: item.reference_number,
+        booking_details: item.booking_details,
+        created_at: item.created_at,
+        users: Array.isArray(item.users) ? item.users[0] : item.users,
+        services: Array.isArray(item.services) ? item.services[0] : item.services,
+        subscription_packages: Array.isArray(item.subscription_packages) ? item.subscription_packages[0] : item.subscription_packages
+      })) as PendingTransaction[];
+      
+      setPendingTransactions(transactions);
     } catch (error) {
       console.error('Error fetching pending transactions:', error);
       toast({

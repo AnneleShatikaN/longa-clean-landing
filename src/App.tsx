@@ -36,16 +36,46 @@ function App() {
               <Route path="/payment-instructions" element={<PaymentInstructions />} />
               
               {/* Protected routes */}
-              <Route element={<ProtectedRoute />}>
-                <Route path="/client-dashboard" element={<ClientDashboard />} />
-                <Route path="/provider-dashboard" element={<ProviderDashboard />} />
-                <Route path="/admin-dashboard" element={<AdminDashboard />} />
-                <Route path="/one-off-booking" element={<OneOffBooking />} />
-                <Route path="/booking-confirmation" element={<BookingConfirmation />} />
-                <Route path="/provider-verification" element={<ProviderVerification />} />
-                <Route path="/search" element={<Search />} />
-                <Route path="/contact" element={<Contact />} />
-              </Route>
+              <Route path="/client-dashboard" element={
+                <ProtectedRoute>
+                  <ClientDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/provider-dashboard" element={
+                <ProtectedRoute>
+                  <ProviderDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin-dashboard" element={
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/one-off-booking" element={
+                <ProtectedRoute>
+                  <OneOffBooking />
+                </ProtectedRoute>
+              } />
+              <Route path="/booking-confirmation" element={
+                <ProtectedRoute>
+                  <BookingConfirmation />
+                </ProtectedRoute>
+              } />
+              <Route path="/provider-verification" element={
+                <ProtectedRoute>
+                  <ProviderVerification />
+                </ProtectedRoute>
+              } />
+              <Route path="/search" element={
+                <ProtectedRoute>
+                  <Search />
+                </ProtectedRoute>
+              } />
+              <Route path="/contact" element={
+                <ProtectedRoute>
+                  <Contact />
+                </ProtectedRoute>
+              } />
             </Routes>
           </Router>
         </SupabaseBookingProvider>

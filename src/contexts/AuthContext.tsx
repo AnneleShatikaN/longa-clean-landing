@@ -29,6 +29,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
+      console.log('Auth: Fetching user profile for ID:', userId);
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -36,9 +38,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('Auth: Error fetching user profile:', error);
         return null;
       }
+
+      console.log('Auth: User profile data:', data);
 
       // Map the database data to UserProfile type
       const userProfile: UserProfile = {
@@ -62,9 +66,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         jobsCompleted: data.total_jobs
       };
 
+      console.log('Auth: Mapped user profile:', userProfile);
       return userProfile;
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
+      console.error('Auth: Error in fetchUserProfile:', error);
       return null;
     }
   };
@@ -79,18 +84,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        console.log('Auth: Initializing auth state...');
+        
         const { data: { session: currentSession } } = await supabase.auth.getSession();
+        console.log('Auth: Current session:', currentSession);
+        
         setSession(currentSession);
 
         if (currentSession?.user) {
+          console.log('Auth: Session user found:', currentSession.user);
           const userProfile = await fetchUserProfile(currentSession.user.id);
           setUser(userProfile);
+        } else {
+          console.log('Auth: No session user found');
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('Auth: Error initializing auth:', error);
       } finally {
         setLoading(false);
         setIsInitialized(true);
+        console.log('Auth: Initialization complete');
       }
     };
 
@@ -98,15 +111,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        console.log('Auth state changed:', event, currentSession?.user?.email);
+        console.log('Auth: State changed:', event, currentSession?.user?.email);
         setSession(currentSession);
 
         if (event === 'SIGNED_IN' && currentSession?.user) {
+          console.log('Auth: User signed in, fetching profile...');
           setTimeout(async () => {
             const userProfile = await fetchUserProfile(currentSession.user.id);
             setUser(userProfile);
           }, 0);
         } else if (event === 'SIGNED_OUT') {
+          console.log('Auth: User signed out');
           setUser(null);
         }
 

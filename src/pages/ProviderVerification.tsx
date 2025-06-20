@@ -3,25 +3,34 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ProviderVerificationForm } from '@/components/provider/ProviderVerificationForm';
 
 const ProviderVerification = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading, isInitialized } = useAuth();
   const [verificationData, setVerificationData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Console logging for debugging
+  console.log('ProviderVerification - Auth Debug:', {
+    user,
+    userRole: user?.role,
+    authLoading,
+    isInitialized,
+    userId: user?.id
+  });
+
   useEffect(() => {
-    if (user?.role === 'provider') {
+    if (isInitialized && user?.role === 'provider') {
       fetchVerificationData();
-    } else {
+    } else if (isInitialized) {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, isInitialized]);
 
   const fetchVerificationData = async () => {
     if (!user) return;
@@ -49,31 +58,59 @@ const ProviderVerification = () => {
     }
   };
 
-  // Access control
-  if (!user || user.role !== 'provider') {
+  // Show loading while auth is initializing
+  if (!isInitialized || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="text-center text-red-600">Access Denied</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-gray-600">This page is only accessible to service providers</p>
-            <Button onClick={() => navigate('/auth')}>
-              Sign In as Provider
-            </Button>
+          <CardContent className="text-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600">Loading...</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Loading state
+  // Access control - show clear access denied message
+  if (!user || user.role !== 'provider') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <Card className="max-w-md mx-auto">
+          <CardHeader>
+            <CardTitle className="text-center text-red-600 flex items-center justify-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Access Denied
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-gray-600">
+              This page is only accessible to service providers.
+            </p>
+            <div className="text-sm text-gray-500 space-y-1">
+              <p>Current user: {user?.email || 'Not logged in'}</p>
+              <p>Current role: {user?.role || 'No role assigned'}</p>
+            </div>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" onClick={() => navigate('/auth')}>
+                Sign In as Provider
+              </Button>
+              <Button onClick={() => navigate('/')}>
+                Go Home
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Loading state for verification data
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
           <p className="text-gray-600">Loading verification data...</p>
         </div>
       </div>

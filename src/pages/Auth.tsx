@@ -135,14 +135,15 @@ const Auth = () => {
           toast.success('Account created and signed in successfully!');
         }
         
-        // Reset form
+        // Reset form - include all required fields
         setFormData({
           email: '',
           password: '',
           fullName: '',
           phone: '',
           role: 'client',
-          location: ''
+          location: '',
+          providerCategory: ''
         });
       } else {
         await signIn(formData.email, formData.password);

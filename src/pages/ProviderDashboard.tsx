@@ -21,6 +21,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ProviderBankingDetails } from '@/components/provider/ProviderBankingDetails';
+import ProviderProfileTab from '@/components/provider/ProviderProfileTab';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -584,52 +585,7 @@ const ProviderDashboard = () => {
           </TabsContent>
 
           <TabsContent value="profile">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Profile Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Full Name</label>
-                      <p className="text-sm">{user?.full_name}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Email</label>
-                      <p className="text-sm">{user?.email}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Phone</label>
-                      <p className="text-sm">{user?.phone || 'Not provided'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Location</label>
-                      <p className="text-sm">{user?.current_work_location || 'Not specified'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Service Areas</label>
-                      <p className="text-sm">{user?.service_coverage_areas?.join(', ') || 'Not specified'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Status</label>
-                      <p className="text-sm">
-                        <Badge variant={user?.is_active ? 'default' : 'secondary'}>
-                          {user?.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </p>
-                    </div>
-                  </div>
-                  <Button variant="outline">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <ProviderProfileTab />
           </TabsContent>
         </Tabs>
       </div>

@@ -123,7 +123,7 @@ const Auth = () => {
           full_name: formData.fullName,
           phone: formData.phone,
           role: formData.role,
-          location: formData.location,
+          current_work_location: formData.location, // Fix: use correct field name
           provider_category: formData.role === 'provider' ? formData.providerCategory : null
         });
         

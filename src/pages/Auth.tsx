@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -123,7 +122,7 @@ const Auth = () => {
           full_name: formData.fullName,
           phone: formData.phone,
           role: formData.role,
-          current_work_location: formData.location, // Fix: use correct field name
+          current_work_location: formData.location,
           provider_category: formData.role === 'provider' ? formData.providerCategory : null
         });
         
@@ -135,7 +134,7 @@ const Auth = () => {
           toast.success('Account created and signed in successfully!');
         }
         
-        // Reset form - include all required fields
+        // Reset form
         setFormData({
           email: '',
           password: '',
@@ -147,7 +146,6 @@ const Auth = () => {
         });
       } else {
         await signIn(formData.email, formData.password);
-        // Success handling is done in the AuthContext
       }
     } catch (error: any) {
       console.error('Auth error:', error);
@@ -263,7 +261,7 @@ const Auth = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Role Selection for Sign Up - No admin option */}
+              {/* Role Selection for Sign Up */}
               {isSignUp && (
                 <div className="space-y-3">
                   <Label>Account Type</Label>
@@ -369,7 +367,7 @@ const Auth = () => {
                 </div>
               )}
 
-              {/* Location for Sign Up - Required for all users */}
+              {/* Location for Sign Up */}
               {isSignUp && (
                 <div>
                   <Label htmlFor="location">Location *</Label>

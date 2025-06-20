@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Plus, X, Save } from 'lucide-react';
 import { serviceSchema, ServiceData } from '@/schemas/validation';
 import { useServices, Service } from '@/contexts/ServiceContext';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 interface ServiceEditFormProps {
   service: Service;
@@ -26,6 +27,7 @@ const ServiceEditForm: React.FC<ServiceEditFormProps> = ({
   onCancel 
 }) => {
   const { updateService } = useServices();
+  const { toast } = useToast();
   const [tags, setTags] = useState<string[]>(service.tags || []);
   const [newTag, setNewTag] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,15 +65,28 @@ const ServiceEditForm: React.FC<ServiceEditFormProps> = ({
   const onSubmit = async (data: ServiceData) => {
     setIsSubmitting(true);
     try {
+      console.log('Updating service with data:', data);
+      
       await updateService(service.id, {
         ...data,
         tags: tags.length > 0 ? tags : ['general']
       });
-      toast.success('Service updated successfully!');
+      
+      console.log('Service updated successfully');
+      
+      toast({
+        title: "Success!",
+        description: `Service "${data.name}" has been updated successfully.`,
+      });
+      
       onSuccess?.();
     } catch (error) {
-      toast.error('Failed to update service. Please try again.');
       console.error('Service update error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update service. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -240,7 +255,7 @@ const ServiceEditForm: React.FC<ServiceEditFormProps> = ({
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                 />
-                <Button type="button" onClick={handleAddTag}>
+                <Button type="button" onClick={handleAddTag} disabled={!newTag.trim()}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
@@ -283,14 +298,14 @@ const ServiceEditForm: React.FC<ServiceEditFormProps> = ({
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 pt-4 border-t">
               {onCancel && (
-                <Button type="button" variant="outline" onClick={onCancel}>
+                <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
                   <X className="h-4 w-4 mr-2" />
                   Cancel
                 </Button>
               )}
               <Button type="submit" disabled={isSubmitting}>
                 <Save className="h-4 w-4 mr-2" />
-                {isSubmitting ? 'Updating...' : 'Update Service'}
+                {isSubmitting ? 'Updating Service...' : 'Update Service'}
               </Button>
             </div>
           </form>

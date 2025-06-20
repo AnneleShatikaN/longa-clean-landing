@@ -87,8 +87,8 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
     
     if (!formData.name || !formData.clientPrice || !formData.categoryId) {
       toast({
-        title: "Error",
-        description: "Please fill in all required fields",
+        title: "Validation Error",
+        description: "Please fill in all required fields (Name, Price, and Category)",
         variant: "destructive",
       });
       return;
@@ -109,17 +109,27 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
           minutes: parseInt(formData.durationMinutes)
         },
         status: formData.status,
-        tags: formData.tags,
+        tags: formData.tags.length > 0 ? formData.tags : ['general'],
         categoryId: formData.categoryId
       };
 
-      await createService(serviceData);
+      console.log('Creating service with data:', serviceData);
+      
+      const newService = await createService(serviceData);
+      
+      console.log('Service created successfully:', newService);
+      
+      toast({
+        title: "Success!",
+        description: `Service "${formData.name}" has been created successfully.`,
+      });
+      
       onSuccess();
     } catch (error) {
       console.error('Error creating service:', error);
       toast({
         title: "Error",
-        description: "Failed to create service",
+        description: error instanceof Error ? error.message : "Failed to create service. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -211,6 +221,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
             id="clientPrice"
             type="number"
             step="0.01"
+            min="0"
             value={formData.clientPrice}
             onChange={(e) => setFormData({ ...formData, clientPrice: e.target.value })}
             placeholder="0.00"
@@ -224,6 +235,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
             id="providerFee"
             type="number"
             step="0.01"
+            min="0"
             value={formData.providerFee}
             onChange={(e) => setFormData({ ...formData, providerFee: e.target.value })}
             placeholder="Auto-calculated"
@@ -236,6 +248,8 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
             id="commission"
             type="number"
             step="0.1"
+            min="0"
+            max="100"
             value={formData.commissionPercentage}
             onChange={(e) => setFormData({ ...formData, commissionPercentage: e.target.value })}
             placeholder="15"
@@ -250,6 +264,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
             id="durationHours"
             type="number"
             min="0"
+            max="24"
             value={formData.durationHours}
             onChange={(e) => setFormData({ ...formData, durationHours: e.target.value })}
           />
@@ -278,7 +293,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
             onKeyPress={handleKeyPress}
             placeholder="Add a tag and press Enter"
           />
-          <Button type="button" onClick={handleAddTag} variant="outline">
+          <Button type="button" onClick={handleAddTag} variant="outline" disabled={!currentTag.trim()}>
             Add
           </Button>
         </div>
@@ -299,11 +314,11 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
       </div>
 
       <div className="flex justify-end space-x-3 pt-6">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating...' : 'Create Service'}
+          {isSubmitting ? 'Creating Service...' : 'Create Service'}
         </Button>
       </div>
     </form>

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,310 +7,285 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, DollarSign } from 'lucide-react';
-import { useServices } from '@/contexts/ServiceContext';
+import { Plus, Minus, Save } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useEnhancedPackages } from '@/hooks/useEnhancedPackages';
+import { useServicesEnhanced } from '@/hooks/useServicesEnhanced';
 
-interface PackageInclusion {
+interface PackageFormProps {
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+interface ServiceInclusion {
   service_id: string;
-  quantity_per_package: number;
-  provider_fee_per_job: number;
+  quantity: number;
+  provider_payout: number;
 }
 
-interface PackageData {
-  name: string;
-  price: number;
-  description?: string;
-  duration_days: number;
-  inclusions: PackageInclusion[];
-}
-
-interface EnhancedPackageFormProps {
-  onClose: () => void;
-  onSave: (packageData: PackageData) => void;
-}
-
-export const EnhancedPackageForm: React.FC<EnhancedPackageFormProps> = ({
-  onClose,
-  onSave
-}) => {
-  const { services } = useServices();
-  const [formData, setFormData] = useState<PackageData>({
+const EnhancedPackageForm: React.FC<PackageFormProps> = ({ onSuccess, onCancel }) => {
+  const { toast } = useToast();
+  const { createPackage } = useEnhancedPackages();
+  const { services } = useServicesEnhanced();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [formData, setFormData] = useState({
     name: '',
-    price: 0,
     description: '',
-    duration_days: 30,
-    inclusions: []
+    total_price: '',
+    service_inclusions: [] as ServiceInclusion[]
   });
 
   const addServiceInclusion = () => {
     setFormData(prev => ({
       ...prev,
-      inclusions: [...prev.inclusions, {
-        service_id: '',
-        quantity_per_package: 1,
-        provider_fee_per_job: 0
-      }]
+      service_inclusions: [
+        ...prev.service_inclusions,
+        { service_id: '', quantity: 1, provider_payout: 0 }
+      ]
     }));
   };
 
-  const updateInclusion = (index: number, field: keyof PackageInclusion, value: string | number) => {
+  const removeServiceInclusion = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      inclusions: prev.inclusions.map((inclusion, i) => 
+      service_inclusions: prev.service_inclusions.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateServiceInclusion = (index: number, field: keyof ServiceInclusion, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      service_inclusions: prev.service_inclusions.map((inclusion, i) =>
         i === index ? { ...inclusion, [field]: value } : inclusion
       )
     }));
   };
 
-  const removeInclusion = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      inclusions: prev.inclusions.filter((_, i) => i !== index)
-    }));
+  const calculateTotals = () => {
+    const totalProviderPayout = formData.service_inclusions.reduce(
+      (sum, inc) => sum + (inc.provider_payout * inc.quantity), 0
+    );
+    const totalPrice = parseFloat(formData.total_price) || 0;
+    const grossProfit = totalPrice - totalProviderPayout;
+    
+    return { totalProviderPayout, grossProfit };
   };
 
-  const calculateTotalValue = () => {
-    return formData.inclusions.reduce((total, inclusion) => {
-      const service = services.find(s => s.id === inclusion.service_id);
-      return total + (service?.clientPrice || 0) * inclusion.quantity_per_package;
-    }, 0);
-  };
-
-  const calculateTotalProviderCost = () => {
-    return formData.inclusions.reduce((total, inclusion) => {
-      return total + inclusion.provider_fee_per_job * inclusion.quantity_per_package;
-    }, 0);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || formData.price <= 0) {
+    if (!formData.name || !formData.total_price || formData.service_inclusions.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields and add at least one service.",
+        variant: "destructive",
+      });
       return;
     }
 
-    if (formData.inclusions.length === 0) {
-      return;
-    }
-
-    // Validate all inclusions have required data
-    const hasInvalidInclusions = formData.inclusions.some(
-      inclusion => !inclusion.service_id || inclusion.quantity_per_package <= 0 || inclusion.provider_fee_per_job < 0
+    // Validate service inclusions
+    const invalidInclusions = formData.service_inclusions.some(
+      inc => !inc.service_id || inc.quantity <= 0 || inc.provider_payout <= 0
     );
 
-    if (hasInvalidInclusions) {
+    if (invalidInclusions) {
+      toast({
+        title: "Validation Error",
+        description: "Please ensure all service inclusions have valid service, quantity, and payout amounts.",
+        variant: "destructive",
+      });
       return;
     }
 
-    onSave(formData);
+    try {
+      setIsSubmitting(true);
+      
+      console.log('Creating package with data:', formData);
+      
+      await createPackage({
+        name: formData.name,
+        description: formData.description,
+        total_price: parseFloat(formData.total_price),
+        service_inclusions: formData.service_inclusions
+      });
+      
+      console.log('Package created successfully');
+      
+      toast({
+        title: "Success!",
+        description: `Package "${formData.name}" has been created successfully.`,
+      });
+      
+      onSuccess();
+    } catch (error) {
+      console.error('Error creating package:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create package. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const totalValue = calculateTotalValue();
-  const totalProviderCost = calculateTotalProviderCost();
-  const potentialSavings = totalValue - formData.price;
-  const grossProfit = formData.price - totalProviderCost;
+  const { totalProviderPayout, grossProfit } = calculateTotals();
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Package Name</Label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Enter package name"
-            required
-          />
-        </div>
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle>Create New Package</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="name">Package Name *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Premium Home Care Package"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="total_price">Total Price (N$) *</Label>
+              <Input
+                id="total_price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.total_price}
+                onChange={(e) => setFormData(prev => ({ ...prev, total_price: e.target.value }))}
+                placeholder="0.00"
+                required
+              />
+            </div>
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="price">Package Price (N$)</Label>
-          <Input
-            id="price"
-            type="number"
-            step="0.01"
-            value={formData.price}
-            onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-            placeholder="0.00"
-            required
-          />
-        </div>
-      </div>
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Describe what this package includes..."
+              rows={3}
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Description (Optional)</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="Describe what's included in this package..."
-          rows={3}
-        />
-      </div>
+          {/* Service Inclusions */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <Label className="text-lg font-semibold">Service Inclusions *</Label>
+              <Button type="button" onClick={addServiceInclusion} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Service
+              </Button>
+            </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="duration">Duration (Days)</Label>
-        <Input
-          id="duration"
-          type="number"
-          value={formData.duration_days}
-          onChange={(e) => setFormData({ ...formData, duration_days: parseInt(e.target.value) || 30 })}
-          placeholder="30"
-          required
-        />
-      </div>
+            {formData.service_inclusions.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">No services added yet. Click "Add Service" to get started.</p>
+            ) : (
+              <div className="space-y-4">
+                {formData.service_inclusions.map((inclusion, index) => (
+                  <Card key={index} className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                      <div>
+                        <Label>Service</Label>
+                        <Select
+                          value={inclusion.service_id}
+                          onValueChange={(value) => updateServiceInclusion(index, 'service_id', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select service" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {services.map((service) => (
+                              <SelectItem key={service.id} value={service.id}>
+                                {service.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Service Inclusions</CardTitle>
-            <Button type="button" onClick={addServiceInclusion} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Service
+                      <div>
+                        <Label>Quantity</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={inclusion.quantity}
+                          onChange={(e) => updateServiceInclusion(index, 'quantity', parseInt(e.target.value) || 1)}
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Provider Payout (N$)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={inclusion.provider_payout}
+                          onChange={(e) => updateServiceInclusion(index, 'provider_payout', parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => removeServiceInclusion(index)}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Financial Summary */}
+          {formData.service_inclusions.length > 0 && (
+            <Card className="p-4 bg-gray-50">
+              <h3 className="font-semibold mb-3">Financial Summary</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Total Price:</span>
+                  <p className="font-semibold text-lg">N${parseFloat(formData.total_price || '0').toFixed(2)}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Total Provider Payouts:</span>
+                  <p className="font-semibold text-lg text-orange-600">N${totalProviderPayout.toFixed(2)}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Gross Profit:</span>
+                  <p className={`font-semibold text-lg ${grossProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    N${grossProfit.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              <Save className="h-4 w-4 mr-2" />
+              {isSubmitting ? 'Creating Package...' : 'Create Package'}
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {formData.inclusions.map((inclusion, index) => {
-            const selectedService = services.find(s => s.id === inclusion.service_id);
-            
-            return (
-              <div key={index} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">Service {index + 1}</h4>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeInclusion(index)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-2">
-                    <Label>Service</Label>
-                    <Select
-                      value={inclusion.service_id}
-                      onValueChange={(value) => updateInclusion(index, 'service_id', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select service" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {services.filter(service => 
-                          !formData.inclusions.some((inc, i) => i !== index && inc.service_id === service.id)
-                        ).map((service) => (
-                          <SelectItem key={service.id} value={service.id}>
-                            {service.name} (N${service.clientPrice})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Quantity</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={inclusion.quantity_per_package}
-                      onChange={(e) => updateInclusion(index, 'quantity_per_package', parseInt(e.target.value) || 1)}
-                      placeholder="1"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Provider Fee per Job (N$)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={inclusion.provider_fee_per_job}
-                      onChange={(e) => updateInclusion(index, 'provider_fee_per_job', parseFloat(e.target.value) || 0)}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-
-                {selectedService && (
-                  <div className="bg-gray-50 p-3 rounded text-sm">
-                    <div className="flex justify-between">
-                      <span>Service Value:</span>
-                      <span>N${(selectedService.clientPrice * inclusion.quantity_per_package).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Total Provider Cost:</span>
-                      <span>N${(inclusion.provider_fee_per_job * inclusion.quantity_per_package).toFixed(2)}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {formData.inclusions.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              <p>No services added yet. Click "Add Service" to get started.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Package Summary */}
-      {formData.inclusions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Package Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div className="space-y-1">
-                <p className="text-gray-500">Total Service Value</p>
-                <p className="text-lg font-semibold">N${totalValue.toFixed(2)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-gray-500">Package Price</p>
-                <p className="text-lg font-semibold">N${formData.price.toFixed(2)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-gray-500">Customer Savings</p>
-                <p className={`text-lg font-semibold ${potentialSavings > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  N${potentialSavings.toFixed(2)}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-gray-500">Gross Profit</p>
-                <p className={`text-lg font-semibold ${grossProfit > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  N${grossProfit.toFixed(2)}
-                </p>
-              </div>
-            </div>
-
-            {potentialSavings > 0 && (
-              <Badge variant="default" className="mt-3">
-                <DollarSign className="h-3 w-3 mr-1" />
-                {((potentialSavings / totalValue) * 100).toFixed(1)}% savings for customers
-              </Badge>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="flex justify-end space-x-3">
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button 
-          type="submit"
-          disabled={!formData.name || formData.price <= 0 || formData.inclusions.length === 0}
-        >
-          Create Package
-        </Button>
-      </div>
-    </form>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
+
+export default EnhancedPackageForm;

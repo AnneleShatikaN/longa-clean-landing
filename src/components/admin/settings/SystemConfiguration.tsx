@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { useDataMode } from '@/contexts/DataModeContext';
 import { useToast } from '@/hooks/use-toast';
 
 export const SystemConfiguration = () => {
-  const { dataMode, setDataMode, isDevelopmentMode } = useDataMode();
+  const { dataMode, isDevelopmentMode } = useDataMode();
   const { toast } = useToast();
   
   const [systemSettings, setSystemSettings] = useState({
@@ -33,22 +34,6 @@ export const SystemConfiguration = () => {
     }));
   };
 
-  const handleDataModeChange = async (newMode: 'live' | 'mock') => {
-    try {
-      await setDataMode(newMode);
-      toast({
-        title: "Data Mode Updated",
-        description: `Switched to ${newMode} data mode.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Update Failed",
-        description: "Failed to update data mode. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const saveSystemSettings = async () => {
     try {
       // Here you would save to Supabase global_settings table
@@ -64,14 +49,6 @@ export const SystemConfiguration = () => {
         description: "Failed to save system settings. Please try again.",
         variant: "destructive",
       });
-    }
-  };
-
-  const getDataModeColor = () => {
-    switch (dataMode) {
-      case 'live': return 'bg-green-100 text-green-800';
-      case 'mock': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
     }
   };
 

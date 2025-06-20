@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { DataModeProvider } from './contexts/DataModeContext';
 import { SupabaseBookingProvider } from './contexts/SupabaseBookingContext';
 import { ServiceProvider } from './contexts/ServiceContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import LandingPage from '@/pages/LandingPage';
 import Auth from '@/pages/Auth';
 import Services from '@/pages/Services';
@@ -23,67 +24,69 @@ import PaymentInstructions from '@/pages/PaymentInstructions';
 
 function App() {
   return (
-    <DataModeProvider>
-      <AuthProvider>
-        <ServiceProvider>
-          <SupabaseBookingProvider>
-            <Router>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/services" element={<Services />} />
-                <Route path="/services/:id" element={<ServiceDetails />} />
-                <Route path="/subscription-packages" element={<SubscriptionPackages />} />
-                <Route path="/payment-instructions" element={<PaymentInstructions />} />
-                
-                {/* Protected routes */}
-                <Route path="/client-dashboard" element={
-                  <ProtectedRoute>
-                    <ClientDashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/provider-dashboard" element={
-                  <ProtectedRoute>
-                    <ProviderDashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin-dashboard" element={
-                  <ProtectedRoute>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/one-off-booking" element={
-                  <ProtectedRoute>
-                    <OneOffBooking />
-                  </ProtectedRoute>
-                } />
-                <Route path="/booking-confirmation" element={
-                  <ProtectedRoute>
-                    <BookingConfirmation />
-                  </ProtectedRoute>
-                } />
-                <Route path="/provider-verification" element={
-                  <ProtectedRoute>
-                    <ProviderVerification />
-                  </ProtectedRoute>
-                } />
-                <Route path="/search" element={
-                  <ProtectedRoute>
-                    <Search />
-                  </ProtectedRoute>
-                } />
-                <Route path="/contact" element={
-                  <ProtectedRoute>
-                    <Contact />
-                  </ProtectedRoute>
-                } />
-              </Routes>
-            </Router>
-          </SupabaseBookingProvider>
-        </ServiceProvider>
-      </AuthProvider>
-    </DataModeProvider>
+    <ErrorBoundary>
+      <DataModeProvider>
+        <AuthProvider>
+          <ServiceProvider>
+            <SupabaseBookingProvider>
+              <Router>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/services" element={<Services />} />
+                  <Route path="/services/:id" element={<ServiceDetails />} />
+                  <Route path="/subscription-packages" element={<SubscriptionPackages />} />
+                  <Route path="/payment-instructions" element={<PaymentInstructions />} />
+                  
+                  {/* Protected routes with role-based access */}
+                  <Route path="/client-dashboard" element={
+                    <ProtectedRoute allowedRoles={['client']}>
+                      <ClientDashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/provider-dashboard" element={
+                    <ProtectedRoute allowedRoles={['provider']}>
+                      <ProviderDashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin-dashboard" element={
+                    <ProtectedRoute requiredRole="admin">
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/one-off-booking" element={
+                    <ProtectedRoute allowedRoles={['client']}>
+                      <OneOffBooking />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/booking-confirmation" element={
+                    <ProtectedRoute allowedRoles={['client']}>
+                      <BookingConfirmation />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/provider-verification" element={
+                    <ProtectedRoute allowedRoles={['provider']}>
+                      <ProviderVerification />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/search" element={
+                    <ProtectedRoute>
+                      <Search />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/contact" element={
+                    <ProtectedRoute>
+                      <Contact />
+                    </ProtectedRoute>
+                  } />
+                </Routes>
+              </Router>
+            </SupabaseBookingProvider>
+          </ServiceProvider>
+        </AuthProvider>
+      </DataModeProvider>
+    </ErrorBoundary>
   );
 }
 

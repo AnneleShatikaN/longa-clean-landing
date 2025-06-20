@@ -80,8 +80,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    console.log('AuthProvider - Initializing auth state');
+    
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      console.log('AuthProvider - Initial session:', { session: session?.user?.email || 'none', error });
       setSession(session);
       if (session?.user) {
         fetchUserProfile(session.user.id);
@@ -93,9 +96,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('AuthProvider - Auth state change:', { event, userEmail: session?.user?.email || 'none' });
       setSession(session);
       if (session?.user) {
-        await fetchUserProfile(session.user.id);
+        // Use setTimeout to prevent deadlock
+        setTimeout(() => {
+          fetchUserProfile(session.user.id);
+        }, 0);
       } else {
         setUser(null);
         setLoading(false);
@@ -108,13 +115,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log('AuthProvider - Fetching user profile for:', userId);
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('AuthProvider - Error fetching user profile:', error);
+        throw error;
+      }
+
+      if (!data) {
+        console.warn('AuthProvider - No user profile found for:', userId);
+        setUser(null);
+        setLoading(false);
+        setIsInitialized(true);
+        return;
+      }
 
       // Transform the data to match our UserProfile interface
       const userProfile: UserProfile = {
@@ -132,9 +151,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         aud: 'authenticated'
       };
 
+      console.log('AuthProvider - User profile loaded:', { 
+        id: userProfile.id, 
+        email: userProfile.email, 
+        role: userProfile.role,
+        name: userProfile.name 
+      });
+
       setUser(userProfile);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('AuthProvider - Error in fetchUserProfile:', error);
+      setUser(null);
     } finally {
       setLoading(false);
       setIsInitialized(true);
@@ -143,6 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     if (session?.user) {
+      setLoading(true);
       await fetchUserProfile(session.user.id);
     }
   };

@@ -13,6 +13,7 @@ import { SupportSystem } from '@/components/admin/support/SupportSystem';
 import { LaunchDashboard } from '@/components/admin/launch/LaunchDashboard';
 import { MobileAdminDashboard } from '@/components/admin/mobile/MobileAdminDashboard';
 import { CommunicationDashboard } from '@/components/admin/communication/CommunicationDashboard';
+import { PaymentSystemManager } from '@/components/admin/PaymentSystemManager';
 import { useAdminData } from '@/hooks/useAdminData';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
@@ -26,7 +27,8 @@ import {
   HeadphonesIcon,
   Rocket,
   Brain,
-  MessageSquare
+  MessageSquare,
+  CreditCard
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -48,7 +50,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-10 lg:grid-cols-10">
+          <TabsList className="grid w-full grid-cols-11 lg:grid-cols-11">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden md:inline">Overview</span>
@@ -56,6 +58,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="services" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               <span className="hidden md:inline">Services</span>
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              <span className="hidden md:inline">Payments</span>
             </TabsTrigger>
             <TabsTrigger value="financial" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
@@ -97,6 +103,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="services" className="space-y-6">
             <ServiceManagement />
+          </TabsContent>
+
+          <TabsContent value="payments" className="space-y-6">
+            <PaymentSystemManager />
           </TabsContent>
 
           <TabsContent value="financial" className="space-y-6">

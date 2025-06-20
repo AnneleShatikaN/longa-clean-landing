@@ -122,28 +122,41 @@ const OneOffBooking = () => {
     setIsSubmitting(true);
 
     try {
-      const booking = await createBooking({
-        serviceId: selectedService.id,
-        bookingDate: bookingDate,
-        bookingTime: bookingTime,
-        specialInstructions: specialInstructions,
-        durationMinutes: selectedService.duration_minutes || 180,
-        locationTown: clientLocation.toLowerCase(),
-      });
+      // Create pending transaction instead of direct booking
+      const { data: transaction, error } = await supabase
+        .from('pending_transactions')
+        .insert({
+          user_id: user.id,
+          transaction_type: 'booking',
+          service_id: selectedService.id,
+          amount: selectedService.client_price,
+          booking_details: {
+            booking_date: bookingDate,
+            booking_time: bookingTime,
+            special_instructions: specialInstructions,
+            duration_minutes: selectedService.duration_minutes || 180,
+            location_town: clientLocation.toLowerCase(),
+            emergency_booking: false
+          }
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
 
       toast({
         title: "Booking Request Submitted!",
         description: "Your booking request has been submitted. You'll receive payment instructions shortly.",
       });
 
-      // Navigate to confirmation page with booking ID
-      navigate(`/booking-confirmation?booking_id=${booking.id}`);
+      // Navigate to payment instructions page
+      navigate(`/payment-instructions?transaction_id=${transaction.id}`);
 
     } catch (error: any) {
-      console.error('Error creating booking:', error);
+      console.error('Error creating booking request:', error);
       toast({
-        title: "Booking Failed",
-        description: error.message || "There was an error creating your booking. Please try again.",
+        title: "Request Failed",
+        description: error.message || "There was an error creating your booking request. Please try again.",
         variant: "destructive",
       });
     } finally {

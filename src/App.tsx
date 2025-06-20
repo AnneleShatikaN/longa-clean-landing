@@ -1,74 +1,55 @@
-
 import React from 'react';
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { DataModeProvider } from "@/contexts/DataModeContext";
-import { ServiceProvider } from "@/contexts/ServiceContext";
-import { SupabaseBookingProvider } from "@/contexts/SupabaseBookingContext";
-import Auth from "@/pages/Auth";
-import Contact from "@/pages/Contact";
-import Home from "@/pages/Home";
-import Services from "@/pages/Services";
-import SubscriptionPackages from "@/pages/SubscriptionPackages";
-import Search from "@/pages/Search";
-import ClientDashboard from "@/pages/ClientDashboard";
-import ProviderDashboard from "@/pages/ProviderDashboard";
-import AdminDashboard from "@/pages/AdminDashboard";
-import ServiceDetails from "@/pages/ServiceDetails";
-import OneOffBooking from "@/pages/OneOffBooking";
-import { SessionManager } from "@/components/SessionManager";
-import { PasswordResetForm } from "@/components/auth/PasswordResetForm";
-import { AuthCallback } from "@/components/auth/AuthCallback";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
-    },
-  },
-});
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { DataModeProvider } from './contexts/DataModeContext';
+import { SupabaseBookingProvider } from './contexts/SupabaseBookingContext';
+import LandingPage from '@/pages/LandingPage';
+import AuthPage from '@/pages/AuthPage';
+import ServicesPage from '@/pages/ServicesPage';
+import ServiceDetails from '@/pages/ServiceDetails';
+import SubscriptionPackages from '@/pages/SubscriptionPackages';
+import ClientDashboard from '@/pages/ClientDashboard';
+import ProviderDashboard from '@/pages/ProviderDashboard';
+import AdminDashboard from '@/pages/AdminDashboard';
+import OneOffBooking from '@/pages/OneOffBooking';
+import BookingConfirmation from '@/pages/BookingConfirmation';
+import ProviderVerification from '@/pages/ProviderVerification';
+import SearchPage from '@/pages/SearchPage';
+import ContactPage from '@/pages/ContactPage';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import PaymentInstructions from '@/pages/PaymentInstructions';
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <DataModeProvider>
       <AuthProvider>
-        <DataModeProvider>
-          <ServiceProvider>
-            <SupabaseBookingProvider>
-              <TooltipProvider>
-                <Toaster />
-                <BrowserRouter>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route path="/services" element={<Services />} />
-                    <Route path="/subscription-packages" element={<SubscriptionPackages />} />
-                    <Route path="/search" element={<Search />} />
-                    <Route path="/client-dashboard" element={<ClientDashboard />} />
-                    <Route path="/provider-dashboard" element={<ProviderDashboard />} />
-                    <Route path="/admin-dashboard" element={<AdminDashboard />} />
-                    <Route path="/service/:serviceId" element={<ServiceDetails />} />
-                    <Route path="/one-off-booking" element={<OneOffBooking />} />
-                    <Route path="/session" element={<SessionManager />} />
-                    
-                    {/* Enhanced Auth Routes */}
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/auth/forgot-password" element={<PasswordResetForm />} />
-                    <Route path="/auth/reset-password" element={<PasswordResetForm />} />
-                    <Route path="/auth/callback" element={<AuthCallback />} />
-                    <Route path="/auth/verify" element={<AuthCallback />} />
-                  </Routes>
-                </BrowserRouter>
-              </TooltipProvider>
-            </SupabaseBookingProvider>
-          </ServiceProvider>
-        </DataModeProvider>
+        <SupabaseBookingProvider>
+          <Router>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/services" element={<ServicesPage />} />
+              <Route path="/services/:id" element={<ServiceDetails />} />
+              <Route path="/subscription-packages" element={<SubscriptionPackages />} />
+              <Route path="/payment-instructions" element={<PaymentInstructions />} />
+              
+              {/* Protected routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/client-dashboard" element={<ClientDashboard />} />
+                <Route path="/provider-dashboard" element={<ProviderDashboard />} />
+                <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                <Route path="/one-off-booking" element={<OneOffBooking />} />
+                <Route path="/booking-confirmation" element={<BookingConfirmation />} />
+                <Route path="/provider-verification" element={<ProviderVerification />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+              </Route>
+            </Routes>
+          </Router>
+        </SupabaseBookingProvider>
       </AuthProvider>
-    </QueryClientProvider>
+    </DataModeProvider>
   );
 }
 

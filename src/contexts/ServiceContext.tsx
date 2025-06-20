@@ -28,6 +28,7 @@ export interface Service {
   category?: string;
   icon?: string;
   coverageAreas?: string[];
+  categoryId?: string;
 }
 
 interface ServiceState {
@@ -104,7 +105,8 @@ const mapSupabaseService = (supabaseService: any): Service => {
     totalBookings: 0,
     totalRevenue: 0,
     createdAt: supabaseService.created_at,
-    updatedAt: supabaseService.updated_at
+    updatedAt: supabaseService.updated_at,
+    categoryId: supabaseService.category_id
   };
 };
 
@@ -234,6 +236,7 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
         totalRevenue: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        categoryId: validatedData.categoryId
       };
       dispatch({ type: 'ADD_SERVICE', payload: newService });
       dispatch({ type: 'SET_LOADING', payload: false });
@@ -259,7 +262,8 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
           commission_percentage: validatedData.commissionPercentage || 15,
           duration_minutes: totalMinutes,
           is_active: validatedData.status === 'active',
-          tags: validatedData.tags
+          tags: validatedData.tags,
+          category_id: validatedData.categoryId
         })
         .select()
         .single();
@@ -317,6 +321,7 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
       if (updates.duration) {
         updateData.duration_minutes = (updates.duration.hours || 0) * 60 + (updates.duration.minutes || 0);
       }
+      if (updates.categoryId) updateData.category_id = updates.categoryId;
 
       const { data, error } = await supabase
         .from('services')

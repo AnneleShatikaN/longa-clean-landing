@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 import { validateNamibianPhone } from '@/utils/locationUtils';
 
@@ -24,7 +23,8 @@ export const serviceSchema = z.object({
   popularity: z.number().optional(),
   coverageAreas: z.string().array().optional(),
   createdAt: z.string().optional(),
-  updatedAt: z.string().optional()
+  updatedAt: z.string().optional(),
+  categoryId: z.string().min(1, "Service category is required"),
 });
 
 // Location schemas

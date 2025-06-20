@@ -2026,6 +2026,56 @@ export type Database = {
           },
         ]
       }
+      provider_categories: {
+        Row: {
+          category_id: string
+          created_at: string | null
+          id: string
+          provider_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string | null
+          id?: string
+          provider_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string | null
+          id?: string
+          provider_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "service_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_categories_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_categories_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_categories_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_documents: {
         Row: {
           document_name: string
@@ -2615,6 +2665,33 @@ export type Database = {
           },
         ]
       }
+      service_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       service_usage_logs: {
         Row: {
           allowed_service_id: string
@@ -2701,6 +2778,7 @@ export type Database = {
       }
       services: {
         Row: {
+          category_id: string | null
           client_price: number
           commission_percentage: number | null
           coverage_areas: string[] | null
@@ -2716,6 +2794,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          category_id?: string | null
           client_price: number
           commission_percentage?: number | null
           coverage_areas?: string[] | null
@@ -2731,6 +2810,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          category_id?: string | null
           client_price?: number
           commission_percentage?: number | null
           coverage_areas?: string[] | null
@@ -2745,7 +2825,15 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "services_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "service_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_packages: {
         Row: {

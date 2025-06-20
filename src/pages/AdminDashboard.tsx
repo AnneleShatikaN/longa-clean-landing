@@ -22,6 +22,7 @@ import { ProviderVerificationManagement } from '@/components/admin/ProviderVerif
 import { UserManagement } from '@/components/admin/UserManagement';
 import { BankingInstructionsManager } from '@/components/admin/BankingInstructionsManager';
 import { PackageManagement } from '@/components/admin/PackageManagement';
+import { ServiceCategoryManager } from '@/components/admin/ServiceCategoryManager';
 import { useAuth } from '@/contexts/AuthContext';
 
 const AdminDashboard = () => {
@@ -43,7 +44,7 @@ const AdminDashboard = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Overview
@@ -75,6 +76,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="financial" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Financial
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Categories
             </TabsTrigger>
           </TabsList>
 
@@ -210,6 +215,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="financial">
             <FinancialOverview />
+          </TabsContent>
+
+          <TabsContent value="categories">
+            <ServiceCategoryManager />
           </TabsContent>
         </Tabs>
       </div>

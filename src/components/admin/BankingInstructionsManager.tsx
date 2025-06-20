@@ -48,21 +48,20 @@ export const BankingInstructionsManager = () => {
     try {
       setIsLoading(true);
       
-      // First check if the table exists, if not create it
       const { data, error } = await supabase
         .from('banking_instructions')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
-        // Table might not exist, we'll handle this gracefully
-        console.log('Banking instructions table may not exist yet');
+        console.error('Error fetching banking instructions:', error);
         setInstructions([]);
       } else {
         setInstructions(data || []);
       }
     } catch (error) {
       console.error('Error fetching banking instructions:', error);
+      setInstructions([]);
     } finally {
       setIsLoading(false);
     }

@@ -127,6 +127,48 @@ export type Database = {
           },
         ]
       }
+      banking_instructions: {
+        Row: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          branch_code: string | null
+          created_at: string | null
+          id: string
+          instructions: string
+          is_active: boolean | null
+          reference_format: string
+          swift_code: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          branch_code?: string | null
+          created_at?: string | null
+          id?: string
+          instructions?: string
+          is_active?: boolean | null
+          reference_format?: string
+          swift_code?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          bank_name?: string
+          branch_code?: string | null
+          created_at?: string | null
+          id?: string
+          instructions?: string
+          is_active?: boolean | null
+          reference_format?: string
+          swift_code?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       booking_assignments: {
         Row: {
           assigned_at: string | null

@@ -1,67 +1,71 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
-interface BankingDetails {
-  businessName: string;
-  bankName: string;
-  accountNumber: string;
-  branchCode: string;
-  swiftCode: string;
-  accountType: string;
+interface BankingSettings {
+  businessName?: string;
+  bankName?: string;
+  accountNumber?: string;
+  branchCode?: string;
+  swiftCode?: string;
 }
 
 interface PaymentInstructions {
-  payoutInstructions: string;
-  clientPaymentInstructions: string;
-  whatsappNumber: string;
+  clientPaymentInstructions?: string;
+  whatsappNumber?: string;
 }
 
 export const useBankingSettings = () => {
-  const [bankingDetails, setBankingDetails] = useState<BankingDetails | null>(null);
+  const [bankingDetails, setBankingDetails] = useState<BankingSettings | null>(null);
   const [paymentInstructions, setPaymentInstructions] = useState<PaymentInstructions | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
 
-  const fetchSettings = async () => {
+  useEffect(() => {
+    fetchBankingSettings();
+  }, []);
+
+  const fetchBankingSettings = async () => {
     try {
       setIsLoading(true);
       
-      const { data: settings, error } = await supabase
-        .from('global_settings')
-        .select('key, value')
-        .in('key', ['banking_details', 'payment_instructions']);
+      // Fetch active banking instructions
+      const { data: instructions, error } = await supabase
+        .from('banking_instructions')
+        .select('*')
+        .eq('is_active', true)
+        .limit(1)
+        .single();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching banking settings:', error);
+        return;
+      }
 
-      settings?.forEach((setting) => {
-        if (setting.key === 'banking_details') {
-          setBankingDetails(setting.value as unknown as BankingDetails);
-        } else if (setting.key === 'payment_instructions') {
-          setPaymentInstructions(setting.value as unknown as PaymentInstructions);
-        }
-      });
+      if (instructions) {
+        setBankingDetails({
+          businessName: instructions.account_name,
+          bankName: instructions.bank_name,
+          accountNumber: instructions.account_number,
+          branchCode: instructions.branch_code,
+          swiftCode: instructions.swift_code,
+        });
+
+        setPaymentInstructions({
+          clientPaymentInstructions: instructions.instructions,
+          whatsappNumber: '+264 XX XXX XXXX', // Default placeholder
+        });
+      }
     } catch (error) {
       console.error('Error fetching banking settings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load banking settings",
-        variant: "destructive"
-      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
   return {
     bankingDetails,
     paymentInstructions,
     isLoading,
-    refetch: fetchSettings
+    refetch: fetchBankingSettings,
   };
 };

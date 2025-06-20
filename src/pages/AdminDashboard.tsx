@@ -17,7 +17,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { FinancialOverview } from '@/components/admin/FinancialOverview';
-import { ServiceManagement } from '@/components/admin/ServiceManagement';
+import ServiceManagement from '@/components/admin/ServiceManagement';
 import { PaymentSystemManager } from '@/components/admin/PaymentSystemManager';
 import { ProviderVerificationManagement } from '@/components/admin/ProviderVerificationManagement';
 import { UserManagement } from '@/components/admin/UserManagement';

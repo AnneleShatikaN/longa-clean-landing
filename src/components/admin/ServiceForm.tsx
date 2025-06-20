@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
 import { ServiceData, serviceSchema } from '@/schemas/validation';
 import { useServices } from '@/contexts/ServiceContext';
+import { useServiceCategories } from '@/hooks/useServiceCategories';
 import { useToast } from '@/hooks/use-toast';
 
 interface ServiceFormProps {
@@ -21,6 +22,7 @@ interface ServiceFormProps {
 
 const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
   const { createService } = useServices();
+  const { categories } = useServiceCategories();
   const { toast } = useToast();
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
@@ -118,6 +120,25 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
                 <p className="text-sm text-red-600 mt-1">{errors.type.message}</p>
               )}
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="category">Service Category</Label>
+            <Select onValueChange={(value) => setValue('categoryId', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.categoryId && (
+              <p className="text-sm text-red-600 mt-1">{errors.categoryId.message}</p>
+            )}
           </div>
 
           <div>

@@ -1,318 +1,309 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { 
   Calendar, 
-  Clock, 
-  MapPin, 
   DollarSign, 
+  Clock, 
+  TrendingUp, 
+  MapPin, 
   Star,
   CheckCircle,
   AlertCircle,
-  HeadphonesIcon
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { ProviderCategoryDisplay } from './ProviderCategoryDisplay';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+import { toast } from 'sonner';
 
-interface TodayJob {
-  id: string;
-  client_name: string;
-  client_avatar?: string;
-  booking_time: string;
-  location_town: string;
-  service_name: string;
-  status: string;
-  total_amount: number;
-  service_address: string;
+interface ProviderStats {
+  totalJobs: number;
+  completedJobs: number;
+  pendingJobs: number;
+  totalEarnings: number;
+  averageRating: number;
+  thisWeekJobs: number;
 }
 
-interface NextJob {
+interface RecentJob {
+  id: string;
+  service_name: string;
+  client_name: string;
   booking_date: string;
   booking_time: string;
-  service_name: string;
-}
-
-interface WeeklyStats {
-  totalEarnings: number;
-  completedJobs: number;
-  upcomingPayout: number;
+  status: string;
+  total_amount: number;
+  location_town: string;
 }
 
 export const ProviderDashboardHome: React.FC = () => {
   const { user } = useAuth();
-  const [todayJob, setTodayJob] = useState<TodayJob | null>(null);
-  const [nextJob, setNextJob] = useState<NextJob | null>(null);
-  const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>({
-    totalEarnings: 0,
+  const [stats, setStats] = useState<ProviderStats>({
+    totalJobs: 0,
     completedJobs: 0,
-    upcomingPayout: 0
+    pendingJobs: 0,
+    totalEarnings: 0,
+    averageRating: 0,
+    thisWeekJobs: 0
   });
+  const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+  useEffect(() => {
+    if (user?.id) {
+      fetchProviderStats();
+      fetchRecentJobs();
+    }
+  }, [user?.id]);
+
+  const fetchProviderStats = async () => {
+    try {
+      if (!user?.id) return;
+
+      // Fetch booking statistics
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('status, total_amount, rating, created_at')
+        .eq('provider_id', user.id);
+
+      if (bookingsError) throw bookingsError;
+
+      const now = new Date();
+      const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+
+      const totalJobs = bookingsData?.length || 0;
+      const completedJobs = bookingsData?.filter(b => b.status === 'completed').length || 0;
+      const pendingJobs = bookingsData?.filter(b => ['pending', 'accepted', 'in_progress'].includes(b.status)).length || 0;
+      const totalEarnings = bookingsData?.filter(b => b.status === 'completed').reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
+      const ratings = bookingsData?.filter(b => b.rating).map(b => b.rating) || [];
+      const averageRating = ratings.length > 0 ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : 0;
+      const thisWeekJobs = bookingsData?.filter(b => new Date(b.created_at) >= weekStart).length || 0;
+
+      setStats({
+        totalJobs,
+        completedJobs,
+        pendingJobs,
+        totalEarnings,
+        averageRating,
+        thisWeekJobs
+      });
+    } catch (error) {
+      console.error('Error fetching provider stats:', error);
+      toast.error('Failed to load dashboard statistics');
+    }
   };
 
-  const fetchDashboardData = async () => {
-    if (!user) return;
-
+  const fetchRecentJobs = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      
-      // Fetch today's job
-      const { data: todayData } = await supabase
+      if (!user?.id) return;
+
+      const { data, error } = await supabase
         .from('bookings')
         .select(`
           id,
-          booking_time,
-          location_town,
-          status,
-          total_amount,
-          service_address,
-          service:services(name),
-          client:users!bookings_client_id_fkey(full_name, avatar_url)
-        `)
-        .eq('provider_id', user.id)
-        .eq('booking_date', today)
-        .in('status', ['accepted', 'in_progress'])
-        .order('booking_time')
-        .limit(1);
-
-      if (todayData && todayData.length > 0) {
-        const job = todayData[0];
-        setTodayJob({
-          id: job.id,
-          client_name: job.client?.full_name || 'Unknown Client',
-          client_avatar: job.client?.avatar_url,
-          booking_time: job.booking_time,
-          location_town: job.location_town || 'Windhoek',
-          service_name: job.service?.name || 'Service',
-          status: job.status,
-          total_amount: job.total_amount,
-          service_address: job.service_address || 'Address not provided'
-        });
-      }
-
-      // Fetch next upcoming job
-      const { data: nextData } = await supabase
-        .from('bookings')
-        .select(`
           booking_date,
           booking_time,
-          service:services(name)
+          status,
+          total_amount,
+          location_town,
+          services (name),
+          users!bookings_client_id_fkey (full_name)
         `)
         .eq('provider_id', user.id)
-        .gte('booking_date', today)
-        .in('status', ['accepted', 'pending'])
-        .order('booking_date')
-        .order('booking_time')
-        .limit(1);
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-      if (nextData && nextData.length > 0) {
-        const job = nextData[0];
-        setNextJob({
-          booking_date: job.booking_date,
-          booking_time: job.booking_time,
-          service_name: job.service?.name || 'Service'
-        });
-      }
+      if (error) throw error;
 
-      // Fetch weekly stats
-      const { data: weeklyData } = await supabase
-        .from('bookings')
-        .select('total_amount, status, provider_payout')
-        .eq('provider_id', user.id)
-        .gte('booking_date', weekStart.toISOString().split('T')[0]);
+      const formattedJobs: RecentJob[] = data?.map(job => ({
+        id: job.id,
+        service_name: job.services?.name || 'Unknown Service',
+        client_name: job.users?.full_name || 'Unknown Client',
+        booking_date: job.booking_date,
+        booking_time: job.booking_time,
+        status: job.status,
+        total_amount: job.total_amount,
+        location_town: job.location_town
+      })) || [];
 
-      if (weeklyData) {
-        const completed = weeklyData.filter(b => b.status === 'completed');
-        const totalEarnings = completed.reduce((sum, b) => sum + (b.provider_payout || b.total_amount * 0.85), 0);
-        
-        setWeeklyStats({
-          totalEarnings,
-          completedJobs: completed.length,
-          upcomingPayout: totalEarnings * 0.9 // Assuming 10% withholding
-        });
-      }
+      setRecentJobs(formattedJobs);
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('Error fetching recent jobs:', error);
+      toast.error('Failed to load recent jobs');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [user]);
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+      accepted: { color: 'bg-blue-100 text-blue-800', icon: CheckCircle },
+      in_progress: { color: 'bg-purple-100 text-purple-800', icon: Clock },
+      completed: { color: 'bg-green-100 text-green-800', icon: CheckCircle },
+      cancelled: { color: 'bg-red-100 text-red-800', icon: XCircle }
+    };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted': return 'bg-blue-100 text-blue-800';
-      case 'in_progress': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const Icon = config.icon;
+
+    return (
+      <Badge className={`${config.color} flex items-center gap-1`}>
+        <Icon className="h-3 w-3" />
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-4">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="h-24 bg-gray-200 rounded"></div>
-            <div className="h-24 bg-gray-200 rounded"></div>
-          </div>
-        </div>
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 pb-20 space-y-6 bg-gray-50 min-h-screen">
-      {/* Welcome Message */}
-      <div className="text-center py-4">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {getGreeting()}, {user?.full_name || user?.name} 🌞
-        </h1>
-        <p className="text-gray-600 mt-1">Ready to make today amazing!</p>
+    <div className="space-y-6">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg p-6 text-white">
+        <h1 className="text-2xl font-bold mb-2">Welcome back, {user?.full_name || user?.name}!</h1>
+        <p className="text-purple-100">
+          Here's your service provider dashboard overview
+        </p>
       </div>
 
-      {/* Today's Job */}
-      {todayJob ? (
-        <Card className="border-l-4 border-l-purple-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-lg">Today's Job</h3>
-              <Badge className={getStatusColor(todayJob.status)}>
-                {todayJob.status === 'in_progress' ? 'In Progress' : 'Accepted'}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center space-x-3 mb-3">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={todayJob.client_avatar} />
-                <AvatarFallback>
-                  {todayJob.client_name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">{todayJob.client_name}</p>
-                <p className="text-sm text-gray-600">{todayJob.service_name}</p>
-                <p className="text-xs text-gray-500">{todayJob.service_address}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-green-600">N${todayJob.total_amount}</p>
-              </div>
-            </div>
+      {/* Provider Category Display */}
+      <ProviderCategoryDisplay />
 
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <div className="flex items-center space-x-1">
-                <Clock className="h-4 w-4" />
-                <span>{todayJob.booking_time}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <MapPin className="h-4 w-4" />
-                <span>{todayJob.location_town}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border-dashed border-2 border-gray-300">
-          <CardContent className="p-4 text-center">
-            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-600">No jobs scheduled for today</p>
-            <p className="text-sm text-gray-500">Enjoy your free day!</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4 text-center">
-            <DollarSign className="h-8 w-8 text-green-500 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-gray-900">N${weeklyStats.totalEarnings.toFixed(0)}</p>
-            <p className="text-sm text-gray-600">This Week's Earnings</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 text-center">
-            <CheckCircle className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-gray-900">{weeklyStats.completedJobs}</p>
-            <p className="text-sm text-gray-600">Jobs Completed</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Next Job */}
-      {nextJob && (
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-lg mb-3">Next Job</h3>
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">{nextJob.service_name}</p>
-                <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>{format(new Date(nextJob.booking_date), 'MMM dd')}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Clock className="h-4 w-4" />
-                    <span>{nextJob.booking_time}</span>
-                  </div>
-                </div>
+                <p className="text-sm font-medium text-gray-600">Total Jobs</p>
+                <p className="text-2xl font-bold">{stats.totalJobs}</p>
               </div>
-              <Star className="h-6 w-6 text-yellow-500" />
+              <Calendar className="h-8 w-8 text-purple-600" />
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Quick Actions */}
-      <div className="space-y-3">
-        <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3">
-          <Calendar className="h-5 w-5 mr-2" />
-          Update Availability
-        </Button>
-        
-        <Button variant="outline" className="w-full py-3">
-          <CheckCircle className="h-5 w-5 mr-2" />
-          See All Jobs
-        </Button>
-        
-        <Button variant="outline" className="w-full py-3">
-          <HeadphonesIcon className="h-5 w-5 mr-2" />
-          Request Support
-        </Button>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Completed</p>
+                <p className="text-2xl font-bold text-green-600">{stats.completedJobs}</p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Earnings</p>
+                <p className="text-2xl font-bold text-blue-600">N${stats.totalEarnings.toFixed(2)}</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Average Rating</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.averageRating.toFixed(1)}</p>
+              </div>
+              <Star className="h-8 w-8 text-yellow-600" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Upcoming Payout Notice */}
-      {weeklyStats.upcomingPayout > 0 && (
-        <Card className="bg-green-50 border-green-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <DollarSign className="h-6 w-6 text-green-600" />
-              <div>
-                <p className="font-medium text-green-800">Payout This Thursday</p>
-                <p className="text-sm text-green-700">N${weeklyStats.upcomingPayout.toFixed(0)} will be transferred to your bank</p>
-              </div>
+      {/* Recent Jobs */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Jobs</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentJobs.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Clock className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p>No recent jobs found</p>
             </div>
+          ) : (
+            <div className="space-y-4">
+              {recentJobs.map((job) => (
+                <div key={job.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-medium">{job.service_name}</h3>
+                      {getStatusBadge(job.status)}
+                    </div>
+                    <p className="text-sm text-gray-600">Client: {job.client_name}</p>
+                    <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                      <span>{new Date(job.booking_date).toLocaleDateString()}</span>
+                      <span>{job.booking_time}</span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {job.location_town}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">N${job.total_amount}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Pending Jobs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-orange-600 mb-2">{stats.pendingJobs}</p>
+            <p className="text-sm text-gray-600 mb-4">Jobs waiting for your response</p>
+            <Button className="w-full" onClick={() => window.location.href = '/provider-dashboard?tab=jobs'}>
+              View Pending Jobs
+            </Button>
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              This Week
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-purple-600 mb-2">{stats.thisWeekJobs}</p>
+            <p className="text-sm text-gray-600 mb-4">New jobs this week</p>
+            <Button variant="outline" className="w-full" onClick={() => window.location.href = '/provider-dashboard?tab=earnings'}>
+              View Earnings
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

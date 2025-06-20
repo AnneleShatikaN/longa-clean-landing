@@ -3392,6 +3392,7 @@ export type Database = {
           is_available: boolean | null
           password_hash: string
           phone: string | null
+          provider_category: string | null
           rating: number | null
           role: string
           service_coverage_areas: string[] | null
@@ -3416,6 +3417,7 @@ export type Database = {
           is_available?: boolean | null
           password_hash: string
           phone?: string | null
+          provider_category?: string | null
           rating?: number | null
           role: string
           service_coverage_areas?: string[] | null
@@ -3440,6 +3442,7 @@ export type Database = {
           is_available?: boolean | null
           password_hash?: string
           phone?: string | null
+          provider_category?: string | null
           rating?: number | null
           role?: string
           service_coverage_areas?: string[] | null

@@ -1,66 +1,63 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
-const handler = async (req: Request): Promise<Response> => {
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const supabaseAdmin = createClient(
+    const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    )
 
-    const { record } = await req.json();
+    const { record } = await req.json()
     
-    console.log('Creating user profile for:', record.id, record.email);
-    console.log('User metadata:', record.raw_user_meta_data);
-
-    // Create user profile in the users table
-    const { error } = await supabaseAdmin
+    // Extract user metadata
+    const userData = record.raw_user_meta_data || {}
+    
+    // Insert user profile
+    const { error } = await supabaseClient
       .from('users')
       .insert({
         id: record.id,
         email: record.email,
         password_hash: 'managed_by_supabase_auth',
-        full_name: record.raw_user_meta_data?.full_name || record.email.split('@')[0],
-        phone: record.raw_user_meta_data?.phone || null,
-        role: record.raw_user_meta_data?.role || 'client',
-        current_work_location: record.raw_user_meta_data?.location || record.raw_user_meta_data?.work_location || null,
+        full_name: userData.full_name || record.email,
+        phone: userData.phone,
+        role: userData.role || 'client',
+        current_work_location: userData.location,
+        provider_category: userData.provider_category,
         is_active: true,
         rating: 0,
-        total_jobs: 0,
-      });
+        total_jobs: 0
+      })
 
     if (error) {
-      console.error('Error creating user profile:', error);
-      throw error;
+      console.error('Error inserting user:', error)
+      return new Response(JSON.stringify({ error: error.message }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
     }
 
-    console.log('User profile created successfully for:', record.email);
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    })
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error: any) {
-    console.error('Error in handle-new-user function:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+  } catch (error) {
+    console.error('Error:', error)
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+    })
   }
-};
-
-serve(handler);
+})

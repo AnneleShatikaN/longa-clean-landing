@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useServiceCategories } from '@/hooks/useServiceCategories';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ const NAMIBIAN_TOWNS = [
 const Auth = () => {
   const navigate = useNavigate();
   const { user, loading, signUp, signIn } = useAuth();
+  const { categories, isLoading: categoriesLoading } = useServiceCategories();
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +45,8 @@ const Auth = () => {
     fullName: '',
     phone: '',
     role: 'client' as 'client' | 'provider',
-    location: ''
+    location: '',
+    providerCategory: ''
   });
 
   // Redirect if already authenticated
@@ -87,6 +90,11 @@ const Auth = () => {
         return false;
       }
 
+      if (formData.role === 'provider' && !formData.providerCategory) {
+        toast.error('Please select a service category');
+        return false;
+      }
+
       if (formData.password.length < 6) {
         toast.error('Password must be at least 6 characters');
         return false;
@@ -107,14 +115,16 @@ const Auth = () => {
           email: formData.email,
           role: formData.role,
           fullName: formData.fullName,
-          location: formData.location
+          location: formData.location,
+          providerCategory: formData.providerCategory
         });
 
         const result = await signUp(formData.email, formData.password, {
           full_name: formData.fullName,
           phone: formData.phone,
           role: formData.role,
-          location: formData.location
+          location: formData.location,
+          provider_category: formData.role === 'provider' ? formData.providerCategory : null
         });
         
         if (result.needsEmailVerification) {
@@ -331,6 +341,32 @@ const Auth = () => {
                   <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
                 )}
               </div>
+
+              {/* Service Category for Provider Sign Up */}
+              {isSignUp && formData.role === 'provider' && (
+                <div>
+                  <Label htmlFor="providerCategory">Service Category *</Label>
+                  <Select
+                    value={formData.providerCategory}
+                    onValueChange={(value) => handleInputChange('providerCategory', value)}
+                    disabled={categoriesLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your service category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.filter(cat => cat.is_active).map((category) => (
+                        <SelectItem key={category.id} value={category.name}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Choose the primary service category you'll provide
+                  </p>
+                </div>
+              )}
 
               {/* Location for Sign Up - Required for all users */}
               {isSignUp && (

@@ -26,6 +26,7 @@ export interface UserProfile {
   verification_notes?: string;
   created_at?: string;
   updated_at?: string;
+  provider_category?: string; // Add provider category
   // Additional compatibility properties
   address?: string;
   profilePicture?: string;
@@ -43,6 +44,9 @@ export interface UserProfile {
   joinDate?: string;
   lastActive?: string;
   isEmailVerified?: boolean;
+  app_metadata?: any;
+  user_metadata?: any;
+  aud?: string;
 }
 
 interface AuthContextType {
@@ -123,6 +127,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isEmailVerified: true, // Assume verified if they can log in
         jobsCompleted: data.total_jobs || 0,
         totalEarnings: 0, // Default value
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated'
       };
 
       setUser(userProfile);

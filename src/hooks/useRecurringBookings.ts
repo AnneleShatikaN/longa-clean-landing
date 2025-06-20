@@ -140,7 +140,8 @@ export const useRecurringBookings = () => {
               duration_minutes: scheduleData.duration_minutes,
               location_town: scheduleData.location_town,
               status: 'pending',
-              total_amount: serviceData?.client_price || 0
+              total_amount: serviceData?.client_price || 0,
+              service_address: 'Address will be provided'
             });
 
           if (!error) {

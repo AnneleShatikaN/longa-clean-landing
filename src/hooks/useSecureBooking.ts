@@ -13,6 +13,7 @@ export interface SecureBookingData {
   specialInstructions?: string;
   emergencyBooking?: boolean;
   durationMinutes?: number;
+  serviceAddress?: string;
 }
 
 interface AccessValidationResult {
@@ -78,7 +79,8 @@ export const useSecureBooking = () => {
           special_instructions: bookingData.specialInstructions,
           emergency_booking: bookingData.emergencyBooking || false,
           duration_minutes: bookingData.durationMinutes || service.duration_minutes,
-          status: 'pending'
+          status: 'pending',
+          service_address: bookingData.serviceAddress || 'Address not provided'
         })
         .select()
         .single();

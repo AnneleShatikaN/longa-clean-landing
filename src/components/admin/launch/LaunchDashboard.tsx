@@ -14,8 +14,6 @@ import {
   CheckCircle,
   RefreshCw,
   Database,
-  FileText,
-  Ban,
   Activity,
   Server
 } from 'lucide-react';
@@ -57,7 +55,7 @@ interface LaunchData {
 }
 
 export const LaunchDashboard: React.FC = () => {
-  const { dataMode, isLoading: dataModeLoading, mockData } = useDataMode();
+  const { dataMode, isLoading: dataModeLoading } = useDataMode();
   const { data, isLoading, error, refetch } = useAdminData();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -68,22 +66,8 @@ export const LaunchDashboard: React.FC = () => {
     setIsRefreshing(false);
   };
 
-  // Generate launch data based on data mode
+  // Generate launch data from live data
   const getLaunchData = (): LaunchData | null => {
-    if (dataMode === 'none') {
-      return null;
-    }
-
-    if (dataMode === 'mock') {
-      // Use mock data from the context if available
-      const launchMockData = mockData?.launchData;
-      if (launchMockData) {
-        return launchMockData;
-      }
-      return null;
-    }
-
-    // Live data mode - use real data from Supabase
     if (!data) return null;
 
     const stats = data.dashboardStats || {};
@@ -157,22 +141,6 @@ export const LaunchDashboard: React.FC = () => {
     }
   };
 
-  const getDataModeIcon = () => {
-    switch (dataMode) {
-      case 'live': return <Database className="h-4 w-4 text-green-500" />;
-      case 'mock': return <FileText className="h-4 w-4 text-yellow-500" />;
-      case 'none': return <Ban className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
-  const getDataModeLabel = () => {
-    switch (dataMode) {
-      case 'live': return 'Live Data';
-      case 'mock': return 'Mock Data';
-      case 'none': return 'No Data';
-    }
-  };
-
   const getSystemHealthColor = (status: string) => {
     switch (status) {
       case 'excellent': return 'text-green-500';
@@ -193,8 +161,8 @@ export const LaunchDashboard: React.FC = () => {
           <div className="flex items-center gap-2 mt-2">
             <p className="text-gray-600">Real-time monitoring and launch readiness</p>
             <div className="flex items-center gap-1 text-sm">
-              {getDataModeIcon()}
-              <span className="font-medium">{getDataModeLabel()}</span>
+              <Database className="h-4 w-4 text-green-500" />
+              <span className="font-medium">Live Data</span>
             </div>
           </div>
         </div>
@@ -231,17 +199,6 @@ export const LaunchDashboard: React.FC = () => {
                 <p className="text-sm">{error}</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* No Data State */}
-      {dataMode === 'none' && !isLoading && (
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Ban className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">No Data Mode</h3>
-            <p className="text-gray-500">Data display is disabled. Switch to Live or Mock mode to view launch metrics.</p>
           </CardContent>
         </Card>
       )}
@@ -421,19 +378,13 @@ export const LaunchDashboard: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-2xl font-bold">
-                        {dataMode === 'live' ? 
-                          Math.floor(launchData.launchReadiness.usersRegistered * 0.15) : 
-                          Math.floor((mockData?.launchData?.launchReadiness?.usersRegistered || 0) * 0.15)
-                        }
+                        {Math.floor(launchData.launchReadiness.usersRegistered * 0.15)}
                       </p>
                       <p className="text-sm text-gray-600">New Today</p>
                     </div>
                     <div>
                       <p className="text-2xl font-bold">
-                        {dataMode === 'live' ? 
-                          Math.floor(launchData.launchReadiness.usersRegistered * 0.65) : 
-                          Math.floor((mockData?.launchData?.launchReadiness?.usersRegistered || 0) * 0.65)
-                        }
+                        {Math.floor(launchData.launchReadiness.usersRegistered * 0.65)}
                       </p>
                       <p className="text-sm text-gray-600">Active Users</p>
                     </div>

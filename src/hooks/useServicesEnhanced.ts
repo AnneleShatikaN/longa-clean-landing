@@ -1,7 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useDataMode } from '@/contexts/DataModeContext';
 import { toast } from 'sonner';
 
 export interface ServiceData {
@@ -24,63 +23,39 @@ export const useServicesEnhanced = () => {
   const [services, setServices] = useState<ServiceData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { dataMode, mockData } = useDataMode();
 
   const fetchServices = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      if (dataMode === 'mock' && mockData?.admin?.services) {
-        // Use mock data with proper type casting
-        const mockServices = mockData.admin.services.map((service: any) => ({
-          id: service.id,
-          name: service.name,
-          description: service.description || '',
-          service_type: (service.service_type === 'subscription' ? 'subscription' : 'one-off') as 'one-off' | 'subscription',
-          client_price: service.client_price,
-          provider_fee: service.provider_fee,
-          commission_percentage: service.commission_percentage,
-          duration_minutes: service.duration_minutes,
-          is_active: service.is_active,
-          tags: service.tags || [],
-          coverage_areas: service.coverage_areas || ['windhoek'],
-          created_at: service.created_at || new Date().toISOString(),
-          updated_at: service.updated_at || new Date().toISOString()
-        }));
-        setServices(mockServices);
-      } else if (dataMode === 'live') {
-        // Fetch from Supabase with proper type casting
-        const { data, error } = await supabase
-          .from('services')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false });
+      // Fetch from Supabase with proper type casting
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        
-        // Transform Supabase data to match ServiceData interface
-        const transformedServices: ServiceData[] = (data || []).map((service: any) => ({
-          id: service.id,
-          name: service.name,
-          description: service.description || '',
-          service_type: (service.service_type === 'subscription' ? 'subscription' : 'one-off') as 'one-off' | 'subscription',
-          client_price: service.client_price,
-          provider_fee: service.provider_fee,
-          commission_percentage: service.commission_percentage,
-          duration_minutes: service.duration_minutes,
-          is_active: service.is_active,
-          tags: service.tags || [],
-          coverage_areas: service.coverage_areas || ['windhoek'],
-          created_at: service.created_at || new Date().toISOString(),
-          updated_at: service.updated_at || new Date().toISOString()
-        }));
-        
-        setServices(transformedServices);
-      } else {
-        // No data mode
-        setServices([]);
-      }
+      if (error) throw error;
+      
+      // Transform Supabase data to match ServiceData interface
+      const transformedServices: ServiceData[] = (data || []).map((service: any) => ({
+        id: service.id,
+        name: service.name,
+        description: service.description || '',
+        service_type: (service.service_type === 'subscription' ? 'subscription' : 'one-off') as 'one-off' | 'subscription',
+        client_price: service.client_price,
+        provider_fee: service.provider_fee,
+        commission_percentage: service.commission_percentage,
+        duration_minutes: service.duration_minutes,
+        is_active: service.is_active,
+        tags: service.tags || [],
+        coverage_areas: service.coverage_areas || ['windhoek'],
+        created_at: service.created_at || new Date().toISOString(),
+        updated_at: service.updated_at || new Date().toISOString()
+      }));
+      
+      setServices(transformedServices);
     } catch (err) {
       console.error('Error fetching services:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load services';
@@ -91,7 +66,7 @@ export const useServicesEnhanced = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [dataMode, mockData]);
+  }, []);
 
   useEffect(() => {
     fetchServices();

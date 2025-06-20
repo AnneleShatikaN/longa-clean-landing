@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, ReactNode, useEffect, useCallback } from 'react';
 import { ServiceData, serviceSchema } from '@/schemas/validation';
 import { supabase } from '@/integrations/supabase/client';
@@ -110,38 +111,6 @@ const mapSupabaseService = (supabaseService: any): Service => {
   };
 };
 
-// Helper function to convert mock service data to our Service interface
-const mapMockService = (mockService: any): Service => {
-  const durationHours = Math.floor((mockService.duration_minutes || 0) / 60);
-  const durationMinutes = (mockService.duration_minutes || 0) % 60;
-
-  return {
-    id: String(mockService.id),
-    name: mockService.name || '',
-    type: mockService.service_type as 'one-off' | 'subscription',
-    clientPrice: mockService.client_price || 0,
-    providerFee: mockService.provider_fee || 0,
-    commissionPercentage: mockService.commission_percentage || 15,
-    duration: {
-      hours: durationHours,
-      minutes: durationMinutes
-    },
-    status: mockService.is_active ? 'active' : 'inactive',
-    tags: mockService.tags || [],
-    description: mockService.description || '',
-    requirements: [],
-    popularity: mockService.popularity || 0,
-    averageRating: mockService.averageRating || 0,
-    totalBookings: mockService.totalBookings || 0,
-    totalRevenue: mockService.totalRevenue || 0,
-    createdAt: mockService.created_at || new Date().toISOString(),
-    updatedAt: mockService.updated_at || new Date().toISOString(),
-    category: mockService.category,
-    icon: mockService.icon,
-    coverageAreas: mockService.coverageAreas
-  };
-};
-
 interface ServiceContextType extends ServiceState {
   createService: (serviceData: ServiceData) => Promise<Service>;
   updateService: (id: string, updates: Partial<ServiceData>) => Promise<void>;
@@ -161,39 +130,26 @@ const ServiceContext = createContext<ServiceContextType | undefined>(undefined);
 export const ServiceProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(serviceReducer, initialState);
   const { toast } = useToast();
-  const { dataMode, mockData, isLoading: dataModeLoading } = useDataMode();
+  const { isLoading: dataModeLoading } = useDataMode();
 
-  // Helper for loading services based on data mode
+  // Load services from Supabase (live mode only)
   const loadServices = useCallback(async (): Promise<void> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      if (dataMode === 'mock') {
-        console.log('[ServiceContext] Loading mock services from:', mockData?.admin?.services);
-        // Load from mockData.admin.services if available
-        const mockServices = (mockData?.admin?.services || []).map((service: any) => mapMockService(service));
-        console.log('[ServiceContext] Mapped mock services:', mockServices);
-        dispatch({ type: 'SET_SERVICES', payload: mockServices });
-        dispatch({ type: 'SET_LOADING', payload: false });
-      } else if (dataMode === 'none') {
-        dispatch({ type: 'SET_SERVICES', payload: [] });
-        dispatch({ type: 'SET_LOADING', payload: false });
-      } else {
-        // LIVE MODE - Load from Supabase
-        console.log('[ServiceContext] Loading services from Supabase...');
-        const { data, error } = await supabase
-          .from('services')
-          .select('*')
-          .order('created_at', { ascending: false });
+      console.log('[ServiceContext] Loading services from Supabase...');
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        const mappedServices = data?.map(mapSupabaseService) || [];
-        console.log('[ServiceContext] Loaded services from Supabase:', mappedServices);
-        dispatch({ type: 'SET_SERVICES', payload: mappedServices });
-        dispatch({ type: 'SET_LOADING', payload: false });
-      }
+      const mappedServices = data?.map(mapSupabaseService) || [];
+      console.log('[ServiceContext] Loaded services from Supabase:', mappedServices);
+      dispatch({ type: 'SET_SERVICES', payload: mappedServices });
+      dispatch({ type: 'SET_LOADING', payload: false });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load services';
       console.error('[ServiceContext] Error loading services:', error);
@@ -204,48 +160,11 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
         variant: "destructive",
       });
     }
-  }, [dataMode, mockData, toast]);
+  }, [toast]);
 
-  // --- CRUD Operations, all will branch on dataMode ---
   const createService = async (serviceData: ServiceData): Promise<Service> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
-
-    if (dataMode === 'mock') {
-      // In-memory create for mock data
-      const validatedData = serviceSchema.parse(serviceData);
-      const totalMinutes = (validatedData.duration?.hours || 0) * 60 + (validatedData.duration?.minutes || 0);
-      const newService: Service = {
-        id: (Math.random() + 1).toString(36).substring(7),
-        name: validatedData.name,
-        type: validatedData.type,
-        clientPrice: validatedData.clientPrice,
-        providerFee: validatedData.providerFee || (validatedData.clientPrice * (1 - (validatedData.commissionPercentage || 15) / 100)),
-        commissionPercentage: validatedData.commissionPercentage || 15,
-        duration: {
-          hours: validatedData.duration?.hours || 0,
-          minutes: validatedData.duration?.minutes || 0,
-        },
-        status: validatedData.status || 'active',
-        tags: validatedData.tags || [],
-        description: validatedData.description || '',
-        requirements: [],
-        popularity: 0,
-        averageRating: 0,
-        totalBookings: 0,
-        totalRevenue: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        categoryId: validatedData.categoryId
-      };
-      dispatch({ type: 'ADD_SERVICE', payload: newService });
-      dispatch({ type: 'SET_LOADING', payload: false });
-      toast({
-        title: "Success (Mock)",
-        description: "Service (mock) created successfully",
-      });
-      return newService;
-    }
 
     try {
       const validatedData = serviceSchema.parse(serviceData);
@@ -296,17 +215,6 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
-    if (dataMode === 'mock') {
-      // Now that ServiceData and Service have consistent id types, we can safely cast
-      dispatch({ type: 'UPDATE_SERVICE', payload: { id, updates: updates as Partial<Service> } });
-      dispatch({ type: 'SET_LOADING', payload: false });
-      toast({
-        title: "Success (Mock)",
-        description: "Service (mock) updated successfully",
-      });
-      return;
-    }
-
     try {
       const updateData: any = {};
 
@@ -355,17 +263,6 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
   const deleteService = async (id: string): Promise<void> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
-
-    if (dataMode === 'mock') {
-      // Remove from memory
-      dispatch({ type: 'DELETE_SERVICE', payload: id });
-      dispatch({ type: 'SET_LOADING', payload: false });
-      toast({
-        title: "Success (Mock)",
-        description: "Service (mock) deleted successfully",
-      });
-      return;
-    }
 
     try {
       const { error } = await supabase
@@ -434,9 +331,8 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
       .slice(0, 6);
   };
 
-  // Load (or reload) services whenever dataMode or mockData changes
+  // Load services when component mounts
   useEffect(() => {
-    // Wait for mockData to be loaded before attempting to load services
     if (!dataModeLoading) {
       loadServices();
     }

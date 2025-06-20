@@ -1,399 +1,288 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useFinancialOverview } from '@/hooks/useFinancialOverview';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  TrendingUp, 
+  DollarSign, 
+  Calendar, 
+  FileText, 
+  Download,
+  RefreshCw,
+  AlertCircle 
+} from 'lucide-react';
 import { useDataMode } from '@/contexts/DataModeContext';
-import { Plus, TrendingUp, TrendingDown, DollarSign, Receipt, Trash2, Database, FileText } from 'lucide-react';
-import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
-const EXPENSE_CATEGORIES = [
-  'Marketing',
-  'Fuel & Transportation',
-  'Office Supplies',
-  'Technology',
-  'Professional Services',
-  'Insurance',
-  'Utilities',
-  'Equipment',
-  'Training',
-  'Other'
-];
-
-// Helper function to safely format numbers
-const safeToFixed = (value: number | null | undefined, decimals: number = 2): string => {
-  if (value === null || value === undefined || isNaN(value)) {
-    return '0.00';
-  }
-  return value.toFixed(decimals);
-};
-
-// Helper function to safely format currency
-const formatCurrency = (value: number | null | undefined): string => {
-  if (value === null || value === undefined || isNaN(value)) {
-    return 'N$0';
-  }
-  return `N$${value.toLocaleString()}`;
-};
+interface FinancialData {
+  totalRevenue: number;
+  totalPayouts: number;
+  platformCommission: number;
+  pendingPayouts: number;
+  monthlyRevenue: Array<{ month: string; revenue: number; payouts: number }>;
+  topServices: Array<{ name: string; revenue: number; bookings: number }>;
+}
 
 export const FinancialOverview: React.FC = () => {
-  const { overview, expenses, isLoading, addExpense, deleteExpense } = useFinancialOverview();
-  const { dataMode, setDataMode } = useDataMode();
-  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
-  const [expenseForm, setExpenseForm] = useState({
-    amount: '',
-    category: '',
-    description: '',
-    expense_date: new Date().toISOString().split('T')[0]
-  });
+  const { dataMode, isLoading: dataModeLoading } = useDataMode();
+  const { toast } = useToast();
+  const [data, setData] = useState<FinancialData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedPeriod, setSelectedPeriod] = useState('last-30-days');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAddExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!expenseForm.amount || !expenseForm.category) {
-      return;
-    }
+  const fetchFinancialData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-    const success = await addExpense({
-      amount: parseFloat(expenseForm.amount),
-      category: expenseForm.category,
-      description: expenseForm.description || undefined,
-      expense_date: expenseForm.expense_date
-    });
+      // Only fetch live data since we're in live-only mode
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('*');
 
-    if (success) {
-      setExpenseForm({
-        amount: '',
-        category: '',
-        description: '',
-        expense_date: new Date().toISOString().split('T')[0]
+      if (bookingsError) throw bookingsError;
+
+      const { data: payouts, error: payoutsError } = await supabase
+        .from('payouts')
+        .select('*');
+
+      if (payoutsError) throw payoutsError;
+
+      // Calculate financial metrics from live data
+      const completedBookings = bookings?.filter(b => b.status === 'completed') || [];
+      const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+      const totalPayouts = payouts?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+      const platformCommission = totalRevenue - totalPayouts;
+      const pendingPayouts = payouts?.filter(p => p.status === 'pending')
+        .reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+
+      setData({
+        totalRevenue,
+        totalPayouts,
+        platformCommission,
+        pendingPayouts,
+        monthlyRevenue: [], // Could be calculated from bookings data
+        topServices: [] // Could be calculated from services and bookings
       });
-      setIsAddExpenseOpen(false);
+
+    } catch (error) {
+      console.error('Error fetching financial data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load financial data';
+      setError(errorMessage);
+      toast({
+        title: "Error Loading Data",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDeleteExpense = async (expenseId: string) => {
-    if (window.confirm('Are you sure you want to delete this expense?')) {
-      await deleteExpense(expenseId);
+  useEffect(() => {
+    if (!dataModeLoading) {
+      fetchFinancialData();
     }
+  }, [dataModeLoading, selectedPeriod]);
+
+  const handleRefresh = () => {
+    fetchFinancialData();
   };
 
-  const handleDataModeToggle = () => {
-    const newMode = dataMode === 'live' ? 'mock' : 'live';
-    setDataMode(newMode);
+  const exportData = () => {
+    if (!data) return;
+    
+    const csvContent = `Financial Summary
+Total Revenue,${data.totalRevenue}
+Total Payouts,${data.totalPayouts}
+Platform Commission,${data.platformCommission}
+Pending Payouts,${data.pendingPayouts}`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `financial-overview-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    
+    toast({
+      title: "Export Complete",
+      description: "Financial data has been exported successfully.",
+    });
   };
 
-  if (isLoading) {
+  if (isLoading || dataModeLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="flex items-center gap-3">
+          <RefreshCw className="h-5 w-5 animate-spin" />
+          <p>Loading financial overview...</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Data Source Toggle */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Financial Data Source
-            </CardTitle>
-            <Button
-              variant="outline"
-              onClick={handleDataModeToggle}
-              className="flex items-center gap-2"
-            >
-              {dataMode === 'live' ? (
-                <>
-                  <Database className="h-4 w-4" />
-                  Live Database
-                </>
-              ) : (
-                <>
-                  <FileText className="h-4 w-4" />
-                  Mock Data
-                </>
-              )}
-            </Button>
+  if (error) {
+    return (
+      <Card className="border-red-200">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 text-red-600">
+            <AlertCircle className="h-5 w-5" />
+            <div>
+              <p className="font-medium">Failed to load financial data</p>
+              <p className="text-sm">{error}</p>
+              <Button onClick={handleRefresh} variant="outline" size="sm" className="mt-2">
+                Try Again
+              </Button>
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-600">
-            Currently showing {dataMode === 'live' ? 'real-time database' : 'mock/test'} data. 
-            Click the button above to toggle between live and test data.
-          </p>
         </CardContent>
       </Card>
+    );
+  }
 
-      {/* Financial Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(overview?.total_revenue)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              From completed bookings
-            </p>
-          </CardContent>
-        </Card>
+  if (!data) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <p className="text-gray-500">No financial data available</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Provider Payouts</CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(overview?.total_provider_payouts)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Paid to service providers
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Business Expenses</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {formatCurrency(overview?.total_expenses)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Operational costs
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Admin Profit</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${
-              (overview?.admin_profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {formatCurrency(overview?.admin_profit)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Net profit after costs
-            </p>
-          </CardContent>
-        </Card>
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Financial Overview</h2>
+          <p className="text-gray-600">Live financial data and analytics</p>
+        </div>
+        <div className="flex gap-2">
+          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="last-7-days">Last 7 Days</SelectItem>
+              <SelectItem value="last-30-days">Last 30 Days</SelectItem>
+              <SelectItem value="last-90-days">Last 90 Days</SelectItem>
+              <SelectItem value="this-year">This Year</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={handleRefresh} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button onClick={exportData} variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        </div>
       </div>
 
-      {/* Additional Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Booking Metrics</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Total Bookings:</span>
-              <span className="font-medium">{overview?.total_bookings || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Completed:</span>
-              <span className="font-medium">{overview?.completed_bookings || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Avg. Booking Value:</span>
-              <span className="font-medium">N${safeToFixed(overview?.avg_booking_value)}</span>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                <p className="text-2xl font-bold">N${data.totalRevenue.toLocaleString()}</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Package Sales</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Packages Sold:</span>
-              <span className="font-medium">{overview?.total_packages_sold || 0}</span>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Provider Payouts</p>
+                <p className="text-2xl font-bold">N${data.totalPayouts.toLocaleString()}</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Profit Margin</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {overview?.total_revenue && overview.total_revenue > 0 && overview?.admin_profit !== null && overview?.admin_profit !== undefined
-                ? safeToFixed((overview.admin_profit / overview.total_revenue) * 100, 1)
-                : '0.0'}%
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Platform Commission</p>
+                <p className="text-2xl font-bold">N${data.platformCommission.toLocaleString()}</p>
+              </div>
+              <Calendar className="h-8 w-8 text-purple-500" />
             </div>
-            <p className="text-xs text-muted-foreground">
-              After payouts and expenses
-            </p>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Expenses Section - only show in live mode */}
-      {dataMode === 'live' && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Business Expenses</CardTitle>
-            <Dialog open={isAddExpenseOpen} onOpenChange={setIsAddExpenseOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Expense
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Business Expense</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleAddExpense} className="space-y-4">
-                  <div>
-                    <Label htmlFor="amount">Amount (N$)</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      step="0.01"
-                      value={expenseForm.amount}
-                      onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="category">Category</Label>
-                    <Select 
-                      value={expenseForm.category} 
-                      onValueChange={(value) => setExpenseForm({ ...expenseForm, category: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EXPENSE_CATEGORIES.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="expense_date">Date</Label>
-                    <Input
-                      id="expense_date"
-                      type="date"
-                      value={expenseForm.expense_date}
-                      onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="description">Description (Optional)</Label>
-                    <Textarea
-                      id="description"
-                      value={expenseForm.description}
-                      onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
-                      placeholder="Additional details about this expense..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setIsAddExpenseOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">Add Expense</Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expenses.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      No expenses recorded yet
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  expenses.map((expense) => (
-                    <TableRow key={expense.id}>
-                      <TableCell>
-                        {format(new Date(expense.expense_date), 'MMM dd, yyyy')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{expense.category}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {expense.description || '-'}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(expense.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteExpense(expense.id)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Pending Payouts</p>
+                <p className="text-2xl font-bold">N${data.pendingPayouts.toLocaleString()}</p>
+                {data.pendingPayouts > 0 && (
+                  <Badge variant="secondary" className="mt-1">
+                    Requires Action
+                  </Badge>
                 )}
-              </TableBody>
-            </Table>
+              </div>
+              <FileText className="h-8 w-8 text-orange-500" />
+            </div>
           </CardContent>
         </Card>
-      )}
+      </div>
+
+      {/* Detailed Analytics */}
+      <Tabs defaultValue="revenue" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="revenue">Revenue Analytics</TabsTrigger>
+          <TabsTrigger value="payouts">Payout Analytics</TabsTrigger>
+          <TabsTrigger value="services">Service Performance</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="revenue" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Revenue Trends</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-500">Revenue analytics will be displayed here based on live data.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payouts" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Payout Analytics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-500">Payout trends and analytics will be displayed here.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="services" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Performing Services</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-500">Service performance metrics will be displayed here.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

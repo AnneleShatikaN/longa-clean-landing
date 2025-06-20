@@ -1,10 +1,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { useDataMode } from '@/contexts/DataModeContext';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useAdminData = () => {
-  const { dataMode, mockData } = useDataMode();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,24 +44,14 @@ export const useAdminData = () => {
     setError(null);
 
     try {
-      switch (dataMode) {
-        case 'live':
-          await fetchLiveData();
-          break;
-        case 'mock':
-          setData(mockData);
-          break;
-        case 'none':
-          setData(null);
-          break;
-      }
+      await fetchLiveData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
       setData(null);
     } finally {
       setIsLoading(false);
     }
-  }, [dataMode, mockData]);
+  }, []);
 
   useEffect(() => {
     fetchData();

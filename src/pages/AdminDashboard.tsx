@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,7 +13,8 @@ import {
   FileText,
   Shield,
   Wrench,
-  MessageSquare
+  MessageSquare,
+  Calendar
 } from 'lucide-react';
 import { FinancialOverview } from '@/components/admin/FinancialOverview';
 import ServiceManagement from '@/components/admin/ServiceManagement';
@@ -23,6 +23,7 @@ import { ProviderVerificationManagement } from '@/components/admin/ProviderVerif
 import { UserManagement } from '@/components/admin/UserManagement';
 import { BankingInstructionsManager } from '@/components/admin/BankingInstructionsManager';
 import PackageManagement from '@/components/admin/PackageManagement';
+import { PackageBookingManager } from '@/components/admin/PackageBookingManager';
 import { ServiceCategoryManager } from '@/components/admin/ServiceCategoryManager';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -45,7 +46,7 @@ const AdminDashboard = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Overview
@@ -61,6 +62,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="packages" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               Packages
+            </TabsTrigger>
+            <TabsTrigger value="bookings" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Book Packages
             </TabsTrigger>
             <TabsTrigger value="payments" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
@@ -200,6 +205,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="packages">
             <PackageManagement />
+          </TabsContent>
+
+          <TabsContent value="bookings">
+            <PackageBookingManager />
           </TabsContent>
 
           <TabsContent value="payments">

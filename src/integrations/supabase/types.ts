@@ -266,12 +266,14 @@ export type Database = {
           is_weekend_job: boolean | null
           location_town: string | null
           modification_history: Json | null
+          package_id: string | null
           progress_photos: string[] | null
           provider_id: string | null
           provider_payout: number | null
           quality_score: number | null
           rating: number | null
           review: string | null
+          scheduled_date: string | null
           service_id: string
           special_instructions: string | null
           status: Database["public"]["Enums"]["booking_status"] | null
@@ -294,12 +296,14 @@ export type Database = {
           is_weekend_job?: boolean | null
           location_town?: string | null
           modification_history?: Json | null
+          package_id?: string | null
           progress_photos?: string[] | null
           provider_id?: string | null
           provider_payout?: number | null
           quality_score?: number | null
           rating?: number | null
           review?: string | null
+          scheduled_date?: string | null
           service_id: string
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["booking_status"] | null
@@ -322,12 +326,14 @@ export type Database = {
           is_weekend_job?: boolean | null
           location_town?: string | null
           modification_history?: Json | null
+          package_id?: string | null
           progress_photos?: string[] | null
           provider_id?: string | null
           provider_payout?: number | null
           quality_score?: number | null
           rating?: number | null
           review?: string | null
+          scheduled_date?: string | null
           service_id?: string
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["booking_status"] | null
@@ -375,6 +381,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_packages"
             referencedColumns: ["id"]
           },
           {
@@ -1142,6 +1155,65 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      package_bookings: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          package_id: string
+          scheduled_date: string | null
+          status: string | null
+          total_amount: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          package_id: string
+          scheduled_date?: string | null
+          status?: string | null
+          total_amount?: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          package_id?: string
+          scheduled_date?: string | null
+          status?: string | null
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "package_bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "package_bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_bookings_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_packages"
             referencedColumns: ["id"]
           },
         ]
@@ -3451,6 +3523,10 @@ export type Database = {
         }
         Returns: Json
       }
+      assign_providers_by_category: {
+        Args: { p_service_id: string; p_location?: string }
+        Returns: string
+      }
       calculate_customer_ltv: {
         Args: { client_id_param: string }
         Returns: number
@@ -3686,6 +3762,14 @@ export type Database = {
       perform_financial_reconciliation: {
         Args: { start_date: string; end_date: string }
         Returns: string
+      }
+      process_package_booking: {
+        Args: {
+          p_client_id: string
+          p_package_id: string
+          p_scheduled_date?: string
+        }
+        Returns: Json
       }
       reassign_booking_provider: {
         Args: {

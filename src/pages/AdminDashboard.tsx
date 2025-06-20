@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,7 +22,7 @@ import { PaymentSystemManager } from '@/components/admin/PaymentSystemManager';
 import { ProviderVerificationManagement } from '@/components/admin/ProviderVerificationManagement';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { BankingInstructionsManager } from '@/components/admin/BankingInstructionsManager';
-import { PackageManagement } from '@/components/admin/PackageManagement';
+import PackageManagement from '@/components/admin/PackageManagement';
 import { ServiceCategoryManager } from '@/components/admin/ServiceCategoryManager';
 import { useAuth } from '@/contexts/AuthContext';
 

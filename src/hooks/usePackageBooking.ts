@@ -3,6 +3,15 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface PackageBookingResult {
+  success: boolean;
+  error?: string;
+  package_booking_id?: string;
+  total_jobs?: number;
+  successful_assignments?: number;
+  unassigned_jobs?: number;
+}
+
 export const usePackageBooking = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -23,25 +32,27 @@ export const usePackageBooking = () => {
 
       if (error) throw error;
 
-      if (data.success) {
+      const result = data as PackageBookingResult;
+
+      if (result.success) {
         toast({
           title: "Package Booking Created",
-          description: `${data.successful_assignments} of ${data.total_jobs} jobs successfully assigned to providers.`,
-          variant: data.unassigned_jobs > 0 ? "destructive" : "default"
+          description: `${result.successful_assignments} of ${result.total_jobs} jobs successfully assigned to providers.`,
+          variant: result.unassigned_jobs && result.unassigned_jobs > 0 ? "destructive" : "default"
         });
 
-        if (data.unassigned_jobs > 0) {
+        if (result.unassigned_jobs && result.unassigned_jobs > 0) {
           toast({
             title: "Assignment Warning",
-            description: `${data.unassigned_jobs} jobs could not be assigned due to no available providers in the required categories.`,
+            description: `${result.unassigned_jobs} jobs could not be assigned due to no available providers in the required categories.`,
             variant: "destructive"
           });
         }
       } else {
-        throw new Error(data.error);
+        throw new Error(result.error);
       }
 
-      return data;
+      return result;
     } catch (error) {
       console.error('Error processing package booking:', error);
       toast({

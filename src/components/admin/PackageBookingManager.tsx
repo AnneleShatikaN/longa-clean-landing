@@ -66,21 +66,44 @@ export const PackageBookingManager: React.FC = () => {
         .select(`
           *,
           client:users!package_bookings_client_id_fkey(full_name, email),
-          package:subscription_packages(name, description),
-          individual_bookings:bookings!bookings_package_id_fkey(
-            id,
-            service_id,
-            provider_id,
-            status,
-            provider_payout,
-            service:services(name),
-            provider:users!bookings_provider_id_fkey(full_name)
-          )
+          package:subscription_packages(name, description)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPackageBookings(data || []);
+      
+      // Fetch individual bookings separately
+      const packageBookingsWithJobs = await Promise.all(
+        (data || []).map(async (booking) => {
+          const { data: jobs, error: jobsError } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              service_id,
+              provider_id,
+              status,
+              provider_payout,
+              service:services(name),
+              provider:users!bookings_provider_id_fkey(full_name)
+            `)
+            .eq('package_id', booking.id);
+
+          if (jobsError) {
+            console.error('Error fetching jobs for package:', jobsError);
+            return {
+              ...booking,
+              individual_bookings: []
+            };
+          }
+
+          return {
+            ...booking,
+            individual_bookings: jobs || []
+          };
+        })
+      );
+
+      setPackageBookings(packageBookingsWithJobs);
     } catch (error) {
       console.error('Error fetching package bookings:', error);
       toast({
@@ -148,10 +171,10 @@ export const PackageBookingManager: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'assigned': return 'bg-blue-100 text-blue-800';
+      case 'accepted': return 'bg-blue-100 text-blue-800';
       case 'in_progress': return 'bg-purple-100 text-purple-800';
       case 'completed': return 'bg-green-100 text-green-800';
-      case 'unassigned': return 'bg-red-100 text-red-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };

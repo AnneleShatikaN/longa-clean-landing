@@ -21,6 +21,7 @@ interface ProviderJob {
   package_id?: string;
   package_name?: string;
   special_instructions?: string;
+  provider_id?: string;
 }
 
 export const EnhancedProviderJobsTab: React.FC = () => {
@@ -71,6 +72,7 @@ export const EnhancedProviderJobsTab: React.FC = () => {
           provider_payout,
           special_instructions,
           package_id,
+          provider_id,
           service:services(
             id,
             name,
@@ -79,8 +81,8 @@ export const EnhancedProviderJobsTab: React.FC = () => {
           client:users!bookings_client_id_fkey(full_name),
           package:subscription_packages(name)
         `)
-        .or(`provider_id.eq.${user.id},and(provider_id.is.null,status.eq.unassigned)`)
-        .in('status', ['assigned', 'unassigned', 'accepted', 'in_progress'])
+        .or(`provider_id.eq.${user.id},and(provider_id.is.null,status.eq.pending)`)
+        .in('status', ['pending', 'accepted', 'in_progress'])
         .order('booking_date', { ascending: true })
         .order('booking_time', { ascending: true });
 
@@ -106,7 +108,8 @@ export const EnhancedProviderJobsTab: React.FC = () => {
         location_town: job.location_town || 'Windhoek',
         package_id: job.package_id,
         package_name: job.package?.name,
-        special_instructions: job.special_instructions
+        special_instructions: job.special_instructions,
+        provider_id: job.provider_id
       }));
 
       setJobs(processedJobs);
@@ -209,9 +212,8 @@ export const EnhancedProviderJobsTab: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'unassigned': return 'bg-orange-100 text-orange-800';
-      case 'assigned': return 'bg-blue-100 text-blue-800';
-      case 'accepted': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-orange-100 text-orange-800';
+      case 'accepted': return 'bg-blue-100 text-blue-800';
       case 'in_progress': return 'bg-purple-100 text-purple-800';
       case 'completed': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -219,17 +221,21 @@ export const EnhancedProviderJobsTab: React.FC = () => {
   };
 
   const getActionButton = (job: ProviderJob) => {
+    // Show accept button for unassigned jobs (no provider_id)
+    if (!job.provider_id) {
+      return (
+        <Button
+          size="sm"
+          onClick={() => handleAcceptJob(job.id)}
+          className="bg-green-600 hover:bg-green-700"
+        >
+          Accept Job
+        </Button>
+      );
+    }
+
+    // Show action buttons for assigned jobs based on status
     switch (job.status) {
-      case 'unassigned':
-        return (
-          <Button
-            size="sm"
-            onClick={() => handleAcceptJob(job.id)}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            Accept Job
-          </Button>
-        );
       case 'accepted':
         return (
           <Button

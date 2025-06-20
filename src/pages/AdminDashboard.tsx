@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,6 +21,7 @@ import { PaymentSystemManager } from '@/components/admin/PaymentSystemManager';
 import { ProviderVerificationManagement } from '@/components/admin/ProviderVerificationManagement';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { BankingInstructionsManager } from '@/components/admin/BankingInstructionsManager';
+import { PackageManagement } from '@/components/admin/PackageManagement';
 import { useAuth } from '@/contexts/AuthContext';
 
 const AdminDashboard = () => {
@@ -43,7 +43,7 @@ const AdminDashboard = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Overview
@@ -55,6 +55,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="services" className="flex items-center gap-2">
               <Wrench className="h-4 w-4" />
               Services
+            </TabsTrigger>
+            <TabsTrigger value="packages" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Packages
             </TabsTrigger>
             <TabsTrigger value="payments" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
@@ -186,6 +190,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="services">
             <ServiceManagement />
+          </TabsContent>
+
+          <TabsContent value="packages">
+            <PackageManagement />
           </TabsContent>
 
           <TabsContent value="payments">

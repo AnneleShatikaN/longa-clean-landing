@@ -34,7 +34,7 @@ const ServicesContent = () => {
 
   const handleServiceClick = (serviceId: string) => {
     console.log('Services: Navigating to service details for ID:', serviceId);
-    navigate(`/service/${serviceId}`);
+    navigate(`/services/${serviceId}`);
   };
 
   const handleBookService = (serviceId: string) => {
@@ -43,7 +43,7 @@ const ServicesContent = () => {
       navigate('/auth');
       return;
     }
-    navigate(`/service/${serviceId}`);
+    navigate(`/services/${serviceId}`);
   };
 
   const filteredServices = activeServices.filter(service => {
@@ -213,7 +213,7 @@ const ServicesContent = () => {
                           onClick={() => handleBookService(service.id)} 
                           className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full"
                         >
-                          {user ? 'Book Now' : '   Sign In to Book'}
+                          {user ? 'Book Now' : 'Sign In to Book'}
                         </Button>
                         <Button 
                           variant="outline" 

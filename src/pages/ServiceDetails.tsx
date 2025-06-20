@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Clock, DollarSign, Loader2, MapPin, Users } from 'lucide-react';
-import { useServicesEnhanced } from '@/hooks/useServicesEnhanced';
+import { useServices } from '@/contexts/ServiceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceErrorBoundary } from '@/components/common/ServiceErrorBoundary';
 
@@ -14,7 +14,7 @@ const ServiceDetailsContent = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { getServiceById, isLoading, error } = useServicesEnhanced();
+  const { getServiceById, isLoading, error } = useServices();
 
   console.log('ServiceDetails: Service ID from params:', id);
   console.log('ServiceDetails: Current location:', location.pathname);
@@ -39,11 +39,6 @@ const ServiceDetailsContent = () => {
     console.log('ServiceDetails: Navigating to booking with service ID:', service.id);
     // Navigate to booking page with service ID
     navigate(`/one-off-booking?service_id=${service.id}`);
-  };
-
-  const handleViewDetails = () => {
-    if (!service) return;
-    console.log('ServiceDetails: Already on service details page for:', service.id);
   };
 
   if (isLoading) {
@@ -101,14 +96,18 @@ const ServiceDetailsContent = () => {
     );
   }
 
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
+  const formatDuration = (duration: { hours: number; minutes: number }) => {
+    const totalMinutes = duration.hours * 60 + duration.minutes;
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
     if (hours > 0) {
       return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
     }
     return `${mins}m`;
   };
+
+  // Get coverage areas from service data, fallback to default areas
+  const coverageAreas = service.coverageAreas || ['windhoek', 'walvis_bay', 'swakopmund'];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -133,20 +132,20 @@ const ServiceDetailsContent = () => {
                 <div>
                   <CardTitle className="text-2xl mb-2">{service.name}</CardTitle>
                   <div className="flex gap-2 mb-4">
-                    <Badge variant={service.service_type === 'one-off' ? 'default' : 'secondary'}>
-                      {service.service_type === 'one-off' ? 'One-time Service' : 'Subscription Service'}
+                    <Badge variant={service.type === 'one-off' ? 'default' : 'secondary'}>
+                      {service.type === 'one-off' ? 'One-time Service' : 'Subscription Service'}
                     </Badge>
                     <Badge variant="outline" className="text-green-700 border-green-300">
-                      Available
+                      {service.status === 'active' ? 'Available' : 'Unavailable'}
                     </Badge>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-1 text-2xl font-bold text-blue-600">
                     <DollarSign className="h-6 w-6" />
-                    <span>N${service.client_price}</span>
+                    <span>N${service.clientPrice}</span>
                   </div>
-                  {service.service_type === 'subscription' && (
+                  {service.type === 'subscription' && (
                     <p className="text-sm text-gray-500">per service</p>
                   )}
                 </div>
@@ -165,21 +164,21 @@ const ServiceDetailsContent = () => {
                   <Clock className="h-5 w-5 text-blue-600" />
                   <div>
                     <p className="text-sm text-gray-600">Duration</p>
-                    <p className="font-semibold">{formatDuration(service.duration_minutes)}</p>
+                    <p className="font-semibold">{formatDuration(service.duration)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                   <DollarSign className="h-5 w-5 text-green-600" />
                   <div>
                     <p className="text-sm text-gray-600">Price</p>
-                    <p className="font-semibold">N${service.client_price}</p>
+                    <p className="font-semibold">N${service.clientPrice}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                   <Users className="h-5 w-5 text-purple-600" />
                   <div>
                     <p className="text-sm text-gray-600">Type</p>
-                    <p className="font-semibold capitalize">{service.service_type}</p>
+                    <p className="font-semibold capitalize">{service.type}</p>
                   </div>
                 </div>
               </div>
@@ -197,11 +196,11 @@ const ServiceDetailsContent = () => {
                 </div>
               )}
 
-              {service.coverage_areas && service.coverage_areas.length > 0 && (
+              {coverageAreas && coverageAreas.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-3 text-lg">Available Locations</h3>
                   <div className="flex flex-wrap gap-2">
-                    {service.coverage_areas.map((area, index) => (
+                    {coverageAreas.map((area, index) => (
                       <Badge key={index} variant="outline" className="capitalize text-sm py-1">
                         <MapPin className="h-3 w-3 mr-1" />
                         {area.replace('_', ' ')}
@@ -216,6 +215,7 @@ const ServiceDetailsContent = () => {
                   onClick={handleBookNow}
                   size="lg" 
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  disabled={service.status !== 'active'}
                 >
                   {user ? 'Book This Service' : 'Sign In to Book'}
                 </Button>
@@ -233,6 +233,14 @@ const ServiceDetailsContent = () => {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
                   <p className="text-blue-800">
                     <strong>Ready to book?</strong> Sign in to your account to schedule this service or create a new account to get started.
+                  </p>
+                </div>
+              )}
+
+              {service.status !== 'active' && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                  <p className="text-yellow-800">
+                    <strong>Service Unavailable</strong> This service is currently not available for booking. Please check back later or contact support.
                   </p>
                 </div>
               )}

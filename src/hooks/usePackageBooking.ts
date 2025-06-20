@@ -32,9 +32,10 @@ export const usePackageBooking = () => {
 
       if (error) throw error;
 
-      const result = data as PackageBookingResult;
+      // Safely cast the data to our expected type
+      const result = data as unknown as PackageBookingResult;
 
-      if (result.success) {
+      if (result?.success) {
         toast({
           title: "Package Booking Created",
           description: `${result.successful_assignments} of ${result.total_jobs} jobs successfully assigned to providers.`,
@@ -49,7 +50,7 @@ export const usePackageBooking = () => {
           });
         }
       } else {
-        throw new Error(result.error);
+        throw new Error(result?.error || 'Unknown error occurred');
       }
 
       return result;

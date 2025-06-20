@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Package, Plus, Edit, Trash2, DollarSign, Clock, Users } from 'lucide-react';
-import { EnhancedPackageForm } from './EnhancedPackageForm';
+import EnhancedPackageForm from './EnhancedPackageForm';
 import { useServices } from '@/contexts/ServiceContext';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { useToast } from '@/hooks/use-toast';

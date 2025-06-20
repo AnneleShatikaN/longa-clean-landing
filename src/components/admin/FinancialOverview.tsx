@@ -27,6 +27,22 @@ const EXPENSE_CATEGORIES = [
   'Other'
 ];
 
+// Helper function to safely format numbers
+const safeToFixed = (value: number | null | undefined, decimals: number = 2): string => {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '0.00';
+  }
+  return value.toFixed(decimals);
+};
+
+// Helper function to safely format currency
+const formatCurrency = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || isNaN(value)) {
+    return 'N$0';
+  }
+  return `N$${value.toLocaleString()}`;
+};
+
 export const FinancialOverview: React.FC = () => {
   const { overview, expenses, isLoading, addExpense, deleteExpense } = useFinancialOverview();
   const { dataMode, setDataMode } = useDataMode();
@@ -139,7 +155,7 @@ export const FinancialOverview: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              N${overview?.total_revenue?.toLocaleString() || '0'}
+              {formatCurrency(overview?.total_revenue)}
             </div>
             <p className="text-xs text-muted-foreground">
               From completed bookings
@@ -154,7 +170,7 @@ export const FinancialOverview: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              N${overview?.total_provider_payouts?.toLocaleString() || '0'}
+              {formatCurrency(overview?.total_provider_payouts)}
             </div>
             <p className="text-xs text-muted-foreground">
               Paid to service providers
@@ -169,7 +185,7 @@ export const FinancialOverview: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              N${overview?.total_expenses?.toLocaleString() || '0'}
+              {formatCurrency(overview?.total_expenses)}
             </div>
             <p className="text-xs text-muted-foreground">
               Operational costs
@@ -186,7 +202,7 @@ export const FinancialOverview: React.FC = () => {
             <div className={`text-2xl font-bold ${
               (overview?.admin_profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'
             }`}>
-              N${overview?.admin_profit?.toLocaleString() || '0'}
+              {formatCurrency(overview?.admin_profit)}
             </div>
             <p className="text-xs text-muted-foreground">
               Net profit after costs
@@ -212,7 +228,7 @@ export const FinancialOverview: React.FC = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Avg. Booking Value:</span>
-              <span className="font-medium">N${overview?.avg_booking_value?.toFixed(2) || '0.00'}</span>
+              <span className="font-medium">N${safeToFixed(overview?.avg_booking_value)}</span>
             </div>
           </CardContent>
         </Card>
@@ -235,8 +251,8 @@ export const FinancialOverview: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {overview?.total_revenue && overview.total_revenue > 0 
-                ? ((overview.admin_profit / overview.total_revenue) * 100).toFixed(1) 
+              {overview?.total_revenue && overview.total_revenue > 0 && overview?.admin_profit !== null && overview?.admin_profit !== undefined
+                ? safeToFixed((overview.admin_profit / overview.total_revenue) * 100, 1)
                 : '0.0'}%
             </div>
             <p className="text-xs text-muted-foreground">
@@ -358,7 +374,7 @@ export const FinancialOverview: React.FC = () => {
                         {expense.description || '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        N${expense.amount.toLocaleString()}
+                        {formatCurrency(expense.amount)}
                       </TableCell>
                       <TableCell>
                         <Button

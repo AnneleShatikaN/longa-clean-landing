@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Upload, FileText, CheckCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface VerificationFormProps {
   onSuccess?: () => void;
@@ -17,9 +18,10 @@ interface VerificationFormProps {
 
 const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }) => {
   const { toast } = useToast();
-  const { user, updateProfile } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{[key: string]: File}>({});
+  const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
   
   const [formData, setFormData] = useState({
     fullName: user?.full_name || '',
@@ -77,13 +79,20 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
     const fileExt = file.name.split('.').pop();
     const fileName = `${providerId}/${documentType}_${Date.now()}.${fileExt}`;
     
+    console.log(`Uploading file: ${fileName}`);
+    
     const { data, error } = await supabase.storage
       .from('verification-documents')
       .upload(fileName, file, {
         upsert: false
       });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Storage upload error:', error);
+      throw error;
+    }
+    
+    console.log('Upload successful:', data);
     return data.path;
   };
 
@@ -123,26 +132,48 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
 
     try {
       setIsSubmitting(true);
-      console.log('Submitting provider verification for user:', user.id);
+      console.log('Starting verification submission for user:', user.id);
 
-      // Upload documents to storage
+      // Upload documents to storage and create database records
       const documentPaths: {[key: string]: string} = {};
       for (const [docType, file] of Object.entries(uploadedFiles)) {
-        console.log(`Uploading ${docType} document...`);
-        const path = await uploadDocumentToStorage(file, docType, user.id);
-        documentPaths[docType] = path;
+        console.log(`Processing ${docType} document...`);
+        setUploadProgress(prev => ({ ...prev, [docType]: 0 }));
+        
+        try {
+          // Upload to storage
+          const path = await uploadDocumentToStorage(file, docType, user.id);
+          documentPaths[docType] = path;
+          setUploadProgress(prev => ({ ...prev, [docType]: 50 }));
+
+          // Create document record in database
+          const { error: docError } = await supabase
+            .from('provider_documents')
+            .insert({
+              provider_id: user.id,
+              document_type: docType,
+              document_name: file.name,
+              file_path: path,
+              mime_type: file.type,
+              file_size: file.size,
+              verification_status: 'pending'
+            });
+
+          if (docError) {
+            console.error(`Error saving ${docType} document record:`, docError);
+            throw docError;
+          }
+          
+          setUploadProgress(prev => ({ ...prev, [docType]: 100 }));
+          console.log(`Successfully processed ${docType} document`);
+        } catch (error) {
+          console.error(`Error processing ${docType}:`, error);
+          throw new Error(`Failed to upload ${docType}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
       }
 
-      // Update user verification status and details
-      await updateProfile({
-        full_name: formData.fullName,
-        phone: formData.phoneNumber,
-        verification_status: 'pending',
-        verification_submitted_at: new Date().toISOString(),
-        background_check_consent: formData.backgroundCheckConsent
-      });
-
       // Save banking details
+      console.log('Saving banking details...');
       const { error: bankingError } = await supabase
         .from('provider_banking_details')
         .upsert({
@@ -154,28 +185,33 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
           verification_status: 'pending'
         });
 
-      if (bankingError) throw bankingError;
+      if (bankingError) {
+        console.error('Banking details error:', bankingError);
+        throw bankingError;
+      }
 
-      // Create document records
-      for (const [docType, path] of Object.entries(documentPaths)) {
-        const { error: docError } = await supabase
-          .from('provider_documents')
-          .insert({
-            provider_id: user.id,
-            document_type: docType,
-            document_name: uploadedFiles[docType].name,
-            file_path: path,
-            mime_type: uploadedFiles[docType].type,
-            file_size: uploadedFiles[docType].size,
-            verification_status: 'pending'
-          });
+      // Update user verification status
+      console.log('Updating user verification status...');
+      const { error: userUpdateError } = await supabase
+        .from('users')
+        .update({
+          full_name: formData.fullName,
+          phone: formData.phoneNumber,
+          verification_status: 'pending',
+          verification_submitted_at: new Date().toISOString(),
+          background_check_consent: formData.backgroundCheckConsent
+        })
+        .eq('id', user.id);
 
-        if (docError) {
-          console.error(`Error saving ${docType} document record:`, docError);
-        }
+      if (userUpdateError) {
+        console.error('User update error:', userUpdateError);
+        throw userUpdateError;
       }
 
       console.log('Provider verification submitted successfully');
+
+      // Refresh user data
+      await refreshUser();
 
       toast({
         title: "Verification Submitted!",
@@ -192,8 +228,33 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
       });
     } finally {
       setIsSubmitting(false);
+      setUploadProgress({});
     }
   };
+
+  // Check if user already has pending or completed verification
+  const hasExistingVerification = user?.verification_status === 'pending' || user?.verification_status === 'verified';
+
+  if (hasExistingVerification) {
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>Verification Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              {user?.verification_status === 'verified' 
+                ? "Your verification is complete! You can now accept bookings."
+                : "Your verification is currently under review. You'll receive an update within 2-3 business days."
+              }
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -265,11 +326,17 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
                     accept=".jpg,.jpeg,.png,.pdf,.webp"
                     onChange={(e) => handleFileUpload(doc.key, e)}
                     className="flex-1"
+                    disabled={isSubmitting}
                   />
                   {uploadedFiles[doc.key] && (
                     <div className="flex items-center gap-2 text-green-600">
                       <CheckCircle className="h-4 w-4" />
                       <span className="text-sm">{uploadedFiles[doc.key].name}</span>
+                    </div>
+                  )}
+                  {uploadProgress[doc.key] !== undefined &&  uploadProgress[doc.key] < 100 && (
+                    <div className="text-sm text-blue-600">
+                      Uploading... {uploadProgress[doc.key]}%
                     </div>
                   )}
                 </div>
@@ -289,6 +356,7 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
                   value={formData.bankName}
                   onChange={(e) => setFormData({...formData, bankName: e.target.value})}
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -298,6 +366,7 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
                   value={formData.accountNumber}
                   onChange={(e) => setFormData({...formData, accountNumber: e.target.value})}
                   required
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -310,6 +379,7 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
                   value={formData.accountHolderName}
                   onChange={(e) => setFormData({...formData, accountHolderName: e.target.value})}
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -318,6 +388,7 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
                   id="branchCode"
                   value={formData.branchCode}
                   onChange={(e) => setFormData({...formData, branchCode: e.target.value})}
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -332,6 +403,7 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
                 onCheckedChange={(checked) => 
                   setFormData({...formData, backgroundCheckConsent: checked as boolean})
                 }
+                disabled={isSubmitting}
               />
               <Label htmlFor="backgroundCheck" className="text-sm">
                 I consent to a background check being performed
@@ -345,6 +417,7 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
                 onCheckedChange={(checked) => 
                   setFormData({...formData, termsAccepted: checked as boolean})
                 }
+                disabled={isSubmitting}
               />
               <Label htmlFor="terms" className="text-sm">
                 I accept the terms and conditions
@@ -360,7 +433,7 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
             {isSubmitting ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Submitting...
+                Submitting Verification...
               </div>
             ) : (
               "Submit Verification"

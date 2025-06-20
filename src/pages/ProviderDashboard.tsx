@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,12 +14,15 @@ import {
   CreditCard,
   Settings,
   Shield,
-  Briefcase
+  Briefcase,
+  MapPin,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ProviderBankingDetails } from '@/components/provider/ProviderBankingDetails';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface ProviderStats {
   totalJobs: number;
@@ -38,6 +40,17 @@ interface RecentJob {
   total_amount: number;
 }
 
+interface AssignedJob {
+  id: string;
+  service_name: string;
+  client_name: string;
+  booking_date: string;
+  booking_time: string;
+  service_address: string;
+  status: string;
+  total_amount: number;
+}
+
 interface EarningsData {
   thisWeek: number;
   thisMonth: number;
@@ -47,6 +60,7 @@ interface EarningsData {
 
 const ProviderDashboard = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState<ProviderStats>({
     totalJobs: 0,
@@ -55,6 +69,7 @@ const ProviderDashboard = () => {
     rating: 0
   });
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
+  const [assignedJobs, setAssignedJobs] = useState<AssignedJob[]>([]);
   const [earnings, setEarnings] = useState<EarningsData>({
     thisWeek: 0,
     thisMonth: 0,
@@ -62,6 +77,7 @@ const ProviderDashboard = () => {
     pendingPayout: 0
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
 
   const fetchProviderData = async () => {
     if (!user) return;
@@ -136,9 +152,58 @@ const ProviderDashboard = () => {
     }
   };
 
+  const fetchAssignedJobs = async () => {
+    if (!user) return;
+
+    try {
+      setIsLoadingJobs(true);
+
+      const { data: jobs, error } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          booking_date,
+          booking_time,
+          service_address,
+          status,
+          total_amount,
+          service:services(name),
+          client:users!bookings_client_id_fkey(full_name)
+        `)
+        .eq('provider_id', user.id)
+        .in('status', ['pending', 'accepted', 'in_progress'])
+        .order('booking_date', { ascending: true });
+
+      if (error) throw error;
+
+      const assignedJobsData = (jobs || []).map(job => ({
+        id: job.id,
+        service_name: job.service?.name || 'Service',
+        client_name: job.client?.full_name || 'Client',
+        booking_date: job.booking_date,
+        booking_time: job.booking_time,
+        service_address: job.service_address || 'Address not provided',
+        status: job.status,
+        total_amount: job.total_amount
+      }));
+
+      setAssignedJobs(assignedJobsData);
+    } catch (error) {
+      console.error('Error fetching assigned jobs:', error);
+    } finally {
+      setIsLoadingJobs(false);
+    }
+  };
+
   useEffect(() => {
     fetchProviderData();
   }, [user]);
+
+  useEffect(() => {
+    if (activeTab === 'assigned-jobs') {
+      fetchAssignedJobs();
+    }
+  }, [activeTab, user]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -148,10 +213,14 @@ const ProviderDashboard = () => {
         return <Badge className="bg-blue-100 text-blue-800">In Progress</Badge>;
       case 'accepted':
         return <Badge className="bg-yellow-100 text-yellow-800">Scheduled</Badge>;
+      case 'pending':
+        return <Badge className="bg-orange-100 text-orange-800">Pending</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+
+  const needsVerification = !user?.verification_status || user?.verification_status === 'unverified' || user?.verification_status === 'pending';
 
   if (isLoading) {
     return (
@@ -180,6 +249,31 @@ const ProviderDashboard = () => {
             </Button>
           </div>
         </div>
+
+        {/* Verification Alert */}
+        {needsVerification && (
+          <div className="mb-8">
+            <Card className="border-yellow-200 bg-yellow-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-yellow-800">Verification Required</h3>
+                    <p className="text-sm text-yellow-700">
+                      Complete your provider verification to start accepting bookings.
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => setActiveTab('verification')}
+                    className="bg-yellow-600 hover:bg-yellow-700"
+                  >
+                    Complete Verification
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -238,7 +332,7 @@ const ProviderDashboard = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Overview
@@ -246,6 +340,10 @@ const ProviderDashboard = () => {
             <TabsTrigger value="jobs" className="flex items-center gap-2">
               <Briefcase className="h-4 w-4" />
               Jobs
+            </TabsTrigger>
+            <TabsTrigger value="assigned-jobs" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Assigned Jobs
             </TabsTrigger>
             <TabsTrigger value="banking" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
@@ -364,6 +462,57 @@ const ProviderDashboard = () => {
             </Card>
           </TabsContent>
 
+          <TabsContent value="assigned-jobs">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Assigned Jobs
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingJobs ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading assigned jobs...</p>
+                  </div>
+                ) : assignedJobs.length > 0 ? (
+                  <div className="space-y-4">
+                    {assignedJobs.map((job) => (
+                      <div key={job.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <h3 className="font-medium">{job.service_name}</h3>
+                          <p className="text-sm text-gray-600 flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            Client: {job.client_name}
+                          </p>
+                          <p className="text-sm text-gray-600 flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(job.booking_date), 'MMM dd, yyyy')} at {job.booking_time}
+                          </p>
+                          <p className="text-sm text-gray-600 flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {job.service_address}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          {getStatusBadge(job.status)}
+                          <p className="text-lg font-semibold mt-1">N${job.total_amount}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Assigned Jobs</h3>
+                    <p className="text-gray-600">You don't have any assigned jobs at the moment</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="banking">
             <ProviderBankingDetails />
           </TabsContent>
@@ -377,38 +526,59 @@ const ProviderDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded">
-                    <div>
-                      <h4 className="font-medium">Identity Verification</h4>
-                      <p className="text-sm text-gray-600">Upload ID document</p>
+                {needsVerification ? (
+                  <div className="space-y-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h3 className="font-semibold text-yellow-800 mb-2">Verification Required</h3>
+                      <p className="text-yellow-700 mb-4">
+                        You need to complete the verification process to start accepting bookings. 
+                        This includes uploading required documents and providing banking details.
+                      </p>
+                      <Button 
+                        onClick={() => navigate('/provider-verification')}
+                        className="bg-yellow-600 hover:bg-yellow-700"
+                      >
+                        Start Verification Process
+                      </Button>
                     </div>
-                    <Badge variant={user?.verification_status === 'verified' ? 'default' : 'secondary'}>
-                      {user?.verification_status === 'verified' ? 'Verified' : 'Pending'}
-                    </Badge>
                   </div>
-                  <div className="flex items-center justify-between p-4 border rounded">
-                    <div>
-                      <h4 className="font-medium">Background Check</h4>
-                      <p className="text-sm text-gray-600">Criminal background verification</p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 border rounded bg-green-50">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="h-6 w-6 text-green-600" />
+                        <div>
+                          <h4 className="font-medium text-green-800">Verification Complete</h4>
+                          <p className="text-sm text-green-600">Your provider verification is complete</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-green-100 text-green-800">Verified</Badge>
                     </div>
-                    <Badge variant={user?.background_check_consent ? 'default' : 'secondary'}>
-                      {user?.background_check_consent ? 'Completed' : 'Pending'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-4 border rounded">
-                    <div>
-                      <h4 className="font-medium">Banking Details</h4>
-                      <p className="text-sm text-gray-600">Verify payment information</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex items-center justify-between p-4 border rounded">
+                        <div>
+                          <h4 className="font-medium">Identity Verification</h4>
+                          <p className="text-sm text-gray-600">Document verification</p>
+                        </div>
+                        <Badge className="bg-green-100 text-green-800">✓ Verified</Badge>
+                      </div>
+                      <div className="flex items-center justify-between p-4 border rounded">
+                        <div>
+                          <h4 className="font-medium">Background Check</h4>
+                          <p className="text-sm text-gray-600">Criminal background verification</p>
+                        </div>
+                        <Badge className="bg-green-100 text-green-800">✓ Completed</Badge>
+                      </div>
+                      <div className="flex items-center justify-between p-4 border rounded">
+                        <div>
+                          <h4 className="font-medium">Banking Details</h4>
+                          <p className="text-sm text-gray-600">Payment information</p>
+                        </div>
+                        <Badge className="bg-green-100 text-green-800">✓ Verified</Badge>
+                      </div>
                     </div>
-                    <Badge variant={user?.banking_details_verified ? 'default' : 'secondary'}>
-                      {user?.banking_details_verified ? '✓ Verified' : 'Pending'}
-                    </Badge>
                   </div>
-                  <Button className="w-full">
-                    Complete Verification Process
-                  </Button>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

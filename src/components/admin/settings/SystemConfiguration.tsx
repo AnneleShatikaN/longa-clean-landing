@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -86,7 +85,7 @@ export const SystemConfiguration = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
-            Data Mode Configuration
+            Data Configuration
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -94,32 +93,13 @@ export const SystemConfiguration = () => {
             <div>
               <p className="font-medium">Current Data Mode</p>
               <p className="text-sm text-gray-600">
-                {dataMode === 'live' ? 'Using live production data' : 'Using mock/test data'}
+                Application is configured to use live production data only
               </p>
             </div>
-            <Badge className={getDataModeColor()}>
-              {dataMode.toUpperCase()}
+            <Badge className="bg-green-100 text-green-800">
+              LIVE
             </Badge>
           </div>
-          
-          {isDevelopmentMode && (
-            <div className="flex gap-2">
-              <Button
-                variant={dataMode === 'live' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleDataModeChange('live')}
-              >
-                Live Mode
-              </Button>
-              <Button
-                variant={dataMode === 'mock' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleDataModeChange('mock')}
-              >
-                Mock Mode
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
 

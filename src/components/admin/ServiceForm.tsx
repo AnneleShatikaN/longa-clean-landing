@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useServices } from '@/contexts/ServiceContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,11 +21,21 @@ interface ServiceCategory {
   name: string;
 }
 
+interface ValidationErrors {
+  name?: string;
+  categoryId?: string;
+  clientPrice?: string;
+}
+
 const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
   const { createService } = useServices();
   const { toast } = useToast();
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -47,6 +57,9 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
 
   const fetchCategories = async () => {
     try {
+      setIsCategoriesLoading(true);
+      setCategoriesError(null);
+      
       const { data, error } = await supabase
         .from('service_categories')
         .select('id, name')
@@ -54,15 +67,42 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
         .order('name');
 
       if (error) throw error;
+      
       setCategories(data || []);
+      
+      if (!data || data.length === 0) {
+        setCategoriesError('No service categories available. Please create categories first.');
+      }
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setCategoriesError('Failed to load service categories. Please try again.');
       toast({
-        title: "Error",
-        description: "Failed to load service categories",
+        title: "Error Loading Categories",
+        description: "Failed to load service categories. Please refresh the page and try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsCategoriesLoading(false);
     }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: ValidationErrors = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = 'Service name is required';
+    }
+    
+    if (!formData.categoryId) {
+      errors.categoryId = 'Service category is required';
+    }
+    
+    if (!formData.clientPrice || parseFloat(formData.clientPrice) <= 0) {
+      errors.clientPrice = 'Client price must be greater than 0';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleAddTag = () => {
@@ -85,10 +125,10 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.clientPrice || !formData.categoryId) {
+    if (!validateForm()) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields (Name, Price, and Category)",
+        description: "Please fix the errors below and try again.",
         variant: "destructive",
       });
       return;
@@ -122,15 +162,27 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
       toast({
         title: "Success!",
         description: `Service "${formData.name}" has been created successfully.`,
+        action: (
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <span>Created</span>
+          </div>
+        ),
       });
       
       onSuccess();
     } catch (error) {
       console.error('Error creating service:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create service. Please try again.",
+        title: "Service Creation Failed",
+        description: error instanceof Error ? error.message : "Failed to create service. Please check your connection and try again.",
         variant: "destructive",
+        action: (
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-500" />
+            <span>Error</span>
+          </div>
+        ),
       });
     } finally {
       setIsSubmitting(false);
@@ -144,34 +196,92 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
     }
   };
 
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData({ ...formData, [field]: value });
+    
+    // Clear validation error when user starts typing
+    if (validationErrors[field as keyof ValidationErrors]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="name">Service Name *</Label>
+          <Label htmlFor="name" className="flex items-center gap-1">
+            Service Name 
+            <span className="text-red-500">*</span>
+          </Label>
           <Input
             id="name"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => handleInputChange('name', e.target.value)}
             placeholder="e.g., House Cleaning"
+            className={validationErrors.name ? 'border-red-500' : ''}
             required
           />
+          {validationErrors.name && (
+            <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {validationErrors.name}
+            </p>
+          )}
         </div>
 
         <div>
-          <Label htmlFor="category">Service Category *</Label>
-          <Select value={formData.categoryId} onValueChange={(value) => setFormData({ ...formData, categoryId: value })}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select category" />
+          <Label htmlFor="category" className="flex items-center gap-1">
+            Service Category 
+            <span className="text-red-500">*</span>
+          </Label>
+          <Select 
+            value={formData.categoryId} 
+            onValueChange={(value) => handleInputChange('categoryId', value)}
+            disabled={isCategoriesLoading}
+          >
+            <SelectTrigger className={validationErrors.categoryId ? 'border-red-500' : ''}>
+              <SelectValue placeholder={
+                isCategoriesLoading ? "Loading categories..." : 
+                categoriesError ? "Error loading categories" :
+                "Select category"
+              } />
             </SelectTrigger>
             <SelectContent>
-              {categories.map((category) => (
-                <SelectItem key={category.id} value={category.id}>
-                  {category.name}
+              {isCategoriesLoading ? (
+                <SelectItem value="" disabled>
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
+                  </div>
                 </SelectItem>
-              ))}
+              ) : categories.length > 0 ? (
+                categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="" disabled>
+                  No categories available
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
+          {validationErrors.categoryId && (
+            <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {validationErrors.categoryId}
+            </p>
+          )}
+          {categoriesError && !validationErrors.categoryId && (
+            <p className="text-sm text-orange-600 mt-1 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {categoriesError}
+            </p>
+          )}
         </div>
       </div>
 
@@ -180,7 +290,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
         <Textarea
           id="description"
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={(e) => handleInputChange('description', e.target.value)}
           placeholder="Describe the service..."
           rows={3}
         />
@@ -216,17 +326,27 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <Label htmlFor="clientPrice">Client Price (N$) *</Label>
+          <Label htmlFor="clientPrice" className="flex items-center gap-1">
+            Client Price (N$) 
+            <span className="text-red-500">*</span>
+          </Label>
           <Input
             id="clientPrice"
             type="number"
             step="0.01"
             min="0"
             value={formData.clientPrice}
-            onChange={(e) => setFormData({ ...formData, clientPrice: e.target.value })}
+            onChange={(e) => handleInputChange('clientPrice', e.target.value)}
             placeholder="0.00"
+            className={validationErrors.clientPrice ? 'border-red-500' : ''}
             required
           />
+          {validationErrors.clientPrice && (
+            <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {validationErrors.clientPrice}
+            </p>
+          )}
         </div>
 
         <div>
@@ -237,7 +357,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
             step="0.01"
             min="0"
             value={formData.providerFee}
-            onChange={(e) => setFormData({ ...formData, providerFee: e.target.value })}
+            onChange={(e) => handleInputChange('providerFee', e.target.value)}
             placeholder="Auto-calculated"
           />
         </div>
@@ -251,7 +371,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
             min="0"
             max="100"
             value={formData.commissionPercentage}
-            onChange={(e) => setFormData({ ...formData, commissionPercentage: e.target.value })}
+            onChange={(e) => handleInputChange('commissionPercentage', e.target.value)}
             placeholder="15"
           />
         </div>
@@ -317,8 +437,15 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ onSuccess, onCancel }) => {
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating Service...' : 'Create Service'}
+        <Button type="submit" disabled={isSubmitting || isCategoriesLoading}>
+          {isSubmitting ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Creating Service...
+            </div>
+          ) : (
+            'Create Service'
+          )}
         </Button>
       </div>
     </form>

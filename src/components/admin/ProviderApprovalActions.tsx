@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, XCircle, MessageSquare } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -22,14 +22,23 @@ const ProviderApprovalActions: React.FC<ProviderApprovalActionsProps> = ({
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [notes, setNotes] = useState('');
+  const [notesError, setNotesError] = useState('');
+
+  const validateNotes = () => {
+    if (!notes.trim()) {
+      setNotesError('Verification notes are required before proceeding.');
+      return false;
+    }
+    if (notes.trim().length < 10) {
+      setNotesError('Please provide more detailed notes (at least 10 characters).');
+      return false;
+    }
+    setNotesError('');
+    return true;
+  };
 
   const handleApproval = async (approved: boolean) => {
-    if (!notes.trim()) {
-      toast({
-        title: "Notes Required",
-        description: "Please provide verification notes before proceeding.",
-        variant: "destructive",
-      });
+    if (!validateNotes()) {
       return;
     }
 
@@ -83,7 +92,17 @@ const ProviderApprovalActions: React.FC<ProviderApprovalActionsProps> = ({
 
       toast({
         title: approved ? "Provider Approved!" : "Provider Rejected",
-        description: `The provider has been ${approved ? 'approved' : 'rejected'} and notified.`,
+        description: `The provider has been ${approved ? 'approved' : 'rejected'} and will be notified automatically.`,
+        action: (
+          <div className="flex items-center gap-2">
+            {approved ? (
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            ) : (
+              <XCircle className="h-4 w-4 text-red-500" />
+            )}
+            <span>Complete</span>
+          </div>
+        ),
       });
 
       onStatusUpdate();
@@ -91,12 +110,25 @@ const ProviderApprovalActions: React.FC<ProviderApprovalActionsProps> = ({
     } catch (error) {
       console.error('Error updating provider status:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update provider status.",
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Failed to update provider status. Please check your connection and try again.",
         variant: "destructive",
+        action: (
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-500" />
+            <span>Error</span>
+          </div>
+        ),
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleNotesChange = (value: string) => {
+    setNotes(value);
+    if (notesError && value.trim().length >= 10) {
+      setNotesError('');
     }
   };
 
@@ -130,38 +162,69 @@ const ProviderApprovalActions: React.FC<ProviderApprovalActionsProps> = ({
     <Card>
       <CardContent className="p-4 space-y-4">
         <div>
-          <Label htmlFor="notes">Verification Notes *</Label>
+          <Label htmlFor="notes" className="flex items-center gap-1">
+            Verification Notes 
+            <span className="text-red-500">*</span>
+          </Label>
           <Textarea
             id="notes"
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add notes about the verification decision..."
+            onChange={(e) => handleNotesChange(e.target.value)}
+            placeholder="Add detailed notes about the verification decision, including what was reviewed and any specific findings..."
             rows={3}
+            className={notesError ? 'border-red-500' : ''}
           />
+          {notesError && (
+            <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {notesError}
+            </p>
+          )}
+          <p className="text-xs text-gray-500 mt-1">
+            These notes will be recorded for audit purposes and may be shared with the provider.
+          </p>
         </div>
 
         <div className="flex gap-3">
           <Button
             onClick={() => handleApproval(true)}
-            disabled={isProcessing || !notes.trim()}
+            disabled={isProcessing}
             className="flex-1"
           >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            {isProcessing ? 'Approving...' : 'Approve Provider'}
+            {isProcessing ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Approving...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Approve Provider
+              </div>
+            )}
           </Button>
           
           <Button
             variant="destructive"
             onClick={() => handleApproval(false)}
-            disabled={isProcessing || !notes.trim()}
+            disabled={isProcessing}
             className="flex-1"
           >
-            <XCircle className="h-4 w-4 mr-2" />
-            {isProcessing ? 'Rejecting...' : 'Reject Provider'}
+            {isProcessing ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Rejecting...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <XCircle className="h-4 w-4" />
+                Reject Provider
+              </div>
+            )}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </Card>
+    </CardContent>
   );
 };
 

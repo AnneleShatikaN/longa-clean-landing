@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -89,23 +90,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('AuthProvider - Auth state change:', { event, userEmail: session?.user?.email || 'none' });
+      console.log('AuthProvider - Auth state change:', { 
+        event, 
+        userEmail: session?.user?.email || 'none',
+        emailConfirmed: session?.user?.email_confirmed_at ? 'yes' : 'no',
+        sessionExists: !!session 
+      });
+      
       setSession(session);
       
-      if (event === 'SIGNED_UP') {
-        // User just signed up - check if email is confirmed
-        if (session?.user && !session.user.email_confirmed_at) {
-          console.log('AuthProvider - User signed up but email not confirmed');
-          setNeedsEmailVerification(true);
-          setSignupEmail(session.user.email || '');
-          setUser(null);
-          setLoading(false);
-          setIsInitialized(true);
-          return;
-        }
-      }
-      
+      // Handle different auth events with proper logging
       if (event === 'SIGNED_IN') {
+        console.log('AuthProvider - User signed in, checking email verification');
         // Check if email is verified for existing users
         if (session?.user && !session.user.email_confirmed_at) {
           console.log('AuthProvider - User signed in but email not verified');
@@ -119,12 +115,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (session?.user && session.user.email_confirmed_at) {
+        console.log('AuthProvider - Email is verified, fetching user profile');
         // Email is verified, fetch user profile
         setNeedsEmailVerification(false);
         setTimeout(() => {
           fetchUserProfile(session.user.id);
         }, 0);
       } else {
+        console.log('AuthProvider - No session or email not verified, clearing user state');
         setUser(null);
         setNeedsEmailVerification(false);
         setLoading(false);
@@ -135,20 +133,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
-      console.log('AuthProvider - Initial session:', { session: session?.user?.email || 'none', error });
+      console.log('AuthProvider - Initial session check:', { 
+        session: session?.user?.email || 'none', 
+        error,
+        emailConfirmed: session?.user?.email_confirmed_at ? 'yes' : 'no'
+      });
+      
       setSession(session);
       
       if (session?.user) {
         if (!session.user.email_confirmed_at) {
+          console.log('AuthProvider - Initial session: email not verified');
           setNeedsEmailVerification(true);
           setSignupEmail(session.user.email || '');
           setUser(null);
           setLoading(false);
         } else {
+          console.log('AuthProvider - Initial session: email verified, fetching profile');
           setNeedsEmailVerification(false);
           fetchUserProfile(session.user.id);
         }
       } else {
+        console.log('AuthProvider - No initial session found');
         setLoading(false);
       }
       
@@ -198,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         aud: 'authenticated'
       };
 
-      console.log('AuthProvider - User profile loaded:', { 
+      console.log('AuthProvider - User profile loaded successfully:', { 
         id: userProfile.id, 
         email: userProfile.email, 
         role: userProfile.role,
@@ -351,6 +357,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('No email address found');
       }
 
+      console.log('AuthProvider - Resending verification email to:', signupEmail);
       const redirectUrl = `${window.location.origin}/auth/callback`;
 
       const { error } = await supabase.auth.resend({
@@ -362,6 +369,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) throw error;
+      
+      console.log('AuthProvider - Verification email resent successfully');
     } catch (error: any) {
       console.error('Error resending verification email:', error);
       throw error;

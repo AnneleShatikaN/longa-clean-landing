@@ -24,17 +24,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { user, isLoading, isInitialized, refreshUser } = useAuth();
   const location = useLocation();
 
-  console.log('ProtectedRoute Debug:', {
+  console.log('ProtectedRoute - Access check:', {
+    path: location.pathname,
     user: user ? { id: user.id, email: user.email, role: user.role } : null,
     requiredRole,
     allowedRoles,
     isLoading,
     isInitialized,
-    currentPath: location.pathname
+    requireAuth
   });
 
   // Show loading while auth is initializing
   if (!isInitialized || isLoading) {
+    console.log('ProtectedRoute - Showing loading state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -47,7 +49,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Redirect to auth if authentication is required and user is not logged in
   if (requireAuth && !user) {
-    console.log('ProtectedRoute - Redirecting to auth: no user found');
+    console.log('ProtectedRoute - Redirecting to auth: no user found for path:', location.pathname);
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
@@ -58,7 +60,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       ? userRole === requiredRole
       : allowedRoles?.includes(userRole);
 
-    console.log('ProtectedRoute - Access check:', {
+    console.log('ProtectedRoute - Role-based access check:', {
+      path: location.pathname,
       userRole,
       hasAccess,
       requiredRole,
@@ -66,6 +69,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     });
 
     if (!hasAccess) {
+      console.log('ProtectedRoute - Access denied for user role:', userRole, 'on path:', location.pathname);
       return (
         <div className="min-h-screen flex items-center justify-center p-4">
           <div className="max-w-md w-full">
@@ -108,5 +112,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }
 
+  console.log('ProtectedRoute - Access granted for path:', location.pathname);
   return <>{children}</>;
 };

@@ -20,6 +20,7 @@ import ProviderVerification from '@/pages/ProviderVerification';
 import Search from '@/pages/Search';
 import Contact from '@/pages/Contact';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { AuthCallback } from '@/components/auth/AuthCallback';
 import PaymentInstructions from '@/pages/PaymentInstructions';
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
                   {/* Public routes */}
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/services" element={<Services />} />
                   <Route path="/services/:id" element={<ServiceDetails />} />
                   <Route path="/subscription-packages" element={<SubscriptionPackages />} />

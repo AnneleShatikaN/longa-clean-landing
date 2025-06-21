@@ -34,12 +34,11 @@ const ServicesContent = () => {
 
   const handleServiceClick = (serviceId: string) => {
     console.log('Services: Navigating to service details for ID:', serviceId);
-    // Ensure we're passing the correct service ID
     if (!serviceId) {
       console.error('Services: No service ID provided');
       return;
     }
-    navigate(`/services/${serviceId}`);
+    navigate(`/service/${serviceId}`);
   };
 
   const handleBookService = (serviceId: string) => {
@@ -52,7 +51,7 @@ const ServicesContent = () => {
       console.error('Services: No service ID provided for booking');
       return;
     }
-    navigate(`/services/${serviceId}`);
+    navigate(`/service/${serviceId}/book`);
   };
 
   const filteredServices = activeServices.filter(service => {
@@ -65,7 +64,7 @@ const ServicesContent = () => {
   const categories = [
     { value: 'all', label: 'All Services' },
     { value: 'one-off', label: 'One-time Services' },
-    { value: 'subscription', label: 'Subscription Services' }
+    { value: 'subscription', label: 'Package Services' }
   ];
 
   if (isLoading) {
@@ -81,28 +80,28 @@ const ServicesContent = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-4 sm:py-8">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 sm:mb-8">
           <Button
             variant="outline"
             size="sm"
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
+            className="flex items-center gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 w-fit"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 font-['Inter']">Our Services</h1>
-            <p className="text-xl text-gray-600 mt-2">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 font-['Inter']">Our Services</h1>
+            <p className="text-lg sm:text-xl text-gray-600 mt-2">
               Discover professional cleaning services in your area
             </p>
           </div>
         </div>
 
         {/* Search and Filters */}
-        <div className="mb-8 space-y-4 md:space-y-0 md:flex md:items-center md:gap-4">
+        <div className="mb-6 sm:mb-8 space-y-4 md:space-y-0 md:flex md:items-center md:gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
@@ -127,18 +126,18 @@ const ServicesContent = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row gap-4 mb-6 sm:mb-8">
           {user ? (
             <Button 
               onClick={() => navigate('/search')} 
-              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full px-8"
+              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full px-6 sm:px-8"
             >
               Browse & Book Services
             </Button>
           ) : (
             <Button 
               onClick={() => navigate('/auth')} 
-              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full px-8"
+              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full px-6 sm:px-8"
             >
               Sign In to Book Services
             </Button>
@@ -146,7 +145,7 @@ const ServicesContent = () => {
           <Button 
             variant="outline" 
             onClick={() => navigate('/subscription-packages')}
-            className="border-purple-200 text-purple-700 hover:bg-purple-50 rounded-full px-8"
+            className="border-purple-200 text-purple-700 hover:bg-purple-50 rounded-full px-6 sm:px-8"
           >
             View Packages & Save
           </Button>
@@ -154,10 +153,10 @@ const ServicesContent = () => {
 
         {/* Services Grid */}
         {filteredServices.length === 0 ? (
-          <Card className="text-center py-12">
+          <Card className="text-center py-8 sm:py-12">
             <CardContent>
-              <Search className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No services found</h3>
+              <Search className="h-12 sm:h-16 w-12 sm:w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No services found</h3>
               <p className="text-gray-600 mb-6">
                 {searchQuery ? 'Try adjusting your search terms' : 'No services are currently available'}
               </p>
@@ -176,24 +175,23 @@ const ServicesContent = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredServices.map((service) => {
               const IconComponent = getServiceIcon(service.name);
-              console.log('Rendering service card with ID:', service.id); // Debug log
               return (
                 <Card key={service.id} className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg group cursor-pointer">
                   <CardHeader className="text-center pb-4">
-                    <div className="bg-gradient-to-r from-purple-100 to-purple-200 p-4 rounded-full w-fit mx-auto mb-4 group-hover:scale-110 transition-transform">
-                      <IconComponent className="h-8 w-8 text-purple-600" />
+                    <div className="bg-gradient-to-r from-purple-100 to-purple-200 p-3 sm:p-4 rounded-full w-fit mx-auto mb-4 group-hover:scale-110 transition-transform">
+                      <IconComponent className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
                     </div>
-                    <CardTitle className="text-xl font-bold font-['Inter']">{service.name}</CardTitle>
+                    <CardTitle className="text-lg sm:text-xl font-bold font-['Inter']">{service.name}</CardTitle>
                     <Badge variant={service.type === 'subscription' ? 'default' : 'secondary'} className="w-fit mx-auto">
-                      {service.type === 'subscription' ? 'Subscription' : 'One-time'}
+                      {service.type === 'subscription' ? 'Package' : 'One-time'}
                     </Badge>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <p className="text-gray-600 text-center line-clamp-2">
+                      <p className="text-gray-600 text-center line-clamp-2 text-sm sm:text-base">
                         {service.description || 'Professional cleaning service'}
                       </p>
                       
@@ -204,7 +202,7 @@ const ServicesContent = () => {
                         </div>
                         <div className="flex items-center gap-1">
                           <DollarSign className="h-4 w-4" />
-                          <span className="font-semibold text-lg text-gray-900">N${service.clientPrice}</span>
+                          <span className="font-semibold text-base sm:text-lg text-gray-900">N${service.clientPrice}</span>
                         </div>
                       </div>
 
@@ -221,14 +219,14 @@ const ServicesContent = () => {
                       <div className="space-y-2">
                         <Button 
                           onClick={() => handleBookService(service.id)} 
-                          className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full"
+                          className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full text-sm sm:text-base"
                         >
                           {user ? 'Book Now' : 'Sign In to Book'}
                         </Button>
                         <Button 
                           variant="outline" 
                           onClick={() => handleServiceClick(service.id)}
-                          className="w-full border-purple-200 text-purple-700 hover:bg-purple-50 rounded-full"
+                          className="w-full border-purple-200 text-purple-700 hover:bg-purple-50 rounded-full text-sm sm:text-base"
                         >
                           View Details
                         </Button>
@@ -242,8 +240,8 @@ const ServicesContent = () => {
         )}
 
         {/* Call to Action */}
-        <div className="mt-16 text-center bg-white p-8 rounded-2xl shadow-lg">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4 font-['Inter']">
+        <div className="mt-12 sm:mt-16 text-center bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-['Inter']">
             Can't find what you're looking for?
           </h2>
           <p className="text-gray-600 mb-6">
@@ -252,14 +250,14 @@ const ServicesContent = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               onClick={() => navigate('/contact')}
-              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full px-8"
+              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full px-6 sm:px-8"
             >
               Contact Support
             </Button>
             <Button 
               variant="outline" 
               onClick={() => navigate('/subscription-packages')}
-              className="border-purple-200 text-purple-700 hover:bg-purple-50 rounded-full px-8"
+              className="border-purple-200 text-purple-700 hover:bg-purple-50 rounded-full px-6 sm:px-8"
             >
               View Packages
             </Button>

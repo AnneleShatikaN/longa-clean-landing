@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -64,6 +64,7 @@ const ProviderDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const tabsRef = useRef<HTMLDivElement>(null);
   const [stats, setStats] = useState<ProviderStats>({
     totalJobs: 0,
     monthlyJobs: 0,
@@ -227,6 +228,21 @@ const ProviderDashboard = () => {
     user?.verification_status === 'unverified' || 
     user?.verification_status === null;
 
+  // Function to handle Set Location button click
+  const handleSetLocationClick = () => {
+    setActiveTab('location');
+    
+    // Smooth scroll to tabs section with a slight delay to ensure tab content is rendered
+    setTimeout(() => {
+      if (tabsRef.current) {
+        tabsRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }
+    }, 100);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
@@ -294,7 +310,7 @@ const ProviderDashboard = () => {
                     </p>
                   </div>
                   <Button 
-                    onClick={() => setActiveTab('location')}
+                    onClick={handleSetLocationClick}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     Set Location
@@ -361,34 +377,37 @@ const ProviderDashboard = () => {
         </div>
 
         {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Overview
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6" ref={tabsRef}>
+          <TabsList className="flex flex-wrap w-full justify-start gap-1 h-auto p-1 bg-muted/50 lg:grid lg:grid-cols-7">
+            <TabsTrigger value="overview" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Overview</span>
+              <span className="sm:hidden">Home</span>
             </TabsTrigger>
-            <TabsTrigger value="jobs" className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4" />
+            <TabsTrigger value="jobs" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+              <Briefcase className="h-3 w-3 sm:h-4 sm:w-4" />
               Jobs
             </TabsTrigger>
-            <TabsTrigger value="assigned-jobs" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Assigned Jobs
+            <TabsTrigger value="assigned-jobs" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Assigned Jobs</span>
+              <span className="sm:hidden">Assigned</span>
             </TabsTrigger>
-            <TabsTrigger value="location" className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
+            <TabsTrigger value="location" className={`flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap ${activeTab === 'location' ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}>
+              <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
               Location
             </TabsTrigger>
-            <TabsTrigger value="banking" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
+            <TabsTrigger value="banking" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+              <CreditCard className="h-3 w-3 sm:h-4 sm:w-4" />
               Banking
             </TabsTrigger>
-            <TabsTrigger value="verification" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Verification
+            <TabsTrigger value="verification" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+              <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Verification</span>
+              <span className="sm:hidden">Verify</span>
             </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
+            <TabsTrigger value="profile" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+              <User className="h-3 w-3 sm:h-4 sm:w-4" />
               Profile
             </TabsTrigger>
           </TabsList>

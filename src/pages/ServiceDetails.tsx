@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Clock, DollarSign, Loader2, MapPin, Users } from 'lucide-react';
-import { useServices } from '@/contexts/ServiceContext';
+import { useServicesEnhanced } from '@/hooks/useServicesEnhanced';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceErrorBoundary } from '@/components/common/ServiceErrorBoundary';
 
@@ -14,12 +14,14 @@ const ServiceDetailsContent = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { getServiceById, isLoading, error } = useServices();
+  const { services, getServiceById, isLoading, error } = useServicesEnhanced();
 
   console.log('ServiceDetails: Service ID from params:', id);
-  console.log('ServiceDetails: Current location:', location.pathname);
+  console.log('ServiceDetails: Services loaded:', services.length);
+  console.log('ServiceDetails: Is loading:', isLoading);
 
-  const service = id ? getServiceById(id) : null;
+  // Wait for services to load before trying to find the service
+  const service = id && !isLoading ? getServiceById(id) : null;
   console.log('ServiceDetails: Found service:', service);
 
   const handleBookNow = () => {
@@ -37,10 +39,10 @@ const ServiceDetailsContent = () => {
     }
 
     console.log('ServiceDetails: Navigating to booking with service ID:', service.id);
-    // Navigate to booking page with service ID
     navigate(`/one-off-booking?service_id=${service.id}`);
   };
 
+  // Show loading state while services are being fetched
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -52,6 +54,7 @@ const ServiceDetailsContent = () => {
     );
   }
 
+  // Show error state if there's an error loading services
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-white flex items-center justify-center">
@@ -73,7 +76,8 @@ const ServiceDetailsContent = () => {
     );
   }
 
-  if (!service) {
+  // Show service not found if ID is provided but service doesn't exist
+  if (id && !service) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -96,10 +100,28 @@ const ServiceDetailsContent = () => {
     );
   }
 
-  const formatDuration = (duration: { hours: number; minutes: number }) => {
-    const totalMinutes = duration.hours * 60 + duration.minutes;
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
+  // Show message if no service ID is provided
+  if (!id) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">No Service Selected</h1>
+            <p className="text-gray-600 mb-6">
+              Please select a service to view its details.
+            </p>
+            <Button onClick={() => navigate('/services')} variant="default">
+              Browse All Services
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const formatDuration = (duration_minutes: number) => {
+    const hours = Math.floor(duration_minutes / 60);
+    const mins = duration_minutes % 60;
     if (hours > 0) {
       return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
     }
@@ -107,7 +129,7 @@ const ServiceDetailsContent = () => {
   };
 
   // Get coverage areas from service data, fallback to default areas
-  const coverageAreas = service.coverageAreas || ['windhoek', 'walvis_bay', 'swakopmund'];
+  const coverageAreas = service.coverage_areas || ['windhoek', 'walvis_bay', 'swakopmund'];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -132,20 +154,20 @@ const ServiceDetailsContent = () => {
                 <div>
                   <CardTitle className="text-2xl mb-2">{service.name}</CardTitle>
                   <div className="flex gap-2 mb-4">
-                    <Badge variant={service.type === 'one-off' ? 'default' : 'secondary'}>
-                      {service.type === 'one-off' ? 'One-time Service' : 'Subscription Service'}
+                    <Badge variant={service.service_type === 'one-off' ? 'default' : 'secondary'}>
+                      {service.service_type === 'one-off' ? 'One-time Service' : 'Subscription Service'}
                     </Badge>
                     <Badge variant="outline" className="text-green-700 border-green-300">
-                      {service.status === 'active' ? 'Available' : 'Unavailable'}
+                      {service.is_active ? 'Available' : 'Unavailable'}
                     </Badge>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-1 text-2xl font-bold text-blue-600">
                     <DollarSign className="h-6 w-6" />
-                    <span>N${service.clientPrice}</span>
+                    <span>N${service.client_price}</span>
                   </div>
-                  {service.type === 'subscription' && (
+                  {service.service_type === 'subscription' && (
                     <p className="text-sm text-gray-500">per service</p>
                   )}
                 </div>
@@ -164,21 +186,21 @@ const ServiceDetailsContent = () => {
                   <Clock className="h-5 w-5 text-blue-600" />
                   <div>
                     <p className="text-sm text-gray-600">Duration</p>
-                    <p className="font-semibold">{formatDuration(service.duration)}</p>
+                    <p className="font-semibold">{formatDuration(service.duration_minutes)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                   <DollarSign className="h-5 w-5 text-green-600" />
                   <div>
                     <p className="text-sm text-gray-600">Price</p>
-                    <p className="font-semibold">N${service.clientPrice}</p>
+                    <p className="font-semibold">N${service.client_price}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                   <Users className="h-5 w-5 text-purple-600" />
                   <div>
                     <p className="text-sm text-gray-600">Type</p>
-                    <p className="font-semibold capitalize">{service.type}</p>
+                    <p className="font-semibold capitalize">{service.service_type}</p>
                   </div>
                 </div>
               </div>
@@ -215,7 +237,7 @@ const ServiceDetailsContent = () => {
                   onClick={handleBookNow}
                   size="lg" 
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
-                  disabled={service.status !== 'active'}
+                  disabled={!service.is_active}
                 >
                   {user ? 'Book This Service' : 'Sign In to Book'}
                 </Button>
@@ -237,7 +259,7 @@ const ServiceDetailsContent = () => {
                 </div>
               )}
 
-              {service.status !== 'active' && (
+              {!service.is_active && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
                   <p className="text-yellow-800">
                     <strong>Service Unavailable</strong> This service is currently not available for booking. Please check back later or contact support.

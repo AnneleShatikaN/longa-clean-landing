@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, MapPin, Info, DollarSign, Home } from 'lucide-react';
@@ -13,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
+import TownSuburbSelector from '@/components/location/TownSuburbSelector';
 
 const OneOffBooking = () => {
   const navigate = useNavigate();
@@ -27,9 +29,12 @@ const OneOffBooking = () => {
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('09:00');
   const [specialInstructions, setSpecialInstructions] = useState('');
-  const [clientLocation, setClientLocation] = useState('');
   const [serviceAddress, setServiceAddress] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Client location state
+  const [clientTown, setClientTown] = useState('');
+  const [clientSuburb, setClientSuburb] = useState('');
 
   // Get service ID from URL params
   const serviceId = searchParams.get('service_id');
@@ -44,9 +49,10 @@ const OneOffBooking = () => {
   }, [serviceId, getServiceById, servicesLoading]);
 
   useEffect(() => {
-    // Pre-fill client location from user profile
+    // Pre-fill client location from user profile if available
     if (user) {
-      setClientLocation(user.current_work_location || 'Windhoek');
+      if (user.town) setClientTown(user.town);
+      if (user.suburb) setClientSuburb(user.suburb);
     }
   }, [user]);
 
@@ -90,10 +96,10 @@ const OneOffBooking = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedService || !bookingDate || !user || !serviceAddress.trim()) {
+    if (!selectedService || !bookingDate || !user || !serviceAddress.trim() || !clientTown || !clientSuburb) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields including the service address.",
+        description: "Please fill in all required fields including town, suburb, and service address.",
         variant: "destructive",
       });
       return;
@@ -123,7 +129,7 @@ const OneOffBooking = () => {
     setIsSubmitting(true);
 
     try {
-      // Create pending transaction instead of direct booking
+      // Create pending transaction with client location data
       const { data: transaction, error } = await supabase
         .from('pending_transactions')
         .insert({
@@ -136,9 +142,10 @@ const OneOffBooking = () => {
             booking_time: bookingTime,
             special_instructions: specialInstructions,
             duration_minutes: selectedService.duration_minutes || 180,
-            location_town: clientLocation.toLowerCase(),
             emergency_booking: false,
-            service_address: serviceAddress
+            service_address: serviceAddress,
+            client_town: clientTown,
+            client_suburb: clientSuburb
           }
         })
         .select()
@@ -268,6 +275,24 @@ const OneOffBooking = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Client Location Selection */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2 text-base">
+                  <MapPin className="h-4 w-4" />
+                  Service Location *
+                </Label>
+                <TownSuburbSelector
+                  town={clientTown}
+                  suburb={clientSuburb}
+                  onTownChange={setClientTown}
+                  onSuburbChange={setClientSuburb}
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-gray-600 italic">
+                  Select your town and suburb to help us find the best provider near you
+                </p>
+              </div>
+
               {/* Service Address */}
               <div className="space-y-3">
                 <Label htmlFor="serviceAddress" className="flex items-center gap-2 text-base">
@@ -278,32 +303,13 @@ const OneOffBooking = () => {
                   id="serviceAddress"
                   value={serviceAddress}
                   onChange={(e) => setServiceAddress(e.target.value)}
-                  placeholder="Street name, house number, suburb..."
+                  placeholder="Street name, house number, apartment/complex details..."
                   required
                   rows={3}
                   style={{ width: '100%', fontSize: '14px' }}
                 />
                 <p className="text-xs text-gray-600 italic">
                   Please provide the complete address where the service should be performed
-                </p>
-              </div>
-
-              {/* Client Location */}
-              <div className="space-y-3">
-                <Label htmlFor="location" className="flex items-center gap-2 text-base">
-                  <MapPin className="h-4 w-4" />
-                  Service Location
-                </Label>
-                <Input
-                  id="location"
-                  value={clientLocation}
-                  onChange={(e) => setClientLocation(e.target.value)}
-                  placeholder="Enter your location"
-                  required
-                  style={{ padding: '10px', fontSize: '14px' }}
-                />
-                <p className="text-xs text-gray-600 italic">
-                  Providers near you will be matched
                 </p>
               </div>
 
@@ -405,7 +411,7 @@ const OneOffBooking = () => {
                   </div>
                   <div className="flex justify-between">
                     <span>Location:</span>
-                    <span>{clientLocation}</span>
+                    <span>{clientSuburb && clientTown ? `${clientSuburb}, ${clientTown}` : 'Not selected'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Service Address:</span>
@@ -426,7 +432,8 @@ const OneOffBooking = () => {
                   <li>2. You'll receive detailed payment instructions</li>
                   <li>3. Complete payment via bank transfer</li>
                   <li>4. Admin will verify payment and approve booking</li>
-                  <li>5. Provider will be assigned and contact you</li>
+                  <li>5. Provider will be assigned based on your location</li>
+                  <li>6. Provider will contact you to confirm details</li>
                 </ol>
                 
                 {/* Show payment instructions preview if available */}
@@ -445,7 +452,7 @@ const OneOffBooking = () => {
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={!bookingDate || !serviceAddress.trim() || isSubmitting || !selectedService.client_price}
+                disabled={!bookingDate || !serviceAddress.trim() || !clientTown || !clientSuburb || isSubmitting || !selectedService.client_price}
                 className="w-full bg-blue-900 hover:bg-blue-800 text-white"
                 style={{ 
                   fontSize: '16px', 

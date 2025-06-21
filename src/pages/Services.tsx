@@ -34,6 +34,11 @@ const ServicesContent = () => {
 
   const handleServiceClick = (serviceId: string) => {
     console.log('Services: Navigating to service details for ID:', serviceId);
+    // Ensure we're passing the correct service ID
+    if (!serviceId) {
+      console.error('Services: No service ID provided');
+      return;
+    }
     navigate(`/services/${serviceId}`);
   };
 
@@ -41,6 +46,10 @@ const ServicesContent = () => {
     console.log('Services: Book service clicked for ID:', serviceId);
     if (!user) {
       navigate('/auth');
+      return;
+    }
+    if (!serviceId) {
+      console.error('Services: No service ID provided for booking');
       return;
     }
     navigate(`/services/${serviceId}`);
@@ -170,6 +179,7 @@ const ServicesContent = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredServices.map((service) => {
               const IconComponent = getServiceIcon(service.name);
+              console.log('Rendering service card with ID:', service.id); // Debug log
               return (
                 <Card key={service.id} className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg group cursor-pointer">
                   <CardHeader className="text-center pb-4">

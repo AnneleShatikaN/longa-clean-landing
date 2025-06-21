@@ -14,6 +14,7 @@ interface BookingData {
   durationMinutes: number;
   clientTown?: string;
   clientSuburb?: string;
+  serviceAddress?: string;
 }
 
 interface BookingResult {
@@ -91,7 +92,7 @@ export const useSecureBooking = () => {
       const acceptanceDeadline = new Date();
       acceptanceDeadline.setHours(acceptanceDeadline.getHours() + 24);
 
-      // Create booking with location data
+      // Create booking with comprehensive location data
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert({
@@ -107,7 +108,7 @@ export const useSecureBooking = () => {
           location_town: bookingData.clientTown || 'Windhoek',
           client_town: bookingData.clientTown || 'Windhoek',
           client_suburb: bookingData.clientSuburb || 'CBD',
-          service_address: `${bookingData.clientSuburb || 'CBD'}, ${bookingData.clientTown || 'Windhoek'}`,
+          service_address: bookingData.serviceAddress || `${bookingData.clientSuburb || 'CBD'}, ${bookingData.clientTown || 'Windhoek'}`,
           status: 'pending'
         })
         .select()

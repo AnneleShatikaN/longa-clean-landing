@@ -12,6 +12,7 @@ interface TownSuburbSelectorProps {
   showMaxDistance?: boolean;
   maxDistance?: number;
   onMaxDistanceChange?: (distance: number) => void;
+  prefilterTown?: string; // New prop to pre-filter based on provider's registered town
 }
 
 const TOWNS = [
@@ -43,7 +44,8 @@ const TownSuburbSelector: React.FC<TownSuburbSelectorProps> = ({
   disabled = false,
   showMaxDistance = false,
   maxDistance = 2,
-  onMaxDistanceChange
+  onMaxDistanceChange,
+  prefilterTown
 }) => {
   const handleTownChange = (newTown: string) => {
     onTownChange(newTown);
@@ -51,24 +53,40 @@ const TownSuburbSelector: React.FC<TownSuburbSelectorProps> = ({
     onSuburbChange('');
   };
 
-  const availableSuburbs = town ? SUBURBS[town as keyof typeof SUBURBS] || [] : [];
+  // Filter towns based on prefilterTown if provided
+  const availableTowns = prefilterTown 
+    ? TOWNS.filter(t => t.value === prefilterTown)
+    : TOWNS;
+
+  // Get suburbs for the selected town, or prefiltered town
+  const selectedTown = town || prefilterTown;
+  const availableSuburbs = selectedTown ? SUBURBS[selectedTown as keyof typeof SUBURBS] || [] : [];
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="town">Town</Label>
-        <Select value={town} onValueChange={handleTownChange} disabled={disabled}>
+        <Select 
+          value={town} 
+          onValueChange={handleTownChange} 
+          disabled={disabled || Boolean(prefilterTown)}
+        >
           <SelectTrigger>
-            <SelectValue placeholder="Select a town" />
+            <SelectValue placeholder={prefilterTown ? prefilterTown : "Select a town"} />
           </SelectTrigger>
           <SelectContent>
-            {TOWNS.map((townOption) => (
+            {availableTowns.map((townOption) => (
               <SelectItem key={townOption.value} value={townOption.value}>
                 {townOption.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        {prefilterTown && (
+          <p className="text-xs text-gray-600">
+            Town is set based on your registration location: {prefilterTown}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -76,10 +94,10 @@ const TownSuburbSelector: React.FC<TownSuburbSelectorProps> = ({
         <Select 
           value={suburb} 
           onValueChange={onSuburbChange} 
-          disabled={disabled || !town}
+          disabled={disabled || !selectedTown}
         >
           <SelectTrigger>
-            <SelectValue placeholder={town ? "Select a suburb" : "Select a town first"} />
+            <SelectValue placeholder={selectedTown ? "Select a suburb" : "Select a town first"} />
           </SelectTrigger>
           <SelectContent>
             {availableSuburbs.map((suburbOption) => (

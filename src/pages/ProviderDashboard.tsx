@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ProviderBankingDetails } from '@/components/provider/ProviderBankingDetails';
 import ProviderProfileTab from '@/components/provider/ProviderProfileTab';
+import ProviderLocationSettings from '@/components/provider/ProviderLocationSettings';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -279,6 +280,31 @@ const ProviderDashboard = () => {
           </div>
         )}
 
+        {/* Location Setup Alert */}
+        {(!user?.town || !user?.suburb) && (
+          <div className="mb-8">
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-5 w-5 text-blue-600" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-blue-800">Location Setup Required</h3>
+                    <p className="text-sm text-blue-700">
+                      Set your work location to receive automatic job assignments in your area.
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => setActiveTab('location')}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Set Location
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -336,7 +362,7 @@ const ProviderDashboard = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Overview
@@ -348,6 +374,10 @@ const ProviderDashboard = () => {
             <TabsTrigger value="assigned-jobs" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Assigned Jobs
+            </TabsTrigger>
+            <TabsTrigger value="location" className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Location
             </TabsTrigger>
             <TabsTrigger value="banking" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
@@ -515,6 +545,10 @@ const ProviderDashboard = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="location">
+            <ProviderLocationSettings />
           </TabsContent>
 
           <TabsContent value="banking">

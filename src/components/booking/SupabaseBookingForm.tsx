@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,7 @@ import { PaymentFlow } from '@/components/payment/PaymentFlow';
 import { ProviderSelection } from '@/components/providers/ProviderSelection';
 import { RecurringBookingForm } from '@/components/booking/RecurringBookingForm';
 import { cn } from '@/lib/utils';
+import TownSuburbSelector from '@/components/location/TownSuburbSelector';
 
 interface SupabaseBookingFormProps {
   serviceId?: string;
@@ -56,6 +56,10 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
   const [preferredDay, setPreferredDay] = useState(1); // Monday by default
   const [recurringEndDate, setRecurringEndDate] = useState<string>();
 
+  // Location state
+  const [clientTown, setClientTown] = useState('');
+  const [clientSuburb, setClientSuburb] = useState('');
+
   useEffect(() => {
     if (serviceId) {
       const service = services.find(s => s.id === serviceId);
@@ -82,12 +86,12 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedService || !bookingDate || !user || !selectedProviderId) {
+    if (!selectedService || !bookingDate || !user || !selectedProviderId || !clientTown || !clientSuburb) {
       return;
     }
 
     try {
-      // Create the initial booking
+      // Create the initial booking with location data
       const result = await createSecureBooking({
         serviceId: selectedService.id,
         bookingDate: format(bookingDate, 'yyyy-MM-dd'),
@@ -95,7 +99,9 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
         totalAmount: selectedService.clientPrice,
         specialInstructions: specialInstructions || undefined,
         emergencyBooking,
-        durationMinutes: selectedService.duration.hours * 60 + selectedService.duration.minutes
+        durationMinutes: selectedService.duration.hours * 60 + selectedService.duration.minutes,
+        clientTown,
+        clientSuburb
       });
 
       if (result.success && result.bookingId) {
@@ -241,6 +247,19 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
                 </Alert>
               )}
 
+              {/* Service Location */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Service Location</h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <TownSuburbSelector
+                    town={clientTown}
+                    suburb={clientSuburb}
+                    onTownChange={setClientTown}
+                    onSuburbChange={setClientSuburb}
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label>Select Date</Label>
                 <Popover>
@@ -333,6 +352,10 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
                     <span>{selectedService?.name}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span>Location:</span>
+                    <span>{clientSuburb && clientTown ? `${clientSuburb}, ${clientTown}` : 'Not selected'}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span>Date:</span>
                     <span>{bookingDate ? format(bookingDate, 'MMM dd, yyyy') : 'Not selected'}</span>
                   </div>
@@ -366,7 +389,7 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
               
               <Button
                 type="submit"
-                disabled={!bookingDate || isLoading || !selectedProviderId}
+                disabled={!bookingDate || isLoading || !selectedProviderId || !clientTown || !clientSuburb}
                 className="w-full"
               >
                 {isLoading ? 'Creating Booking...' : (
@@ -391,7 +414,9 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
             booking_time: bookingTime,
             special_instructions: specialInstructions,
             emergency_booking: emergencyBooking,
-            duration_minutes: selectedService ? selectedService.duration.hours * 60 + selectedService.duration.minutes : 60
+            duration_minutes: selectedService ? selectedService.duration.hours * 60 + selectedService.duration.minutes : 60,
+            client_town: clientTown,
+            client_suburb: clientSuburb
           }}
           onPaymentSubmitted={() => setShowPaymentFlow(false)}
         />

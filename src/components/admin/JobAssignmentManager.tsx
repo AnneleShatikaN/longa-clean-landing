@@ -4,110 +4,153 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Calendar, Clock, MapPin, User, Star, Briefcase } from 'lucide-react';
-import { format } from 'date-fns';
+import { MapPin, User, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
-export const JobAssignmentManager: React.FC = () => {
+interface UnassignedJob {
+  id: string;
+  client_name: string;
+  service_name: string;
+  client_town: string;
+  client_suburb: string;
+  booking_date: string;
+  booking_time: string;
+  total_amount: number;
+  assignment_status: string;
+  created_at: string;
+}
+
+interface AvailableProvider {
+  id: string;
+  full_name: string;
+  town: string;
+  suburb: string;
+  max_distance: number;
+  rating: number;
+  total_jobs: number;
+}
+
+const JobAssignmentManager: React.FC = () => {
   const { toast } = useToast();
-  const [unassignedBookings, setUnassignedBookings] = useState([]);
-  const [availableProviders, setAvailableProviders] = useState([]);
-  const [selectedBooking, setSelectedBooking] = useState(null);
-  const [selectedProvider, setSelectedProvider] = useState('');
-  const [assignmentReason, setAssignmentReason] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [unassignedJobs, setUnassignedJobs] = useState<UnassignedJob[]>([]);
+  const [availableProviders, setAvailableProviders] = useState<AvailableProvider[]>([]);
+  const [selectedJob, setSelectedJob] = useState<string>('');
+  const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchUnassignedBookings();
-  }, []);
-
-  const fetchUnassignedBookings = async () => {
-    setIsLoading(true);
+  const fetchUnassignedJobs = async () => {
     try {
       const { data, error } = await supabase
         .from('bookings')
         .select(`
-          *,
-          service:services(*),
-          client:users!bookings_client_id_fkey(*)
+          id,
+          client_town,
+          client_suburb,
+          booking_date,
+          booking_time,
+          total_amount,
+          assignment_status,
+          created_at,
+          service:services(name),
+          client:users!bookings_client_id_fkey(full_name)
         `)
-        .eq('status', 'pending')
-        .is('provider_id', null)
+        .in('assignment_status', ['manual_assignment_required', 'unassigned'])
+        .is('assigned_provider_id', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUnassignedBookings(data || []);
+
+      const formattedJobs = (data || []).map(job => ({
+        id: job.id,
+        client_name: job.client?.full_name || 'Unknown Client',
+        service_name: job.service?.name || 'Unknown Service',
+        client_town: job.client_town || 'Unknown',
+        client_suburb: job.client_suburb || 'Unknown',
+        booking_date: job.booking_date,
+        booking_time: job.booking_time,
+        total_amount: job.total_amount,
+        assignment_status: job.assignment_status,
+        created_at: job.created_at
+      }));
+
+      setUnassignedJobs(formattedJobs);
     } catch (error) {
-      console.error('Error fetching unassigned bookings:', error);
+      console.error('Error fetching unassigned jobs:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch unassigned bookings",
+        description: "Failed to load unassigned jobs",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const fetchAvailableProviders = async (booking: any) => {
+  const fetchAvailableProviders = async (jobTown: string) => {
     try {
-      const { data, error } = await supabase.rpc('find_available_providers_for_booking', {
-        p_service_id: booking.service_id,
-        p_booking_date: booking.booking_date,
-        p_booking_time: booking.booking_time,
-        p_duration_minutes: booking.duration_minutes || 60,
-        p_location_town: booking.location_town || 'windhoek'
-      });
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, full_name, town, suburb, max_distance, rating, total_jobs')
+        .eq('role', 'provider')
+        .eq('is_active', true)
+        .eq('is_available', true)
+        .eq('verification_status', 'verified')
+        .eq('town', jobTown)
+        .order('rating', { ascending: false });
 
       if (error) throw error;
       setAvailableProviders(data || []);
     } catch (error) {
-      console.error('Error fetching available providers:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch available providers",
-        variant: "destructive",
-      });
+      console.error('Error fetching providers:', error);
     }
   };
 
-  const handleAssignJob = async () => {
-    if (!selectedBooking || !selectedProvider) return;
+  const handleJobSelect = (jobId: string) => {
+    setSelectedJob(jobId);
+    setSelectedProvider('');
+    
+    const job = unassignedJobs.find(j => j.id === jobId);
+    if (job) {
+      fetchAvailableProviders(job.client_town);
+    }
+  };
+
+  const assignJobToProvider = async () => {
+    if (!selectedJob || !selectedProvider) return;
 
     setIsAssigning(true);
+    
     try {
-      const { data, error } = await supabase.rpc('assign_booking_to_provider', {
-        p_booking_id: selectedBooking.id,
-        p_provider_id: selectedProvider,
-        p_assigned_by: (await supabase.auth.getUser()).data.user?.id,
-        p_assignment_reason: assignmentReason,
-        p_auto_assigned: false
-      });
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          assigned_provider_id: selectedProvider,
+          assignment_status: 'manually_assigned',
+          status: 'assigned',
+          assigned_at: new Date().toISOString(),
+          assigned_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq('id', selectedJob);
 
       if (error) throw error;
 
-      const result = data as any;
-      if (result.success) {
-        toast({
-          title: "Job Assigned",
-          description: `Job successfully assigned to ${result.provider_name}`,
-        });
-        setSelectedBooking(null);
-        setSelectedProvider('');
-        setAssignmentReason('');
-        fetchUnassignedBookings();
-      } else {
-        throw new Error(result.error);
-      }
+      toast({
+        title: "Job Assigned",
+        description: "The job has been successfully assigned to the selected provider.",
+      });
+
+      // Refresh the lists
+      await fetchUnassignedJobs();
+      setSelectedJob('');
+      setSelectedProvider('');
+      setAvailableProviders([]);
+
     } catch (error) {
       console.error('Error assigning job:', error);
       toast({
         title: "Assignment Failed",
-        description: error.message || "Failed to assign job",
+        description: "Failed to assign the job. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -115,167 +158,145 @@ export const JobAssignmentManager: React.FC = () => {
     }
   };
 
-  const openAssignmentDialog = (booking: any) => {
-    setSelectedBooking(booking);
-    fetchAvailableProviders(booking);
-  };
+  useEffect(() => {
+    fetchUnassignedJobs().finally(() => setIsLoading(false));
+  }, []);
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <p className="text-gray-600">Loading unassigned bookings...</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const selectedJobData = unassignedJobs.find(job => job.id === selectedJob);
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Job Assignment Manager</CardTitle>
-          <p className="text-sm text-gray-600">
-            Assign pending bookings to available providers based on location, expertise, and availability
-          </p>
-        </CardHeader>
-        <CardContent>
-          {unassignedBookings.length === 0 ? (
-            <p className="text-center text-gray-600 py-8">
-              No unassigned bookings found. All current bookings have been assigned.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {unassignedBookings.map((booking) => (
-                <Card key={booking.id} className="border">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{booking.service?.name}</h4>
-                        <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {format(new Date(booking.booking_date), 'MMM dd, yyyy')}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {booking.booking_time}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            <span className="capitalize">{booking.location_town || 'Windhoek'}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <Badge className="bg-orange-100 text-orange-800">
-                        Pending Assignment
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Manual Job Assignment</h2>
+        <Button onClick={fetchUnassignedJobs} variant="outline">
+          Refresh
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Unass igned Jobs */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Unassigned Jobs ({unassignedJobs.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <p className="text-center py-4">Loading unassigned jobs...</p>
+            ) : unassignedJobs.length === 0 ? (
+              <div className="text-center py-8">
+                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                <p className="text-gray-600">All jobs are assigned!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {unassignedJobs.map((job) => (
+                  <div
+                    key={job.id}
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      selectedJob === job.id ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+                    }`}
+                    onClick={() => handleJobSelect(job.id)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium">{job.service_name}</h4>
+                      <Badge variant="outline" className="text-orange-600">
+                        {job.assignment_status.replace('_', ' ')}
                       </Badge>
                     </div>
-
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
-                      <User className="h-3 w-3" />
-                      <span>Client: {booking.client?.full_name}</span>
-                    </div>
-
-                    {booking.special_instructions && (
-                      <div className="mb-3 p-2 bg-gray-50 rounded text-sm">
-                        <strong>Instructions:</strong> {booking.special_instructions}
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <div className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {job.client_name}
                       </div>
-                    )}
-
-                    <div className="flex justify-between items-center">
-                      <div className="font-medium text-lg">N${booking.total_amount}</div>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openAssignmentDialog(booking)}
-                          >
-                            Assign Provider
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Assign Provider to Job</DialogTitle>
-                          </DialogHeader>
-                          
-                          <div className="space-y-4">
-                            <div className="p-4 bg-gray-50 rounded">
-                              <h3 className="font-medium mb-2">{selectedBooking?.service?.name}</h3>
-                              <div className="text-sm text-gray-600 space-y-1">
-                                <div>Date: {selectedBooking && format(new Date(selectedBooking.booking_date), 'MMM dd, yyyy')}</div>
-                                <div>Time: {selectedBooking?.booking_time}</div>
-                                <div>Location: {selectedBooking?.location_town || 'Windhoek'}</div>
-                                <div>Client: {selectedBooking?.client?.full_name}</div>
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium mb-2">Available Providers</label>
-                              <Select value={selectedProvider} onValueChange={setSelectedProvider}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a provider" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {availableProviders.map((provider) => (
-                                    <SelectItem key={provider.provider_id} value={provider.provider_id}>
-                                      <div className="flex items-center gap-2">
-                                        <span>{provider.provider_name}</span>
-                                        <div className="flex items-center gap-1">
-                                          <Star className="h-3 w-3 text-yellow-500" />
-                                          <span className="text-xs">{provider.rating}</span>
-                                        </div>
-                                        <Badge variant="outline" className="text-xs">
-                                          {provider.expertise_level}
-                                        </Badge>
-                                        <span className="text-xs text-gray-500">
-                                          {provider.years_experience}y exp
-                                        </span>
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              {availableProviders.length === 0 && (
-                                <p className="text-sm text-orange-600 mt-1">
-                                  No providers available for this time slot. Consider adjusting the booking time.
-                                </p>
-                              )}
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium mb-2">Assignment Reason (Optional)</label>
-                              <Textarea
-                                value={assignmentReason}
-                                onChange={(e) => setAssignmentReason(e.target.value)}
-                                placeholder="Reason for assigning this specific provider..."
-                                rows={3}
-                              />
-                            </div>
-
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" onClick={() => setSelectedBooking(null)}>
-                                Cancel
-                              </Button>
-                              <Button
-                                onClick={handleAssignJob}
-                                disabled={!selectedProvider || isAssigning}
-                              >
-                                {isAssigning ? 'Assigning...' : 'Assign Job'}
-                              </Button>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {job.client_suburb}, {job.client_town}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(job.booking_date), 'MMM dd, yyyy')} at {job.booking_time}
+                      </div>
+                      <div className="font-medium">N${job.total_amount}</div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Available Providers */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-blue-500" />
+              Available Providers
+              {selectedJobData && (
+                <span className="text-sm font-normal text-gray-600">
+                  in {selectedJobData.client_town}
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!selectedJob ? (
+              <p className="text-center py-8 text-gray-500">
+                Select a job to see available providers
+              </p>
+            ) : availableProviders.length === 0 ? (
+              <p className="text-center py-8 text-gray-500">
+                No available providers in {selectedJobData?.client_town}
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <Select value={selectedProvider} onValueChange={setSelectedProvider}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableProviders.map((provider) => (
+                      <SelectItem key={provider.id} value={provider.id}>
+                        {provider.full_name} - {provider.suburb} (Rating: {provider.rating.toFixed(1)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {selectedProvider && (
+                  <div className="space-y-3">
+                    {availableProviders
+                      .filter(p => p.id === selectedProvider)
+                      .map((provider) => (
+                        <div key={provider.id} className="p-3 border rounded-lg bg-blue-50">
+                          <h4 className="font-medium">{provider.full_name}</h4>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <div>Location: {provider.suburb}, {provider.town}</div>
+                            <div>Max Distance: {provider.max_distance} units</div>
+                            <div>Rating: {provider.rating.toFixed(1)}/5</div>
+                            <div>Total Jobs: {provider.total_jobs}</div>
+                          </div>
+                        </div>
+                      ))}
+
+                    <Button
+                      onClick={assignJobToProvider}
+                      disabled={isAssigning}
+                      className="w-full"
+                    >
+                      {isAssigning ? 'Assigning...' : 'Assign Job to Provider'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
+
+export default JobAssignmentManager;

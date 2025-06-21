@@ -254,11 +254,14 @@ export type Database = {
           acceptance_deadline: string | null
           assigned_at: string | null
           assigned_by: string | null
+          assigned_provider_id: string | null
           assignment_status: string | null
           booking_date: string
           booking_time: string
           check_in_time: string | null
           client_id: string
+          client_suburb: string | null
+          client_town: string | null
           created_at: string | null
           duration_minutes: number | null
           emergency_booking: boolean | null
@@ -285,11 +288,14 @@ export type Database = {
           acceptance_deadline?: string | null
           assigned_at?: string | null
           assigned_by?: string | null
+          assigned_provider_id?: string | null
           assignment_status?: string | null
           booking_date: string
           booking_time: string
           check_in_time?: string | null
           client_id: string
+          client_suburb?: string | null
+          client_town?: string | null
           created_at?: string | null
           duration_minutes?: number | null
           emergency_booking?: boolean | null
@@ -316,11 +322,14 @@ export type Database = {
           acceptance_deadline?: string | null
           assigned_at?: string | null
           assigned_by?: string | null
+          assigned_provider_id?: string | null
           assignment_status?: string | null
           booking_date?: string
           booking_time?: string
           check_in_time?: string | null
           client_id?: string
+          client_suburb?: string | null
+          client_town?: string | null
           created_at?: string | null
           duration_minutes?: number | null
           emergency_booking?: boolean | null
@@ -361,6 +370,27 @@ export type Database = {
           {
             foreignKeyName: "bookings_assigned_by_fkey"
             columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_assigned_provider_id_fkey"
+            columns: ["assigned_provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "bookings_assigned_provider_id_fkey"
+            columns: ["assigned_provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "bookings_assigned_provider_id_fkey"
+            columns: ["assigned_provider_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -869,6 +899,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      location_map: {
+        Row: {
+          created_at: string | null
+          distance: number
+          id: string
+          suburb_a: string
+          suburb_b: string
+          town: string
+        }
+        Insert: {
+          created_at?: string | null
+          distance: number
+          id?: string
+          suburb_a: string
+          suburb_b: string
+          town: string
+        }
+        Update: {
+          created_at?: string | null
+          distance?: number
+          id?: string
+          suburb_a?: string
+          suburb_b?: string
+          town?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -3390,13 +3447,16 @@ export type Database = {
           id: string
           is_active: boolean | null
           is_available: boolean | null
+          max_distance: number | null
           password_hash: string
           phone: string | null
           provider_category: string | null
           rating: number | null
           role: string
           service_coverage_areas: string[] | null
+          suburb: string | null
           total_jobs: number | null
+          town: string | null
           updated_at: string | null
           verification_documents: Json | null
           verification_notes: string | null
@@ -3415,13 +3475,16 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_available?: boolean | null
+          max_distance?: number | null
           password_hash: string
           phone?: string | null
           provider_category?: string | null
           rating?: number | null
           role: string
           service_coverage_areas?: string[] | null
+          suburb?: string | null
           total_jobs?: number | null
+          town?: string | null
           updated_at?: string | null
           verification_documents?: Json | null
           verification_notes?: string | null
@@ -3440,13 +3503,16 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_available?: boolean | null
+          max_distance?: number | null
           password_hash?: string
           phone?: string | null
           provider_category?: string | null
           rating?: number | null
           role?: string
           service_coverage_areas?: string[] | null
+          suburb?: string | null
           total_jobs?: number | null
+          town?: string | null
           updated_at?: string | null
           verification_documents?: Json | null
           verification_notes?: string | null
@@ -3595,6 +3661,10 @@ export type Database = {
           p_auto_assigned?: boolean
         }
         Returns: Json
+      }
+      assign_job_to_provider: {
+        Args: { booking_id: string }
+        Returns: string
       }
       assign_providers_by_category: {
         Args: { p_service_id: string; p_location?: string }

@@ -221,7 +221,10 @@ const ProviderDashboard = () => {
     }
   };
 
-  const needsVerification = !user?.verification_status || user?.verification_status === 'unverified' || user?.verification_status === 'pending';
+  // Update verification check logic
+  const needsVerification = !user?.verification_status || 
+    user?.verification_status === 'unverified' || 
+    user?.verification_status === null;
 
   if (isLoading) {
     return (
@@ -527,23 +530,7 @@ const ProviderDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {needsVerification ? (
-                  <div className="space-y-4">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <h3 className="font-semibold text-yellow-800 mb-2">Verification Required</h3>
-                      <p className="text-yellow-700 mb-4">
-                        You need to complete the verification process to start accepting bookings. 
-                        This includes uploading required documents and providing banking details.
-                      </p>
-                      <Button 
-                        onClick={() => navigate('/provider-verification')}
-                        className="bg-yellow-600 hover:bg-yellow-700"
-                      >
-                        Start Verification Process
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
+                {user?.verification_status === 'verified' ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 border rounded bg-green-50">
                       <div className="flex items-center gap-3">
@@ -577,6 +564,32 @@ const ProviderDashboard = () => {
                         </div>
                         <Badge className="bg-green-100 text-green-800">✓ Verified</Badge>
                       </div>
+                    </div>
+                  </div>
+                ) : user?.verification_status === 'under_review' ? (
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h3 className="font-semibold text-blue-800 mb-2">Verification Under Review</h3>
+                      <p className="text-blue-700">
+                        Your verification documents are currently being reviewed by our team. 
+                        You'll receive an update within 2-3 business days.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h3 className="font-semibold text-yellow-800 mb-2">Verification Required</h3>
+                      <p className="text-yellow-700 mb-4">
+                        You need to complete the verification process to start accepting bookings. 
+                        This includes uploading required documents and providing banking details.
+                      </p>
+                      <Button 
+                        onClick={() => navigate('/provider-verification')}
+                        className="bg-yellow-600 hover:bg-yellow-700"
+                      >
+                        Start Verification Process
+                      </Button>
                     </div>
                   </div>
                 )}

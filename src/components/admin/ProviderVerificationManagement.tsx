@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   User, 
   FileText, 
-  Download, 
   Eye, 
   Calendar,
   Phone,
@@ -27,7 +26,7 @@ interface ProviderApplication {
   phone?: string;
   verification_status: string;
   verification_submitted_at: string;
-  verification_notes?: string; // Add this property
+  verification_notes?: string;
   current_work_location?: string;
   service_coverage_areas?: string[];
   documents: ProviderDocument[];
@@ -55,18 +54,17 @@ export const ProviderVerificationManagement: React.FC = () => {
   const { toast } = useToast();
   const [applications, setApplications] = useState<ProviderApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedApplication, setSelectedApplication] = useState<ProviderApplication | null>(null);
 
   const fetchApplications = async () => {
     try {
       setIsLoading(true);
       
-      // Fetch providers with pending verification
+      // Fetch providers with verification status
       const { data: providers, error: providersError } = await supabase
         .from('users')
         .select('*')
         .eq('role', 'provider')
-        .in('verification_status', ['pending', 'verified', 'rejected'])
+        .in('verification_status', ['under_review', 'verified', 'rejected'])
         .order('verification_submitted_at', { ascending: false });
 
       if (providersError) throw providersError;
@@ -139,8 +137,8 @@ export const ProviderVerificationManagement: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>;
+      case 'under_review':
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Under Review</Badge>;
       case 'verified':
         return <Badge className="bg-green-100 text-green-800">Verified</Badge>;
       case 'rejected':
@@ -175,10 +173,10 @@ export const ProviderVerificationManagement: React.FC = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="pending" className="space-y-4">
+      <Tabs defaultValue="under_review" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="pending">
-            Pending ({applications.filter(app => app.verification_status === 'pending').length})
+          <TabsTrigger value="under_review">
+            Under Review ({applications.filter(app => app.verification_status === 'under_review').length})
           </TabsTrigger>
           <TabsTrigger value="verified">
             Verified ({applications.filter(app => app.verification_status === 'verified').length})
@@ -188,10 +186,10 @@ export const ProviderVerificationManagement: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pending">
+        <TabsContent value="under_review">
           <div className="grid gap-4">
             {applications
-              .filter(app => app.verification_status === 'pending')
+              .filter(app => app.verification_status === 'under_review')
               .map((application) => (
                 <Card key={application.id}>
                   <CardHeader>

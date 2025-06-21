@@ -1,11 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Upload, FileText, CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,15 +20,12 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{[key: string]: File}>({});
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     fullName: user?.full_name || '',
     phoneNumber: user?.phone || '',
     idNumber: '',
-    experience: '',
-    backgroundCheckConsent: false,
-    termsAccepted: false,
-    // Banking details
     bankName: '',
     accountNumber: '',
     accountHolderName: user?.full_name || '',
@@ -39,10 +34,27 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
 
   const requiredDocuments = [
     { key: 'id_document', label: 'National ID or Passport', required: true },
-    { key: 'police_clearance', label: 'Police Clearance Certificate', required: true },
-    { key: 'proof_of_address', label: 'Proof of Address', required: false },
-    { key: 'qualifications', label: 'Qualifications/Certificates', required: false }
+    { key: 'police_clearance', label: 'Police Clearance Certificate', required: true }
   ];
+
+  useEffect(() => {
+    // Fetch current verification status from database
+    const fetchVerificationStatus = async () => {
+      if (!user?.id) return;
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('verification_status')
+        .eq('id', user.id)
+        .single();
+      
+      if (!error && data) {
+        setVerificationStatus(data.verification_status);
+      }
+    };
+
+    fetchVerificationStatus();
+  }, [user?.id]);
 
   const handleFileUpload = (documentType: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -108,15 +120,6 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
       return;
     }
 
-    if (!formData.termsAccepted || !formData.backgroundCheckConsent) {
-      toast({
-        title: "Validation Error",
-        description: "Please accept the terms and conditions and provide background check consent.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Check required documents
     const requiredDocs = requiredDocuments.filter(doc => doc.required);
     const missingDocs = requiredDocs.filter(doc => !uploadedFiles[doc.key]);
@@ -135,7 +138,6 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
       console.log('Starting verification submission for user:', user.id);
 
       // Upload documents to storage and create database records
-      const documentPaths: {[key: string]: string} = {};
       for (const [docType, file] of Object.entries(uploadedFiles)) {
         console.log(`Processing ${docType} document...`);
         setUploadProgress(prev => ({ ...prev, [docType]: 0 }));
@@ -143,7 +145,6 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
         try {
           // Upload to storage
           const path = await uploadDocumentToStorage(file, docType, user.id);
-          documentPaths[docType] = path;
           setUploadProgress(prev => ({ ...prev, [docType]: 50 }));
 
           // Create document record in database
@@ -190,16 +191,15 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
         throw bankingError;
       }
 
-      // Update user verification status
+      // Update user verification status to 'under_review'
       console.log('Updating user verification status...');
       const { error: userUpdateError } = await supabase
         .from('users')
         .update({
           full_name: formData.fullName,
           phone: formData.phoneNumber,
-          verification_status: 'pending',
-          verification_submitted_at: new Date().toISOString(),
-          background_check_consent: formData.backgroundCheckConsent
+          verification_status: 'under_review',
+          verification_submitted_at: new Date().toISOString()
         })
         .eq('id', user.id);
 
@@ -210,7 +210,8 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
 
       console.log('Provider verification submitted successfully');
 
-      // Refresh user data
+      // Update local state and refresh user data
+      setVerificationStatus('under_review');
       await refreshUser();
 
       toast({
@@ -232,10 +233,8 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
     }
   };
 
-  // Check if user already has pending or completed verification
-  const hasExistingVerification = user?.verification_status === 'pending' || user?.verification_status === 'verified';
-
-  if (hasExistingVerification) {
+  // Show status message if verification is under review or verified
+  if (verificationStatus === 'under_review' || verificationStatus === 'verified') {
     return (
       <Card className="w-full max-w-2xl mx-auto">
         <CardHeader>
@@ -245,9 +244,9 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
           <Alert>
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              {user?.verification_status === 'verified' 
+              {verificationStatus === 'verified' 
                 ? "Your verification is complete! You can now accept bookings."
-                : "Your verification is currently under review. You'll receive an update within 2-3 business days."
+                : "Your verification is pending admin approval."
               }
             </AlertDescription>
           </Alert>
@@ -256,6 +255,7 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
     );
   }
 
+  // Show verification form for null or 'unverified' status
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
@@ -297,16 +297,6 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
                 required
               />
             </div>
-
-            <div>
-              <Label htmlFor="experience">Years of Experience</Label>
-              <Textarea
-                id="experience"
-                value={formData.experience}
-                onChange={(e) => setFormData({...formData, experience: e.target.value})}
-                placeholder="Describe your relevant work experience..."
-              />
-            </div>
           </div>
 
           {/* Document Upload */}
@@ -334,7 +324,7 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
                       <span className="text-sm">{uploadedFiles[doc.key].name}</span>
                     </div>
                   )}
-                  {uploadProgress[doc.key] !== undefined &&  uploadProgress[doc.key] < 100 && (
+                  {uploadProgress[doc.key] !== undefined && uploadProgress[doc.key] < 100 && (
                     <div className="text-sm text-blue-600">
                       Uploading... {uploadProgress[doc.key]}%
                     </div>
@@ -391,37 +381,6 @@ const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }
                   disabled={isSubmitting}
                 />
               </div>
-            </div>
-          </div>
-
-          {/* Consent and Terms */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="backgroundCheck"
-                checked={formData.backgroundCheckConsent}
-                onCheckedChange={(checked) => 
-                  setFormData({...formData, backgroundCheckConsent: checked as boolean})
-                }
-                disabled={isSubmitting}
-              />
-              <Label htmlFor="backgroundCheck" className="text-sm">
-                I consent to a background check being performed
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="terms"
-                checked={formData.termsAccepted}
-                onCheckedChange={(checked) => 
-                  setFormData({...formData, termsAccepted: checked as boolean})
-                }
-                disabled={isSubmitting}
-              />
-              <Label htmlFor="terms" className="text-sm">
-                I accept the terms and conditions
-              </Label>
             </div>
           </div>
 

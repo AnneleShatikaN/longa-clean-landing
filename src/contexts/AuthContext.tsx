@@ -27,6 +27,10 @@ export interface UserProfile {
   created_at?: string;
   updated_at?: string;
   provider_category?: string; // Add provider category
+  // Location fields
+  town?: string;
+  suburb?: string;
+  max_distance?: number;
   // Additional compatibility properties
   address?: string;
   profilePicture?: string;

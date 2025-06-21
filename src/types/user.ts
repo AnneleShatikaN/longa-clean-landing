@@ -1,3 +1,4 @@
+
 import { UserRole } from '@/types/auth';
 
 export interface UserProfile {
@@ -24,7 +25,11 @@ export interface UserProfile {
   joinDate: string;
   lastActive: string;
   isEmailVerified: boolean;
-  current_work_location?: string; // Add the new property
+  current_work_location?: string;
+  // Location fields
+  town?: string;
+  suburb?: string;
+  max_distance?: number;
   // Additional properties for database compatibility
   full_name: string;
   avatar_url: string | null;

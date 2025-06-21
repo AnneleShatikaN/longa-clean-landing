@@ -127,7 +127,7 @@ const JobAssignmentManager: React.FC = () => {
         .update({
           assigned_provider_id: selectedProvider,
           assignment_status: 'manually_assigned',
-          status: 'assigned',
+          status: 'pending',
           assigned_at: new Date().toISOString(),
           assigned_by: (await supabase.auth.getUser()).data.user?.id
         })
@@ -174,7 +174,7 @@ const JobAssignmentManager: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Unass igned Jobs */}
+        {/* Unassigned Jobs */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

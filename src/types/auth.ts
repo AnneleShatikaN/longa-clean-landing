@@ -1,3 +1,4 @@
+
 import { Session } from '@supabase/supabase-js';
 
 export type UserRole = 'client' | 'provider' | 'admin';
@@ -22,6 +23,10 @@ export interface UserProfile {
   verification_notes?: string;
   background_check_consent?: boolean;
   banking_details_verified?: boolean;
+  // Location fields
+  town?: string;
+  suburb?: string;
+  max_distance?: number;
   // Additional properties for compatibility
   address?: string;
   profilePicture?: string;

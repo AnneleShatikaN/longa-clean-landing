@@ -3,7 +3,7 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PendingPaymentApprovals } from '@/components/admin/PendingPaymentApprovals';
-import { JobAssignmentManager } from '@/components/admin/JobAssignmentManager';
+import JobAssignmentManager from '@/components/admin/JobAssignmentManager';
 import { DynamicBankDepositInstructions } from '@/components/payment/DynamicBankDepositInstructions';
 import { CheckCircle, Users, CreditCard, Settings } from 'lucide-react';
 

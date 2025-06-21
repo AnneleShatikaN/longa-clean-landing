@@ -146,6 +146,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isEmailVerified: true, // Assume verified if they can log in
         jobsCompleted: data.total_jobs || 0,
         totalEarnings: 0, // Default value
+        // Include location fields
+        town: data.town,
+        suburb: data.suburb,
+        max_distance: data.max_distance,
         app_metadata: {},
         user_metadata: {},
         aud: 'authenticated'
@@ -155,7 +159,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: userProfile.id, 
         email: userProfile.email, 
         role: userProfile.role,
-        name: userProfile.name 
+        name: userProfile.name,
+        town: userProfile.town,
+        suburb: userProfile.suburb
       });
 
       setUser(userProfile);

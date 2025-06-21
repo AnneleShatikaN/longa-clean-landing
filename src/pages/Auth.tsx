@@ -29,13 +29,14 @@ const NAMIBIAN_TOWNS = [
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, loading, signUp, signIn } = useAuth();
+  const { user, loading, isInitialized, signUp, signIn } = useAuth();
   const { categories, isLoading: categoriesLoading } = useServiceCategories();
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [signupEmail, setSignupEmail] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -50,7 +51,7 @@ const Auth = () => {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (user && !loading) {
+    if (user && isInitialized && !loading) {
       if (user.role === 'client') {
         navigate('/client-dashboard');
       } else if (user.role === 'provider') {
@@ -59,7 +60,7 @@ const Auth = () => {
         navigate('/admin-dashboard');
       }
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, isInitialized, navigate]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -108,6 +109,8 @@ const Auth = () => {
     if (!validateForm()) return;
 
     setIsSubmitting(true);
+    setAuthError(null);
+    
     try {
       if (isSignUp) {
         console.log('Creating account with data:', {
@@ -125,6 +128,10 @@ const Auth = () => {
           current_work_location: formData.location,
           provider_category: formData.role === 'provider' ? formData.providerCategory : null
         });
+        
+        if (result.error) {
+          throw result.error;
+        }
         
         if (result.needsEmailVerification) {
           setSignupEmail(formData.email);
@@ -145,11 +152,36 @@ const Auth = () => {
           providerCategory: ''
         });
       } else {
-        await signIn(formData.email, formData.password);
+        const result = await signIn(formData.email, formData.password);
+        
+        if (result.error) {
+          throw result.error;
+        }
+        
+        toast.success('Signed in successfully!');
       }
     } catch (error: any) {
       console.error('Auth error:', error);
-      toast.error(error.message || 'An error occurred. Please try again.');
+      
+      // Handle specific error messages
+      let errorMessage = 'An error occurred. Please try again.';
+      
+      if (error.message) {
+        if (error.message.includes('User already registered')) {
+          errorMessage = 'An account with this email already exists. Please sign in instead.';
+        } else if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials.';
+        } else if (error.message.includes('Password should be at least')) {
+          errorMessage = 'Password must be at least 6 characters long.';
+        } else if (error.message.includes('Unable to validate email address')) {
+          errorMessage = 'Please enter a valid email address.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setAuthError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -174,7 +206,8 @@ const Auth = () => {
     }
   };
 
-  if (loading) {
+  // Show loading only when auth is not yet initialized
+  if (!isInitialized) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
@@ -260,6 +293,15 @@ const Auth = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Show error alert if there's an auth error */}
+            {authError && (
+              <Alert className="mb-4 border-red-200 bg-red-50">
+                <AlertDescription className="text-red-800">
+                  {authError}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Role Selection for Sign Up */}
               {isSignUp && (
@@ -432,7 +474,10 @@ const Auth = () => {
                 <Button
                   variant="link"
                   className="p-0 ml-1 text-purple-600"
-                  onClick={() => setIsSignUp(!isSignUp)}
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setAuthError(null); // Clear any existing errors when switching
+                  }}
                 >
                   {isSignUp ? 'Sign In' : 'Sign Up'}
                 </Button>

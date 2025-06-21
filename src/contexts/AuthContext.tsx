@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -90,18 +89,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       console.log('AuthProvider - Initial session:', { session: session?.user?.email || 'none', error });
       setSession(session);
+      
       if (session?.user) {
         fetchUserProfile(session.user.id);
       } else {
         setLoading(false);
-        setIsInitialized(true);
       }
+      
+      // Always set initialized to true after initial session check
+      setIsInitialized(true);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('AuthProvider - Auth state change:', { event, userEmail: session?.user?.email || 'none' });
       setSession(session);
+      
       if (session?.user) {
         // Use setTimeout to prevent deadlock
         setTimeout(() => {
@@ -110,8 +113,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setUser(null);
         setLoading(false);
-        setIsInitialized(true);
       }
+      
+      // Ensure initialized is always true after auth state changes
+      setIsInitialized(true);
     });
 
     return () => subscription.unsubscribe();
@@ -186,22 +191,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { data, error };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        console.error('SignIn error:', error);
+        throw new Error(error.message);
+      }
+      
+      return { data, error: null };
+    } catch (error: any) {
+      console.error('SignIn failed:', error);
+      return { data: null, error };
+    }
   };
 
   const signUp = async (email: string, password: string, userData: any) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: userData,
-      },
-    });
-    return { data, error };
+    try {
+      console.log('Creating account with data:', {
+        email: email,
+        role: userData.role,
+        fullName: userData.full_name,
+        location: userData.current_work_location,
+        providerCategory: userData.provider_category
+      });
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            full_name: userData.full_name,
+            phone: userData.phone,
+            role: userData.role,
+            current_work_location: userData.current_work_location,
+            provider_category: userData.role === 'provider' ? userData.provider_category : null
+          }
+        },
+      });
+
+      if (error) {
+        console.error('SignUp error:', error);
+        throw new Error(error.message);
+      }
+
+      // Check if user needs email verification
+      const needsEmailVerification = data.user && !data.session;
+      
+      console.log('SignUp result:', { 
+        user: data.user?.email, 
+        needsEmailVerification,
+        session: !!data.session 
+      });
+
+      return { 
+        data, 
+        error: null, 
+        needsEmailVerification 
+      };
+    } catch (error: any) {
+      console.error('SignUp failed:', error);
+      return { 
+        data: null, 
+        error, 
+        needsEmailVerification: false 
+      };
+    }
   };
 
   const signOut = async () => {

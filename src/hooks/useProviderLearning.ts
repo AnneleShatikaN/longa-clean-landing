@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -20,16 +19,24 @@ export const useProviderLearning = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get provider's service type from their profile
+  // Get provider's service type from their profile with better validation
   const providerServiceType = user?.provider_category as ServiceType;
 
   const fetchModulesWithProgress = async () => {
-    if (!user || !providerServiceType) return;
+    if (!user || !providerServiceType) {
+      console.log('Cannot fetch modules - missing user or service type:', { 
+        user: !!user, 
+        serviceType: providerServiceType 
+      });
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
 
     try {
+      console.log('Fetching modules for service type:', providerServiceType);
+
       // Fetch published modules for provider's service type
       const { data: modulesData, error: modulesError } = await supabase
         .from('learning_modules')
@@ -38,7 +45,12 @@ export const useProviderLearning = () => {
         .eq('is_published', true)
         .order('display_order', { ascending: true });
 
-      if (modulesError) throw modulesError;
+      if (modulesError) {
+        console.error('Error fetching modules:', modulesError);
+        throw modulesError;
+      }
+
+      console.log('Found modules:', modulesData?.length || 0);
 
       // Fetch provider's progress for these modules
       const { data: progressData, error: progressError } = await supabase
@@ -47,7 +59,12 @@ export const useProviderLearning = () => {
         .eq('provider_id', user.id)
         .eq('service_type', providerServiceType);
 
-      if (progressError) throw progressError;
+      if (progressError) {
+        console.error('Error fetching progress:', progressError);
+        throw progressError;
+      }
+
+      console.log('Found progress records:', progressData?.length || 0);
 
       // Combine modules with progress
       const modulesWithProgress: ModuleWithProgress[] = (modulesData || []).map(module => ({
@@ -60,6 +77,7 @@ export const useProviderLearning = () => {
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch learning data';
+      console.error('Error in fetchModulesWithProgress:', err);
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -68,9 +86,20 @@ export const useProviderLearning = () => {
   };
 
   const fetchCertificate = async () => {
-    if (!user || !providerServiceType) return;
+    if (!user || !providerServiceType) {
+      console.log('Cannot fetch certificate - missing user or service type:', { 
+        user: !!user, 
+        serviceType: providerServiceType 
+      });
+      return;
+    }
 
     try {
+      console.log('Fetching certificate:', { 
+        providerId: user.id, 
+        serviceType: providerServiceType 
+      });
+
       const { data, error } = await supabase
         .from('provider_certificates')
         .select('*')
@@ -79,10 +108,22 @@ export const useProviderLearning = () => {
         .eq('is_active', true)
         .single();
 
-      if (error && error.code !== 'PGRST116') throw error; // Ignore "not found" errors
-      setCertificate(data);
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No certificate found - this is expected for new providers
+          console.log('No certificate found for provider');
+          setCertificate(null);
+        } else {
+          console.error('Error fetching certificate:', error);
+          throw error;
+        }
+      } else {
+        console.log('Certificate found:', data);
+        setCertificate(data);
+      }
     } catch (err) {
       console.error('Error fetching certificate:', err);
+      setCertificate(null);
     }
   };
 
@@ -267,8 +308,17 @@ export const useProviderLearning = () => {
 
   useEffect(() => {
     if (user && providerServiceType) {
+      console.log('useProviderLearning effect triggered:', { 
+        userId: user.id, 
+        serviceType: providerServiceType 
+      });
       fetchModulesWithProgress();
       fetchCertificate();
+    } else {
+      console.log('useProviderLearning effect skipped - missing data:', { 
+        user: !!user, 
+        serviceType: providerServiceType 
+      });
     }
   }, [user, providerServiceType]);
 

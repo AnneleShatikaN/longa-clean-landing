@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 interface JobAssignmentOptions {
@@ -102,14 +101,14 @@ export const assignJobToNearbyProvider = async ({
     const selectedProvider = providerMatches[0];
     console.log('Selected provider:', selectedProvider);
 
-    // Update the booking with the assigned provider
+    // Update the booking with the assigned provider - use 'pending' status instead of 'assigned'
     const { error: updateError } = await supabase
       .from('bookings')
       .update({
         provider_id: selectedProvider.id,
         assigned_provider_id: selectedProvider.id,
         assignment_status: 'auto_assigned',
-        status: 'assigned',
+        status: 'pending',
         assigned_at: new Date().toISOString()
       })
       .eq('id', bookingId);

@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { AlertTriangle, CheckCircle, GraduationCap } from 'lucide-react';
+import { AlertTriangle, CheckCircle, GraduationCap, Loader2 } from 'lucide-react';
 import { EnhancedLoading } from '@/components/ui/enhanced-loading';
 import { ServiceType } from '@/types/learning';
 
@@ -38,29 +38,62 @@ const ProviderVerificationForm: React.FC<ProviderVerificationFormProps> = ({
   const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasCertificate, setHasCertificate] = useState<boolean | null>(null);
+  const [certificateCheckError, setCertificateCheckError] = useState<string | null>(null);
+  const [isCheckingCertificate, setIsCheckingCertificate] = useState(true);
 
   // Check if provider has completed academy training
   useEffect(() => {
     const checkCertificate = async () => {
-      if (!user?.provider_category) return;
+      if (!user?.id || !user?.provider_category) {
+        console.log('Missing user data:', { userId: user?.id, category: user?.provider_category });
+        setHasCertificate(false);
+        setCertificateCheckError('Provider category not set. Please contact support.');
+        setIsCheckingCertificate(false);
+        return;
+      }
+      
+      setIsCheckingCertificate(true);
+      setCertificateCheckError(null);
       
       try {
+        console.log('Checking certificate for:', { 
+          userId: user.id, 
+          serviceType: user.provider_category 
+        });
+
         const { data, error } = await supabase
           .from('provider_certificates')
-          .select('id')
+          .select('id, service_type, is_active')
           .eq('provider_id', user.id)
           .eq('service_type', user.provider_category as ServiceType)
-          .eq('is_active', true)
-          .single();
+          .eq('is_active', true);
           
-        setHasCertificate(!!data && !error);
+        console.log('Certificate query result:', { data, error });
+
+        if (error) {
+          console.error('Error checking certificate:', error);
+          setCertificateCheckError(`Database error: ${error.message}`);
+          setHasCertificate(false);
+        } else {
+          const hasValidCertificate = data && data.length > 0;
+          console.log('Certificate found:', hasValidCertificate);
+          setHasCertificate(hasValidCertificate);
+          
+          if (!hasValidCertificate) {
+            setCertificateCheckError(`No certificate found for service type: ${user.provider_category}`);
+          }
+        }
       } catch (err) {
+        console.error('Exception checking certificate:', err);
+        setCertificateCheckError('Failed to check training status. Please try again.');
         setHasCertificate(false);
+      } finally {
+        setIsCheckingCertificate(false);
       }
     };
     
     checkCertificate();
-  }, [user]);
+  }, [user?.id, user?.provider_category]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +175,56 @@ const ProviderVerificationForm: React.FC<ProviderVerificationFormProps> = ({
     }
   };
 
+  const retryCertificateCheck = () => {
+    setIsCheckingCertificate(true);
+    setCertificateCheckError(null);
+    // Trigger useEffect to run again
+    const event = new Event('retry-certificate-check');
+    window.dispatchEvent(event);
+  };
+
+  // Show loading while checking certificate
+  if (isCheckingCertificate) {
+    return (
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="p-8 text-center">
+          <Loader2 className="h-16 w-16 text-blue-600 mx-auto mb-6 animate-spin" />
+          <h2 className="text-2xl font-bold text-blue-800 mb-4">
+            Checking Training Status
+          </h2>
+          <p className="text-blue-700 mb-6">
+            Please wait while we verify your academy training completion...
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show error state if certificate check failed
+  if (certificateCheckError) {
+    return (
+      <Card className="border-red-200 bg-red-50">
+        <CardContent className="p-8 text-center">
+          <AlertTriangle className="h-16 w-16 text-red-600 mx-auto mb-6" />
+          <h2 className="text-2xl font-bold text-red-800 mb-4">
+            Training Status Check Failed
+          </h2>
+          <p className="text-red-700 mb-6">
+            {certificateCheckError}
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={retryCertificateCheck} variant="outline">
+              Try Again
+            </Button>
+            <Button onClick={() => window.location.href = '/provider-dashboard?tab=academy'}>
+              Go to Academy
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Show academy requirement if no certificate
   if (hasCertificate === false) {
     return (
@@ -151,9 +234,12 @@ const ProviderVerificationForm: React.FC<ProviderVerificationFormProps> = ({
           <h2 className="text-2xl font-bold text-yellow-800 mb-4">
             Training Required
           </h2>
-          <p className="text-yellow-700 mb-6">
+          <p className="text-yellow-700 mb-2">
             Before you can upload verification documents, you must complete the 
             Longa Academy training program for your service category.
+          </p>
+          <p className="text-sm text-yellow-600 mb-6">
+            Service Category: <strong>{user?.provider_category || 'Not set'}</strong>
           </p>
           <Button 
             onClick={() => window.location.href = '/provider-dashboard?tab=academy'} 
@@ -165,10 +251,6 @@ const ProviderVerificationForm: React.FC<ProviderVerificationFormProps> = ({
         </CardContent>
       </Card>
     );
-  }
-
-  if (hasCertificate === null) {
-    return <EnhancedLoading message="Checking training status..." />;
   }
   
   return (

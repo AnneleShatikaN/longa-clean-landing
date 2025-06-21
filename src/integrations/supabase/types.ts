@@ -2320,6 +2320,61 @@ export type Database = {
           },
         ]
       }
+      provider_certificates: {
+        Row: {
+          certificate_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          issued_at: string | null
+          pdf_url: string | null
+          provider_id: string | null
+          service_type: Database["public"]["Enums"]["service_type_enum"]
+        }
+        Insert: {
+          certificate_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          issued_at?: string | null
+          pdf_url?: string | null
+          provider_id?: string | null
+          service_type: Database["public"]["Enums"]["service_type_enum"]
+        }
+        Update: {
+          certificate_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          issued_at?: string | null
+          pdf_url?: string | null
+          provider_id?: string | null
+          service_type?: Database["public"]["Enums"]["service_type_enum"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_certificates_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_certificates_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_certificates_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_documents: {
         Row: {
           document_name: string
@@ -2468,6 +2523,74 @@ export type Database = {
           },
           {
             foreignKeyName: "provider_earnings_summaries_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_learning_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          is_completed: boolean | null
+          module_id: string | null
+          provider_id: string | null
+          quiz_attempts: number | null
+          quiz_score: number | null
+          service_type: Database["public"]["Enums"]["service_type_enum"]
+          updated_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          is_completed?: boolean | null
+          module_id?: string | null
+          provider_id?: string | null
+          quiz_attempts?: number | null
+          quiz_score?: number | null
+          service_type: Database["public"]["Enums"]["service_type_enum"]
+          updated_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          is_completed?: boolean | null
+          module_id?: string | null
+          provider_id?: string | null
+          quiz_attempts?: number | null
+          quiz_score?: number | null
+          service_type?: Database["public"]["Enums"]["service_type_enum"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_learning_progress_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "learning_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_learning_progress_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_learning_progress_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_learning_progress_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -2773,6 +2896,75 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_attempts: {
+        Row: {
+          answered_at: string | null
+          attempt_number: number
+          id: string
+          is_correct: boolean
+          module_id: string | null
+          provider_id: string | null
+          question_id: string | null
+          selected_answer: string | null
+        }
+        Insert: {
+          answered_at?: string | null
+          attempt_number: number
+          id?: string
+          is_correct: boolean
+          module_id?: string | null
+          provider_id?: string | null
+          question_id?: string | null
+          selected_answer?: string | null
+        }
+        Update: {
+          answered_at?: string | null
+          attempt_number?: number
+          id?: string
+          is_correct?: boolean
+          module_id?: string | null
+          provider_id?: string | null
+          question_id?: string | null
+          selected_answer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "learning_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_performance"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_provider_rankings"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_questions"
             referencedColumns: ["id"]
           },
         ]
@@ -3821,6 +4013,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_service_completion: {
+        Args: {
+          p_provider_id: string
+          p_service_type: Database["public"]["Enums"]["service_type_enum"]
+        }
+        Returns: boolean
+      }
       cleanup_expired_tokens: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -3845,6 +4044,12 @@ export type Database = {
           years_experience: number
           availability_score: number
         }[]
+      }
+      generate_certificate_id: {
+        Args: {
+          p_service_type: Database["public"]["Enums"]["service_type_enum"]
+        }
+        Returns: string
       }
       generate_reset_token: {
         Args: { p_user_id: string }

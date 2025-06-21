@@ -1,407 +1,325 @@
-
 import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, FileText, CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { FileInput } from '@/components/ui/file-input';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { AlertTriangle, CheckCircle, GraduationCap } from 'lucide-react';
+import { EnhancedLoading } from '@/components/ui/enhanced-loading';
 
-interface VerificationFormProps {
-  onSuccess?: () => void;
+interface ProviderVerificationFormProps {
+  onSubmissionComplete: () => void;
 }
 
-const ProviderVerificationForm: React.FC<VerificationFormProps> = ({ onSuccess }) => {
+export const ProviderVerificationForm: React.FC<ProviderVerificationFormProps> = ({
+  onSubmissionComplete
+}) => {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const { user, refreshUser } = useAuth();
+  const navigate = useNavigate();
+
+  const [fullName, setFullName] = useState(user?.full_name || '');
+  const [contactNumber, setContactNumber] = useState(user?.phone || '');
+  const [address, setAddress] = useState(user?.address || '');
+  const [bio, setBio] = useState('');
+  const [yearsOfExperience, setYearsOfExperience] = useState(0);
+  const [hasCriminalRecord, setHasCriminalRecord] = useState(false);
+  const [criminalRecordExplanation, setCriminalRecordExplanation] = useState('');
+  const [references, setReferences] = useState(['', '', '']);
+  const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<{[key: string]: File}>({});
-  const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
-  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
-  
-  const [formData, setFormData] = useState({
-    fullName: user?.full_name || '',
-    phoneNumber: user?.phone || '',
-    idNumber: '',
-    bankName: '',
-    accountNumber: '',
-    accountHolderName: user?.full_name || '',
-    branchCode: ''
-  });
+  const [hasCertificate, setHasCertificate] = useState<boolean | null>(null);
 
-  const requiredDocuments = [
-    { key: 'id_document', label: 'National ID or Passport', required: true },
-    { key: 'police_clearance', label: 'Police Clearance Certificate', required: true }
-  ];
-
+  // Check if provider has completed academy training
   useEffect(() => {
-    // Fetch current verification status from database
-    const fetchVerificationStatus = async () => {
-      if (!user?.id) return;
+    const checkCertificate = async () => {
+      if (!user?.provider_category) return;
       
-      const { data, error } = await supabase
-        .from('users')
-        .select('verification_status')
-        .eq('id', user.id)
-        .single();
-      
-      if (!error && data) {
-        setVerificationStatus(data.verification_status);
+      try {
+        const { data, error } = await supabase
+          .from('provider_certificates')
+          .select('id')
+          .eq('provider_id', user.id)
+          .eq('service_type', user.provider_category)
+          .eq('is_active', true)
+          .single();
+          
+        setHasCertificate(!!data && !error);
+      } catch (err) {
+        setHasCertificate(false);
       }
     };
-
-    fetchVerificationStatus();
-  }, [user?.id]);
-
-  const handleFileUpload = (documentType: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Check file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "Please select a file smaller than 10MB",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Check file type
-      const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select a JPEG, PNG, PDF, or WebP file",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setUploadedFiles(prev => ({
-        ...prev,
-        [documentType]: file
-      }));
-    }
-  };
-
-  const uploadDocumentToStorage = async (file: File, documentType: string, providerId: string) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${providerId}/${documentType}_${Date.now()}.${fileExt}`;
     
-    console.log(`Uploading file: ${fileName}`);
-    
-    const { data, error } = await supabase.storage
-      .from('verification-documents')
-      .upload(fileName, file, {
-        upsert: false
-      });
-
-    if (error) {
-      console.error('Storage upload error:', error);
-      throw error;
-    }
-    
-    console.log('Upload successful:', data);
-    return data.path;
-  };
+    checkCertificate();
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!user?.id) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to submit verification.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check required documents
-    const requiredDocs = requiredDocuments.filter(doc => doc.required);
-    const missingDocs = requiredDocs.filter(doc => !uploadedFiles[doc.key]);
-    
-    if (missingDocs.length > 0) {
-      toast({
-        title: "Missing Documents",
-        description: `Please upload the following required documents: ${missingDocs.map(d => d.label).join(', ')}`,
-        variant: "destructive",
-      });
-      return;
-    }
+    setIsSubmitting(true);
 
     try {
-      setIsSubmitting(true);
-      console.log('Starting verification submission for user:', user.id);
-
-      // Upload documents to storage and create database records
-      for (const [docType, file] of Object.entries(uploadedFiles)) {
-        console.log(`Processing ${docType} document...`);
-        setUploadProgress(prev => ({ ...prev, [docType]: 0 }));
-        
-        try {
-          // Upload to storage
-          const path = await uploadDocumentToStorage(file, docType, user.id);
-          setUploadProgress(prev => ({ ...prev, [docType]: 50 }));
-
-          // Create document record in database
-          const { error: docError } = await supabase
-            .from('provider_documents')
-            .insert({
-              provider_id: user.id,
-              document_type: docType,
-              document_name: file.name,
-              file_path: path,
-              mime_type: file.type,
-              file_size: file.size,
-              verification_status: 'pending'
-            });
-
-          if (docError) {
-            console.error(`Error saving ${docType} document record:`, docError);
-            throw docError;
-          }
-          
-          setUploadProgress(prev => ({ ...prev, [docType]: 100 }));
-          console.log(`Successfully processed ${docType} document`);
-        } catch (error) {
-          console.error(`Error processing ${docType}:`, error);
-          throw new Error(`Failed to upload ${docType}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-      }
-
-      // Save banking details
-      console.log('Saving banking details...');
-      const { error: bankingError } = await supabase
-        .from('provider_banking_details')
-        .upsert({
-          provider_id: user.id,
-          bank_name: formData.bankName,
-          account_number: formData.accountNumber,
-          account_holder_name: formData.accountHolderName,
-          branch_code: formData.branchCode,
-          verification_status: 'pending'
-        });
-
-      if (bankingError) {
-        console.error('Banking details error:', bankingError);
-        throw bankingError;
-      }
-
-      // Update user verification status to 'under_review'
-      console.log('Updating user verification status...');
-      const { error: userUpdateError } = await supabase
+      // 1. Update user profile
+      const { error: userError } = await supabase
         .from('users')
         .update({
-          full_name: formData.fullName,
-          phone: formData.phoneNumber,
-          verification_status: 'under_review',
-          verification_submitted_at: new Date().toISOString()
+          full_name: fullName,
+          phone: contactNumber,
+          address: address,
+          bio: bio,
+          years_of_experience: yearsOfExperience,
+          has_criminal_record: hasCriminalRecord,
+          criminal_record_explanation: criminalRecordExplanation,
+          verification_status: 'pending'
         })
-        .eq('id', user.id);
+        .eq('id', user?.id);
 
-      if (userUpdateError) {
-        console.error('User update error:', userUpdateError);
-        throw userUpdateError;
+      if (userError) throw userError;
+
+      // 2. Upload documents
+      for (const file of documentFiles) {
+        const { error: storageError } = await supabase
+          .storage
+          .from('provider-documents')
+          .upload(`${user?.id}/${file.name}`, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (storageError) throw storageError;
       }
 
-      console.log('Provider verification submitted successfully');
+      // 3. Update verification status
+      const { error: verificationError } = await supabase
+        .from('users')
+        .update({
+          verification_status: 'under_review'
+        })
+        .eq('id', user?.id);
 
-      // Update local state and refresh user data
-      setVerificationStatus('under_review');
-      await refreshUser();
+      if (verificationError) throw verificationError;
 
       toast({
-        title: "Verification Submitted!",
-        description: "Your verification documents have been submitted for review. You'll receive an update within 2-3 business days.",
+        title: "Submission Successful",
+        description: "Your verification documents have been submitted for review.",
       });
+      onSubmissionComplete();
+      navigate('/provider-dashboard');
 
-      onSuccess?.();
-    } catch (error) {
-      console.error('Error submitting verification:', error);
+    } catch (error: any) {
+      console.error("Error during submission:", error);
       toast({
-        title: "Submission Failed",
-        description: error instanceof Error ? error.message : "Failed to submit verification. Please try again.",
+        title: "Submission Error",
+        description: error.message || "Failed to submit verification. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
-      setUploadProgress({});
     }
   };
 
-  // Show status message if verification is under review or verified
-  if (verificationStatus === 'under_review' || verificationStatus === 'verified') {
+  const handleReferenceChange = (index: number, value: string) => {
+    const newReferences = [...references];
+    newReferences[index] = value;
+    setReferences(newReferences);
+  };
+
+  const handleDocumentChange = (files: FileList | null) => {
+    if (files) {
+      const fileArray: File[] = Array.from(files);
+      setDocumentFiles(fileArray);
+    }
+  };
+
+  // Show academy requirement if no certificate
+  if (hasCertificate === false) {
     return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>Verification Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>
-              {verificationStatus === 'verified' 
-                ? "Your verification is complete! You can now accept bookings."
-                : "Your verification is pending admin approval."
-              }
-            </AlertDescription>
-          </Alert>
+      <Card className="border-yellow-200 bg-yellow-50">
+        <CardContent className="p-8 text-center">
+          <GraduationCap className="h-16 w-16 text-yellow-600 mx-auto mb-6" />
+          <h2 className="text-2xl font-bold text-yellow-800 mb-4">
+            Training Required
+          </h2>
+          <p className="text-yellow-700 mb-6">
+            Before you can upload verification documents, you must complete the 
+            Longa Academy training program for your service category.
+          </p>
+          <Button 
+            onClick={() => window.location.href = '/provider-dashboard?tab=academy'} 
+            className="bg-yellow-600 hover:bg-yellow-700"
+          >
+            <GraduationCap className="h-4 w-4 mr-2" />
+            Start Training
+          </Button>
         </CardContent>
       </Card>
     );
   }
 
-  // Show verification form for null or 'unverified' status
+  if (hasCertificate === null) {
+    return <EnhancedLoading message="Checking training status..." />;
+  }
+  
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Provider Verification Application</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Personal Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Personal Information</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="phoneNumber">Phone Number</Label>
-                <Input
-                  id="phoneNumber"
-                  value={formData.phoneNumber}
-                  onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
-                  required
-                />
-              </div>
-            </div>
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* Success message showing training completion */}
+      <Card className="border-green-200 bg-green-50">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <p className="text-green-800 font-medium">
+              Training completed! You can now proceed with document verification.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Personal Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Personal Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="idNumber">ID/Passport Number</Label>
+              <Label htmlFor="fullName">Full Name</Label>
               <Input
-                id="idNumber"
-                value={formData.idNumber}
-                onChange={(e) => setFormData({...formData, idNumber: e.target.value})}
+                type="text"
+                id="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
                 required
               />
             </div>
-          </div>
-
-          {/* Document Upload */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Document Upload</h3>
-            
-            {requiredDocuments.map((doc) => (
-              <div key={doc.key} className="space-y-2">
-                <Label htmlFor={doc.key} className="flex items-center gap-2">
-                  {doc.label}
-                  {doc.required && <span className="text-red-500">*</span>}
-                </Label>
-                <div className="flex items-center gap-4">
-                  <Input
-                    id={doc.key}
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.pdf,.webp"
-                    onChange={(e) => handleFileUpload(doc.key, e)}
-                    className="flex-1"
-                    disabled={isSubmitting}
-                  />
-                  {uploadedFiles[doc.key] && (
-                    <div className="flex items-center gap-2 text-green-600">
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="text-sm">{uploadedFiles[doc.key].name}</span>
-                    </div>
-                  )}
-                  {uploadProgress[doc.key] !== undefined && uploadProgress[doc.key] < 100 && (
-                    <div className="text-sm text-blue-600">
-                      Uploading... {uploadProgress[doc.key]}%
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Banking Details */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Banking Details</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="bankName">Bank Name</Label>
-                <Input
-                  id="bankName"
-                  value={formData.bankName}
-                  onChange={(e) => setFormData({...formData, bankName: e.target.value})}
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div>
-                <Label htmlFor="accountNumber">Account Number</Label>
-                <Input
-                  id="accountNumber"
-                  value={formData.accountNumber}
-                  onChange={(e) => setFormData({...formData, accountNumber: e.target.value})}
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
+            <div>
+              <Label htmlFor="contactNumber">Contact Number</Label>
+              <Input
+                type="tel"
+                id="contactNumber"
+                value={contactNumber}
+                onChange={(e) => setContactNumber(e.target.value)}
+                required
+              />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="accountHolderName">Account Holder Name</Label>
-                <Input
-                  id="accountHolderName"
-                  value={formData.accountHolderName}
-                  onChange={(e) => setFormData({...formData, accountHolderName: e.target.value})}
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div>
-                <Label htmlFor="branchCode">Branch Code</Label>
-                <Input
-                  id="branchCode"
-                  value={formData.branchCode}
-                  onChange={(e) => setFormData({...formData, branchCode: e.target.value})}
-                  disabled={isSubmitting}
-                />
-              </div>
+            <div>
+              <Label htmlFor="address">Address</Label>
+              <Input
+                type="text"
+                id="address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                required
+              />
             </div>
-          </div>
+            <div>
+              <Label htmlFor="bio">Bio</Label>
+              <Textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Write a short bio about yourself"
+                rows={4}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Submitting Verification...
+        {/* Professional Background */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Professional Background</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="yearsOfExperience">Years of Experience</Label>
+              <Input
+                type="number"
+                id="yearsOfExperience"
+                value={yearsOfExperience}
+                onChange={(e) => setYearsOfExperience(Number(e.target.value))}
+                min="0"
+              />
+            </div>
+            <div>
+              <Label>References</Label>
+              {references.map((reference, index) => (
+                <Input
+                  key={index}
+                  type="text"
+                  placeholder={`Reference ${index + 1}`}
+                  value={reference}
+                  onChange={(e) => handleReferenceChange(index, e.target.value)}
+                  className="mb-2"
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Criminal Record */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Criminal Record</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="hasCriminalRecord"
+                checked={hasCriminalRecord}
+                onCheckedChange={(checked) => setHasCriminalRecord(!!checked)}
+              />
+              <Label htmlFor="hasCriminalRecord">Do you have a criminal record?</Label>
+            </div>
+            {hasCriminalRecord && (
+              <div>
+                <Label htmlFor="criminalRecordExplanation">Explanation</Label>
+                <Textarea
+                  id="criminalRecordExplanation"
+                  value={criminalRecordExplanation}
+                  onChange={(e) => setCriminalRecordExplanation(e.target.value)}
+                  rows={4}
+                />
               </div>
-            ) : (
-              "Submit Verification"
             )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+
+        {/* Document Upload */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Document Upload</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>
+                Upload Documents (e.g., ID, certifications, etc.)
+              </Label>
+              <FileInput onChange={handleDocumentChange} multiple />
+            </div>
+            {documentFiles.length > 0 && (
+              <div>
+                <p>Selected Files:</p>
+                <ul>
+                  {documentFiles.map((file, index) => (
+                    <li key={index}>{file.name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Submit Button */}
+        <Button disabled={isSubmitting} className="w-full">
+          {isSubmitting ? "Submitting..." : "Submit Verification"}
+        </Button>
+      </form>
+    </div>
   );
 };
-
-export default ProviderVerificationForm;

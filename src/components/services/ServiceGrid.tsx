@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -101,7 +102,7 @@ export const ServiceGrid: React.FC<ServiceGridProps> = ({
   if (isLoading) {
     return (
       <div className={`space-y-6 ${className}`}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
@@ -141,7 +142,7 @@ export const ServiceGrid: React.FC<ServiceGridProps> = ({
     <div className={`space-y-6 ${className}`}>
       {/* Search and Filter Controls */}
       {!maxItems && (
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -154,7 +155,7 @@ export const ServiceGrid: React.FC<ServiceGridProps> = ({
             </div>
           </div>
           <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -164,7 +165,7 @@ export const ServiceGrid: React.FC<ServiceGridProps> = ({
             </SelectContent>
           </Select>
           <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -178,77 +179,70 @@ export const ServiceGrid: React.FC<ServiceGridProps> = ({
 
       {/* Services Grid */}
       {filteredServices.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredServices.map((service) => (
-            <Card key={service.id} className="hover:shadow-lg transition-shadow group">
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-2 group-hover:text-purple-600 transition-colors">
+            <Card key={service.id} className="hover:shadow-lg transition-shadow group h-full flex flex-col">
+              <CardHeader className="pb-4 flex-shrink-0">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-lg mb-2 group-hover:text-purple-600 transition-colors leading-tight">
                       {service.name}
                     </CardTitle>
                     <div className="flex gap-2 mb-2">
-                      <Badge variant={service.service_type === 'one-off' ? 'default' : 'secondary'}>
+                      <Badge variant={service.service_type === 'one-off' ? 'default' : 'secondary'} className="text-xs">
                         {service.service_type === 'one-off' ? 'One-time' : 'Package'}
                       </Badge>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-purple-600">
+                  <div className="text-right flex-shrink-0 ml-2">
+                    <div className="text-xl sm:text-2xl font-bold text-purple-600">
                       N${service.client_price}
                     </div>
                     {service.service_type === 'subscription' && (
-                      <div className="text-sm text-gray-500">per month</div>
+                      <div className="text-xs sm:text-sm text-gray-500">per month</div>
                     )}
                   </div>
                 </div>
               </CardHeader>
               
-              <CardContent className="space-y-4">
-                <p className="text-sm text-gray-600 line-clamp-2">
+              <CardContent className="space-y-4 flex-grow flex flex-col">
+                <p className="text-sm text-gray-600 line-clamp-2 flex-shrink-0">
                   {service.description || 'Professional service'}
                 </p>
                 
-                <div className="flex items-center gap-4 text-sm text-gray-500">
+                <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 flex-wrap">
                   <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
+                    <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>{formatDuration(service.duration_minutes)}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
+                    <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>{service.coverage_areas.length} area{service.coverage_areas.length !== 1 ? 's' : ''}</span>
                   </div>
                 </div>
 
                 {service.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {service.tags.slice(0, 3).map((tag, index) => (
+                    {service.tags.slice(0, 2).map((tag, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         {tag}
                       </Badge>
                     ))}
-                    {service.tags.length > 3 && (
+                    {service.tags.length > 2 && (
                       <Badge variant="outline" className="text-xs">
-                        +{service.tags.length - 3}
+                        +{service.tags.length - 2}
                       </Badge>
                     )}
                   </div>
                 )}
 
                 {showBookingButton && (
-                  <div className="space-y-2">
+                  <div className="mt-auto pt-4">
                     <Button 
-                      className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                      className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-sm sm:text-base py-2"
                       onClick={() => handleServiceAction(service)}
                     >
                       {service.service_type === 'subscription' ? 'View Package' : 'Book Now'}
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => navigate(`/service/${service.id}`)}
-                    >
-                      View Details
                     </Button>
                   </div>
                 )}

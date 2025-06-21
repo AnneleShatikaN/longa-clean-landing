@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Check, Star, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSubscriptionPackages } from '@/hooks/useSubscriptionPackages';
 import { useToast } from '@/hooks/use-toast';
-import { PaymentFlow } from '@/components/payment/PaymentFlow';
+import { DynamicBankDepositInstructions } from '@/components/payment/DynamicBankDepositInstructions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface PackageCardProps {
@@ -46,13 +47,23 @@ export const PackageCard: React.FC<PackageCardProps> = ({
 
     try {
       setIsProcessing(true);
+      console.log('Creating package purchase for package ID:', id);
+      
+      // Create the pending transaction
       await createPackagePurchase(id);
+      
+      // Open payment modal immediately after creating the transaction
       setIsPaymentModalOpen(true);
+      
+      toast({
+        title: "Package Selected",
+        description: "Please complete the payment to activate your package.",
+      });
     } catch (error) {
       console.error('Error creating package purchase:', error);
       toast({
         title: "Purchase Failed",
-        description: "Failed to create package purchase. Please try again.",
+        description: "Failed to initiate package purchase. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -71,7 +82,7 @@ export const PackageCard: React.FC<PackageCardProps> = ({
 
   return (
     <>
-      <Card className={`relative h-full ${popular ? 'ring-2 ring-blue-500 shadow-lg' : 'shadow-sm'}`}>
+      <Card className={`relative h-full flex flex-col ${popular ? 'ring-2 ring-blue-500 shadow-lg' : 'shadow-sm'}`}>
         {popular && (
           <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
             <Badge className="bg-blue-500 text-white px-3 py-1 flex items-center gap-1">
@@ -81,18 +92,18 @@ export const PackageCard: React.FC<PackageCardProps> = ({
           </div>
         )}
         
-        <CardHeader className="text-center pb-4">
+        <CardHeader className="text-center pb-4 flex-shrink-0">
           <CardTitle className="text-xl font-bold">{name}</CardTitle>
           <div className="flex items-center justify-center gap-1 mt-2">
             <DollarSign className="h-5 w-5 text-gray-600" />
-            <span className="text-3xl font-bold">N${price}</span>
+            <span className="text-2xl sm:text-3xl font-bold">N${price}</span>
             <span className="text-gray-600">/month</span>
           </div>
           <p className="text-sm text-gray-600 mt-2">{description}</p>
         </CardHeader>
         
-        <CardContent className="pt-0">
-          <div className="space-y-4 mb-6">
+        <CardContent className="pt-0 flex-grow flex flex-col">
+          <div className="space-y-3 sm:space-y-4 mb-6 flex-grow">
             {features.map((feature, index) => (
               <div key={index} className="flex items-start gap-2">
                 <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
@@ -104,7 +115,7 @@ export const PackageCard: React.FC<PackageCardProps> = ({
           <Button
             onClick={handleSelectPackage}
             disabled={isProcessing || hasActivePackage}
-            className={`w-full ${
+            className={`w-full mt-auto ${
               popular 
                 ? 'bg-blue-600 hover:bg-blue-700' 
                 : 'bg-gray-800 hover:bg-gray-900'
@@ -120,10 +131,10 @@ export const PackageCard: React.FC<PackageCardProps> = ({
           <DialogHeader>
             <DialogTitle>Complete Your Package Purchase</DialogTitle>
           </DialogHeader>
-          <PaymentFlow
+          <DynamicBankDepositInstructions
             amount={price}
             packageId={id}
-            onSuccess={handlePaymentSubmitted}
+            onMarkAsPaid={handlePaymentSubmitted}
           />
         </DialogContent>
       </Dialog>

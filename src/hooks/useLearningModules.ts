@@ -47,12 +47,18 @@ export const useLearningModules = () => {
       
       if (error) throw error;
       
-      setQuestions(prev => ({
-        ...prev,
-        [moduleId]: data || []
+      // Cast the database response to match our TypeScript interface
+      const typedQuestions: QuizQuestion[] = (data || []).map(item => ({
+        ...item,
+        correct_answer: item.correct_answer as 'A' | 'B' | 'C' | 'D'
       }));
       
-      return data || [];
+      setQuestions(prev => ({
+        ...prev,
+        [moduleId]: typedQuestions
+      }));
+      
+      return typedQuestions;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch questions';
       toast.error(errorMessage);
@@ -128,9 +134,15 @@ export const useLearningModules = () => {
       
       if (error) throw error;
       
+      // Cast the database response to match our TypeScript interface
+      const typedQuestion: QuizQuestion = {
+        ...data,
+        correct_answer: data.correct_answer as 'A' | 'B' | 'C' | 'D'
+      };
+      
       toast.success('Question created successfully');
       await fetchQuestions(questionData.module_id);
-      return data;
+      return typedQuestion;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create question';
       toast.error(errorMessage);

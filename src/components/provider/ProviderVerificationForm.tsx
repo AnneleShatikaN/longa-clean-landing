@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,12 +14,13 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle, CheckCircle, GraduationCap } from 'lucide-react';
 import { EnhancedLoading } from '@/components/ui/enhanced-loading';
+import { ServiceType } from '@/types/learning';
 
 interface ProviderVerificationFormProps {
-  onSubmissionComplete: () => void;
+  onSubmissionComplete?: () => void;
 }
 
-export const ProviderVerificationForm: React.FC<ProviderVerificationFormProps> = ({
+const ProviderVerificationForm: React.FC<ProviderVerificationFormProps> = ({
   onSubmissionComplete
 }) => {
   const { user } = useAuth();
@@ -47,7 +49,7 @@ export const ProviderVerificationForm: React.FC<ProviderVerificationFormProps> =
           .from('provider_certificates')
           .select('id')
           .eq('provider_id', user.id)
-          .eq('service_type', user.provider_category)
+          .eq('service_type', user.provider_category as ServiceType)
           .eq('is_active', true)
           .single();
           
@@ -109,7 +111,10 @@ export const ProviderVerificationForm: React.FC<ProviderVerificationFormProps> =
         title: "Submission Successful",
         description: "Your verification documents have been submitted for review.",
       });
-      onSubmissionComplete();
+      
+      if (onSubmissionComplete) {
+        onSubmissionComplete();
+      }
       navigate('/provider-dashboard');
 
     } catch (error: any) {
@@ -323,3 +328,5 @@ export const ProviderVerificationForm: React.FC<ProviderVerificationFormProps> =
     </div>
   );
 };
+
+export default ProviderVerificationForm;

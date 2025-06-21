@@ -900,6 +900,51 @@ export type Database = {
           },
         ]
       }
+      learning_modules: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_published: boolean | null
+          notes: string | null
+          notes_pdf_url: string | null
+          service_type: Database["public"]["Enums"]["service_type_enum"]
+          title: string
+          updated_at: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_published?: boolean | null
+          notes?: string | null
+          notes_pdf_url?: string | null
+          service_type: Database["public"]["Enums"]["service_type_enum"]
+          title: string
+          updated_at?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_published?: boolean | null
+          notes?: string | null
+          notes_pdf_url?: string | null
+          service_type?: Database["public"]["Enums"]["service_type_enum"]
+          title?: string
+          updated_at?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
       location_map: {
         Row: {
           created_at: string | null
@@ -2732,6 +2777,56 @@ export type Database = {
           },
         ]
       }
+      quiz_questions: {
+        Row: {
+          correct_answer: string | null
+          created_at: string | null
+          explanation: string | null
+          id: string
+          module_id: string | null
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question_order: number | null
+          question_text: string
+        }
+        Insert: {
+          correct_answer?: string | null
+          created_at?: string | null
+          explanation?: string | null
+          id?: string
+          module_id?: string | null
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question_order?: number | null
+          question_text: string
+        }
+        Update: {
+          correct_answer?: string | null
+          created_at?: string | null
+          explanation?: string | null
+          id?: string
+          module_id?: string | null
+          option_a?: string
+          option_b?: string
+          option_c?: string
+          option_d?: string
+          question_order?: number | null
+          question_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "learning_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       revenue_forecasts: {
         Row: {
           accuracy_score: number | null
@@ -4112,6 +4207,14 @@ export type Database = {
         | "in_progress"
         | "completed"
         | "cancelled"
+      service_type_enum:
+        | "cleaning"
+        | "gardening"
+        | "plumbing"
+        | "electrical"
+        | "carpentry"
+        | "painting"
+        | "maintenance"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4233,6 +4336,15 @@ export const Constants = {
         "in_progress",
         "completed",
         "cancelled",
+      ],
+      service_type_enum: [
+        "cleaning",
+        "gardening",
+        "plumbing",
+        "electrical",
+        "carpentry",
+        "painting",
+        "maintenance",
       ],
     },
   },

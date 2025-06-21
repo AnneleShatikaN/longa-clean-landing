@@ -18,7 +18,8 @@ import {
   MessageSquare,
   Calendar,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  GraduationCap
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { EnhancedLoading } from '@/components/ui/enhanced-loading';
@@ -32,6 +33,7 @@ import PackageManagement from '@/components/admin/PackageManagement';
 import { PackageBookingManager } from '@/components/admin/PackageBookingManager';
 import { ServiceCategoryManager } from '@/components/admin/ServiceCategoryManager';
 import { AdminOverview } from '@/components/admin/AdminOverview';
+import { AcademyManagement } from '@/components/admin/AcademyManagement';
 import { useAuth } from '@/contexts/AuthContext';
 
 const AdminDashboard = () => {
@@ -146,7 +148,7 @@ const AdminDashboard = () => {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-10">
+          <TabsList className="grid w-full grid-cols-11">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Overview
@@ -166,6 +168,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="bookings" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Book Packages
+            </TabsTrigger>
+            <TabsTrigger value="academy" className="flex items-center gap-2">
+              <GraduationCap className="h-4 w-4" />
+              Academy
             </TabsTrigger>
             <TabsTrigger value="payments" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
@@ -207,6 +213,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="bookings">
             <PackageBookingManager />
+          </TabsContent>
+
+          <TabsContent value="academy">
+            <AcademyManagement />
           </TabsContent>
 
           <TabsContent value="payments">

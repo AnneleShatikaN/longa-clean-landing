@@ -3,18 +3,18 @@ import { logSecurityEvent, detectSuspiciousActivity, checkRateLimit } from '@/ut
 import { LoginData, UserRegistration, PasswordReset, ChangePassword } from '@/schemas/validation';
 import { fetchUserProfile } from '@/utils/userProfile';
 
+// Note: This service is deprecated in favor of AuthContext.tsx
+// Keeping minimal functionality for backward compatibility
+
 export const loginUser = async (loginData: LoginData) => {
-  // Check rate limiting
+  // Redirect to use AuthContext instead
+  console.warn('authService.loginUser is deprecated. Use AuthContext.signIn instead.');
+  
   const rateLimitKey = `login_${loginData.email}`;
   if (!checkRateLimit(rateLimitKey, 5, 15 * 60 * 1000)) {
-    logSecurityEvent({
-      type: 'failed_login',
-      details: { email: loginData.email, reason: 'rate_limited' }
-    });
     throw new Error('Too many login attempts. Please try again later.');
   }
 
-  // Sign in with email/password - no need to clean session first
   const { data, error } = await supabase.auth.signInWithPassword({
     email: loginData.email,
     password: loginData.password,
@@ -29,17 +29,12 @@ export const loginUser = async (loginData: LoginData) => {
       throw new Error('User profile not found');
     }
 
-    // Skip role validation for existing users - let them login regardless
-    console.log('User logged in successfully:', profile.email, 'Role:', profile.role);
-
-    // Log successful login
     logSecurityEvent({
       type: 'login',
       userId: profile.id,
       details: { email: loginData.email, role: profile.role }
     });
 
-    // Check for suspicious activity
     const suspiciousCheck = detectSuspiciousActivity({
       userId: profile.id,
       action: 'login',
@@ -62,7 +57,8 @@ export const loginUser = async (loginData: LoginData) => {
 };
 
 export const signupUser = async (userData: UserRegistration & { workLocation?: string }) => {
-  // Check if email already exists
+  console.warn('authService.signupUser is deprecated. Use AuthContext.signUp instead.');
+  
   const { data: existingUser } = await supabase
     .from('users')
     .select('email')
@@ -73,11 +69,11 @@ export const signupUser = async (userData: UserRegistration & { workLocation?: s
     throw new Error('An account with this email already exists');
   }
 
-  // Sign up with Supabase Auth - no email confirmation needed
   const { data, error } = await supabase.auth.signUp({
     email: userData.email,
     password: userData.password,
     options: {
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
       data: {
         full_name: userData.name,
         phone: userData.phone,
@@ -93,8 +89,7 @@ export const signupUser = async (userData: UserRegistration & { workLocation?: s
   }
 
   if (data.user) {
-    // Since email confirmation is disabled, the user will be automatically logged in
-    return { success: true, needsEmailVerification: false };
+    return { success: true, needsEmailVerification: !data.session };
   }
 
   return { success: false, needsEmailVerification: false };
@@ -113,7 +108,9 @@ export const logoutUser = async (userId?: string, email?: string) => {
 };
 
 export const requestPasswordResetService = async (data: PasswordReset) => {
-  const { error } = await supabase.auth.resetPasswordForEmail(data.email);
+  const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+    redirectTo: `${window.location.origin}/auth/callback`
+  });
 
   if (error) throw error;
   return true;

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -6,7 +7,7 @@ export interface UserProfile {
   id: string;
   email: string;
   full_name?: string;
-  name?: string; // Add for compatibility
+  name?: string;
   phone?: string;
   role?: string;
   avatar_url?: string;
@@ -16,7 +17,7 @@ export interface UserProfile {
   service_coverage_areas?: string[];
   is_active?: boolean;
   is_available?: boolean;
-  available?: boolean; // Add for compatibility
+  available?: boolean;
   verification_status?: string;
   background_check_consent?: boolean;
   banking_details_verified?: boolean;
@@ -25,12 +26,10 @@ export interface UserProfile {
   verification_notes?: string;
   created_at?: string;
   updated_at?: string;
-  provider_category?: string; // Add provider category
-  // Location fields
+  provider_category?: string;
   town?: string;
   suburb?: string;
   max_distance?: number;
-  // Additional compatibility properties
   address?: string;
   profilePicture?: string;
   bankMobileNumber?: string;
@@ -58,12 +57,14 @@ interface AuthContextType {
   loading: boolean;
   isLoading: boolean;
   isInitialized: boolean;
+  needsEmailVerification: boolean;
   signIn: (email: string, password: string) => Promise<any>;
   signUp: (email: string, password: string, userData: any) => Promise<any>;
   signOut: () => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   refreshUser: () => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -81,41 +82,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
+  const [signupEmail, setSignupEmail] = useState<string>('');
 
   useEffect(() => {
     console.log('AuthProvider - Initializing auth state');
     
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      console.log('AuthProvider - Initial session:', { session: session?.user?.email || 'none', error });
-      setSession(session);
-      
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-      
-      // Always set initialized to true after initial session check
-      setIsInitialized(true);
-    });
-
-    // Listen for auth changes
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('AuthProvider - Auth state change:', { event, userEmail: session?.user?.email || 'none' });
       setSession(session);
       
-      if (session?.user) {
-        // Use setTimeout to prevent deadlock
+      if (event === 'SIGNED_UP') {
+        // User just signed up - check if email is confirmed
+        if (session?.user && !session.user.email_confirmed_at) {
+          console.log('AuthProvider - User signed up but email not confirmed');
+          setNeedsEmailVerification(true);
+          setSignupEmail(session.user.email || '');
+          setUser(null);
+          setLoading(false);
+          setIsInitialized(true);
+          return;
+        }
+      }
+      
+      if (event === 'SIGNED_IN') {
+        // Check if email is verified for existing users
+        if (session?.user && !session.user.email_confirmed_at) {
+          console.log('AuthProvider - User signed in but email not verified');
+          setNeedsEmailVerification(true);
+          setSignupEmail(session.user.email || '');
+          setUser(null);
+          setLoading(false);
+          setIsInitialized(true);
+          return;
+        }
+      }
+      
+      if (session?.user && session.user.email_confirmed_at) {
+        // Email is verified, fetch user profile
+        setNeedsEmailVerification(false);
         setTimeout(() => {
           fetchUserProfile(session.user.id);
         }, 0);
       } else {
         setUser(null);
+        setNeedsEmailVerification(false);
         setLoading(false);
       }
       
-      // Ensure initialized is always true after auth state changes
+      setIsInitialized(true);
+    });
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      console.log('AuthProvider - Initial session:', { session: session?.user?.email || 'none', error });
+      setSession(session);
+      
+      if (session?.user) {
+        if (!session.user.email_confirmed_at) {
+          setNeedsEmailVerification(true);
+          setSignupEmail(session.user.email || '');
+          setUser(null);
+          setLoading(false);
+        } else {
+          setNeedsEmailVerification(false);
+          fetchUserProfile(session.user.id);
+        }
+      } else {
+        setLoading(false);
+      }
+      
       setIsInitialized(true);
     });
 
@@ -144,18 +181,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // Transform the data to match our UserProfile interface
       const userProfile: UserProfile = {
         ...data,
-        name: data.full_name, // Map full_name to name for compatibility
-        available: data.is_available, // Map is_available to available
+        name: data.full_name,
+        available: data.is_available,
         status: data.is_active ? 'active' : 'inactive',
         joinDate: data.created_at,
         lastActive: data.updated_at || new Date().toISOString(),
-        isEmailVerified: true, // Assume verified if they can log in
+        isEmailVerified: true,
         jobsCompleted: data.total_jobs || 0,
-        totalEarnings: 0, // Default value
-        // Include location fields
+        totalEarnings: 0,
         town: data.town,
         suburb: data.suburb,
         max_distance: data.max_distance,
@@ -192,6 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -202,15 +238,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(error.message);
       }
       
+      // Check if email is verified
+      if (data.user && !data.user.email_confirmed_at) {
+        setNeedsEmailVerification(true);
+        setSignupEmail(email);
+        return { data: null, error: new Error('Please verify your email address before signing in') };
+      }
+      
       return { data, error: null };
     } catch (error: any) {
       console.error('SignIn failed:', error);
       return { data: null, error };
+    } finally {
+      setLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, userData: any) => {
     try {
+      setLoading(true);
       console.log('Creating account with data:', {
         email: email,
         role: userData.role,
@@ -219,11 +265,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         providerCategory: userData.provider_category
       });
 
+      // Use consistent redirect URL for email verification
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
           data: {
             full_name: userData.full_name,
             phone: userData.phone,
@@ -248,6 +297,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session: !!data.session 
       });
 
+      if (needsEmailVerification) {
+        setNeedsEmailVerification(true);
+        setSignupEmail(email);
+      }
+
       return { 
         data, 
         error: null, 
@@ -260,11 +314,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error, 
         needsEmailVerification: false 
       };
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
+    setLoading(true);
     await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    setNeedsEmailVerification(false);
+    setSignupEmail('');
+    setLoading(false);
   };
 
   const logout = async () => {
@@ -284,18 +346,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser({ ...user, ...updates });
   };
 
+  const resendVerificationEmail = async () => {
+    try {
+      if (!signupEmail) {
+        throw new Error('No email address found');
+      }
+
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: signupEmail,
+        options: {
+          emailRedirectTo: redirectUrl
+        }
+      });
+
+      if (error) throw error;
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error resending verification email:', error);
+      throw error;
+    }
+  };
+
   const value = {
     user,
     session,
     loading,
     isLoading: loading,
     isInitialized,
+    needsEmailVerification,
     signIn,
     signUp,
     signOut,
     logout,
     updateProfile,
     refreshUser,
+    resendVerificationEmail,
   };
 
   return (

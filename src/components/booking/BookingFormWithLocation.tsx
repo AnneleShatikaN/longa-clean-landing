@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { TownSuburbSelector } from '@/components/location/TownSuburbSelector';
+import TownSuburbSelector from '@/components/location/TownSuburbSelector';
 import { useProximityBooking } from '@/hooks/useProximityBooking';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';

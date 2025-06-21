@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -124,8 +123,7 @@ export const PackageCard: React.FC<PackageCardProps> = ({
           <PaymentFlow
             amount={price}
             packageId={id}
-            transactionType="subscription"
-            onPaymentSubmitted={handlePaymentSubmitted}
+            onSuccess={handlePaymentSubmitted}
           />
         </DialogContent>
       </Dialog>

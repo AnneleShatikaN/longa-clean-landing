@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -522,8 +521,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         <PaymentFlow
           amount={299}
           packageId={selectedPackage || ''}
-          transactionType="subscription"
-          onPaymentSubmitted={() => setShowPaymentFlow(false)}
+          onSuccess={() => setShowPaymentFlow(false)}
         />
       )}
     </>

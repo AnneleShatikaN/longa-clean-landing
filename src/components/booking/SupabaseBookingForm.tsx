@@ -407,7 +407,6 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
         <PaymentFlow
           amount={selectedService?.clientPrice || 0}
           serviceId={selectedService?.id || ''}
-          transactionType="booking"
           bookingDetails={{
             provider_id: selectedProviderId,
             booking_date: bookingDate ? format(bookingDate, 'yyyy-MM-dd') : '',
@@ -418,7 +417,7 @@ export const SupabaseBookingForm: React.FC<SupabaseBookingFormProps> = ({
             client_town: clientTown,
             client_suburb: clientSuburb
           }}
-          onPaymentSubmitted={() => setShowPaymentFlow(false)}
+          onSuccess={() => setShowPaymentFlow(false)}
         />
       )}
     </>

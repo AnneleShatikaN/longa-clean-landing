@@ -1,501 +1,374 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
-import { useServiceCategories } from '@/hooks/useServiceCategories';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, EyeOff, User, Briefcase, ArrowLeft, Mail, CheckCircle, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { toast } from 'sonner';
-
-const NAMIBIAN_TOWNS = [
-  { value: 'windhoek', label: 'Windhoek' },
-  { value: 'walvis-bay', label: 'Walvis Bay' },
-  { value: 'swakopmund', label: 'Swakopmund' },
-  { value: 'oshakati', label: 'Oshakati' },
-  { value: 'rundu', label: 'Rundu' },
-  { value: 'otjiwarongo', label: 'Otjiwarongo' },
-  { value: 'gobabis', label: 'Gobabis' },
-  { value: 'katima-mulilo', label: 'Katima Mulilo' },
-  { value: 'tsumeb', label: 'Tsumeb' },
-  { value: 'keetmanshoop', label: 'Keetmanshoop' },
-  { value: 'rehoboth', label: 'Rehoboth' },
-  { value: 'mariental', label: 'Mariental' }
-];
+import { supabase } from '@/integrations/supabase/client';
+import { Mail, KeyRound, User, CheckCircle, AlertTriangle } from "lucide-react";
 
 const Auth = () => {
-  const navigate = useNavigate();
-  const { user, loading, isInitialized, needsEmailVerification, signUp, signIn, resendVerificationEmail } = useAuth();
-  const { categories, isLoading: categoriesLoading } = useServiceCategories();
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  
-  // Form state
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    fullName: '',
+    full_name: '',
     phone: '',
-    role: 'client' as 'client' | 'provider',
-    location: '',
-    providerCategory: ''
+    role: 'client',
+    provider_category: '',
+    current_work_location: ''
   });
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (user && isInitialized && !loading && !needsEmailVerification) {
-      if (user.role === 'client') {
-        navigate('/client-dashboard');
-      } else if (user.role === 'provider') {
-        navigate('/provider-dashboard');
-      } else if (user.role === 'admin') {
-        navigate('/admin-dashboard');
-      }
-    }
-  }, [user, loading, isInitialized, needsEmailVerification, navigate]);
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const navigate = useNavigate();
+  const { signIn } = useAuth();
+  const { toast } = useToast();
 
   const validateForm = () => {
-    if (!formData.email || !formData.password) {
-      toast.error('Email and password are required');
-      return false;
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email is invalid';
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast.error('Please enter a valid email address');
-      return false;
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
-    if (isSignUp) {
-      if (!formData.fullName.trim()) {
-        toast.error('Full name is required');
-        return false;
+    if (mode === 'signup') {
+      if (!formData.full_name) {
+        newErrors.full_name = 'Full name is required';
       }
 
-      if (!formData.location) {
-        toast.error('Location is required');
-        return false;
+      if (formData.role === 'provider' && !formData.provider_category) {
+        newErrors.provider_category = 'Provider category is required';
       }
 
-      if (formData.role === 'provider' && !formData.providerCategory) {
-        toast.error('Please select a service category');
-        return false;
-      }
-
-      if (formData.password.length < 6) {
-        toast.error('Password must be at least 6 characters');
-        return false;
+      if (formData.role === 'provider' && !formData.current_work_location) {
+        newErrors.current_work_location = 'Work location is required';
       }
     }
 
-    return true;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    setIsSubmitting(true);
-    setAuthError(null);
-    
+    setIsLoading(true);
     try {
-      if (isSignUp) {
-        console.log('Creating account with data:', {
-          email: formData.email,
-          role: formData.role,
-          fullName: formData.fullName,
-          location: formData.location,
-          providerCategory: formData.providerCategory
-        });
+      const { error } = await signIn(formData.email, formData.password);
+      if (error) throw error;
 
-        const result = await signUp(formData.email, formData.password, {
-          full_name: formData.fullName,
-          phone: formData.phone,
-          role: formData.role,
-          current_work_location: formData.location,
-          provider_category: formData.role === 'provider' ? formData.providerCategory : null
-        });
-        
-        if (result.error) {
-          throw result.error;
-        }
-        
-        if (result.needsEmailVerification) {
-          toast.success('Account created! Please check your email to verify your account.');
-        } else {
-          toast.success('Account created and signed in successfully!');
-        }
-        
-        // Reset form
-        setFormData({
-          email: '',
-          password: '',
-          fullName: '',
-          phone: '',
-          role: 'client',
-          location: '',
-          providerCategory: ''
-        });
-      } else {
-        const result = await signIn(formData.email, formData.password);
-        
-        if (result.error) {
-          throw result.error;
-        }
-        
-        toast.success('Signed in successfully!');
-      }
+      toast({
+        title: "Signed in!",
+        description: "You have successfully signed in.",
+      });
+      navigate('/client-dashboard');
     } catch (error: any) {
-      console.error('Auth error:', error);
-      
-      let errorMessage = 'An error occurred. Please try again.';
-      
-      if (error.message) {
-        if (error.message.includes('User already registered')) {
-          errorMessage = 'An account with this email already exists. Please sign in instead.';
-        } else if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Invalid email or password. Please check your credentials.';
-        } else if (error.message.includes('Password should be at least')) {
-          errorMessage = 'Password must be at least 6 characters long.';
-        } else if (error.message.includes('Unable to validate email address')) {
-          errorMessage = 'Please enter a valid email address.';
-        } else if (error.message.includes('verify your email')) {
-          errorMessage = 'Please verify your email address before signing in.';
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      setAuthError(errorMessage);
-      toast.error(errorMessage);
+      console.error('Signin error:', error);
+      toast({
+        title: "Sign in failed",
+        description: error.message,
+        variant: "destructive"
+      });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const handleResendVerification = async () => {
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsLoading(true);
     try {
-      setIsSubmitting(true);
-      await resendVerificationEmail();
-      toast.success('Verification email sent! Please check your inbox.');
+      console.log('Signing up with data:', { 
+        email: formData.email, 
+        role: formData.role,
+        provider_category: formData.provider_category,
+        current_work_location: formData.current_work_location 
+      });
+
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.full_name,
+            phone: formData.phone,
+            role: formData.role,
+            provider_category: formData.provider_category,
+            current_work_location: formData.current_work_location
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      // Additional step: Update the user record directly after signup to ensure all fields are saved
+      if (data.user && formData.role === 'provider') {
+        console.log('Updating provider profile after signup...');
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            provider_category: formData.provider_category,
+            current_work_location: formData.current_work_location,
+            phone: formData.phone
+          })
+          .eq('id', data.user.id);
+
+        if (updateError) {
+          console.error('Error updating provider profile:', updateError);
+        } else {
+          console.log('Provider profile updated successfully');
+        }
+      }
+
+      toast({
+        title: "Account created!",
+        description: "Please check your email to verify your account.",
+      });
+      
+      setMode('signin');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to resend verification email');
+      console.error('Signup error:', error);
+      toast({
+        title: "Sign up failed",
+        description: error.message,
+        variant: "destructive"
+      });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const getRoleInfo = (role: string) => {
-    switch (role) {
-      case 'client':
-        return {
-          icon: <User className="h-4 w-4" />,
-          title: 'Client',
-          description: 'Book services from trusted providers'
-        };
-      case 'provider':
-        return {
-          icon: <Briefcase className="h-4 w-4" />,
-          title: 'Service Provider',
-          description: 'Offer your services and earn income'
-        };
-      default:
-        return { icon: null, title: '', description: '' };
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
-  // Show loading only when auth is not yet initialized
-  if (!isInitialized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-      </div>
-    );
-  }
+  const handleRoleChange = (role: string) => {
+    setFormData(prev => ({
+      ...prev,
+      role,
+      provider_category: '',
+      current_work_location: ''
+    }));
+  };
 
-  // Email verification screen
-  if (needsEmailVerification) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <Card>
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <Mail className="h-6 w-6 text-blue-600" />
-              </div>
-              <CardTitle>Verify Your Email</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-gray-600">
-                We've sent a verification link to your email address.
-              </p>
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Click the verification link in your email to activate your account, then you can sign in.
-                </AlertDescription>
-              </Alert>
-              <div className="space-y-2">
-                <Button
-                  onClick={handleResendVerification}
-                  disabled={isSubmitting}
-                  className="w-full"
-                >
-                  {isSubmitting ? 'Sending...' : 'Resend Verification Email'}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsSignUp(false);
-                    setAuthError(null);
-                  }}
-                  className="w-full"
-                >
-                  Back to Sign In
-                </Button>
-              </div>
-              <p className="text-xs text-gray-500">
-                Check your spam folder if you don't see the email.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
+  const isFormValid = Object.keys(errors).length === 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <Button
-            variant="ghost"
-            className="absolute top-4 left-4"
-            onClick={() => navigate('/')}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <Card className="max-w-md w-full space-y-8">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl font-bold">
+            {mode === 'signin' ? 'Sign In' : 'Create Account'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={mode === 'signin' ? handleSignIn : handleSignUp}
+            className="space-y-6"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
-          </Button>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Longa</h1>
-          <p className="text-gray-600">
-            {isSignUp ? 'Create your account' : 'Welcome back'}
-          </p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center">
-              {isSignUp ? 'Sign Up' : 'Sign In'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Show error alert if there's an auth error */}
-            {authError && (
-              <Alert className="mb-4 border-red-200 bg-red-50">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-red-800">
-                  {authError}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Role Selection for Sign Up */}
-              {isSignUp && (
-                <div className="space-y-3">
-                  <Label>Account Type</Label>
-                  <Tabs 
-                    value={formData.role} 
-                    onValueChange={(value) => handleInputChange('role', value)}
-                    className="w-full"
-                  >
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="client">Client</TabsTrigger>
-                      <TabsTrigger value="provider">Provider</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                  
-                  {/* Role Description */}
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      {getRoleInfo(formData.role).icon}
-                      <span className="font-medium">{getRoleInfo(formData.role).title}</span>
-                    </div>
-                    <p className="text-sm text-gray-600">{getRoleInfo(formData.role).description}</p>
+            {mode === 'signup' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="full_name">Full Name</Label>
+                  <Input
+                    id="full_name"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={formData.full_name}
+                    onChange={(e) => handleInputChange('full_name', e.target.value)}
+                    className={errors.full_name ? 'border-red-500' : ''}
+                  />
+                  {errors.full_name && (
+                    <p className="text-sm text-red-500">{errors.full_name}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Account Type</Label>
+                  <div className="flex space-x-4">
+                    <Button
+                      variant={formData.role === 'client' ? 'default' : 'outline'}
+                      onClick={() => handleRoleChange('client')}
+                      type="button"
+                    >
+                      Client
+                    </Button>
+                    <Button
+                      variant={formData.role === 'provider' ? 'default' : 'outline'}
+                      onClick={() => handleRoleChange('provider')}
+                      type="button"
+                    >
+                      Provider
+                    </Button>
                   </div>
                 </div>
+              </>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className={errors.email ? 'border-red-500' : ''}
+              />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email}</p>
               )}
-
-              {/* Full Name for Sign Up */}
-              {isSignUp && (
-                <div>
-                  <Label htmlFor="fullName">Full Name *</Label>
-                  <Input
-                    id="fullName"
-                    value={formData.fullName}
-                    onChange={(e) => handleInputChange('fullName', e.target.value)}
-                    placeholder="Enter your full name"
-                    required
-                  />
-                </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
+                className={errors.password ? 'border-red-500' : ''}
+              />
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password}</p>
               )}
+            </div>
 
-              {/* Email */}
-              <div>
-                <Label htmlFor="email">Email Address *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="Enter your email"
-                  required
+            {formData.role === 'provider' && mode === 'signup' && (
+              <>
+                <ProviderCategorySelect
+                  value={formData.provider_category}
+                  onChange={(value) => handleInputChange('provider_category', value)}
+                  error={errors.provider_category}
                 />
-              </div>
-
-              {/* Password */}
-              <div>
-                <Label htmlFor="password">Password *</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
-                    placeholder="Enter your password"
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-                {isSignUp && (
-                  <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
-                )}
-              </div>
-
-              {/* Service Category for Provider Sign Up */}
-              {isSignUp && formData.role === 'provider' && (
-                <div>
-                  <Label htmlFor="providerCategory">Service Category *</Label>
-                  <Select
-                    value={formData.providerCategory}
-                    onValueChange={(value) => handleInputChange('providerCategory', value)}
-                    disabled={categoriesLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your service category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.filter(cat => cat.is_active).map((category) => (
-                        <SelectItem key={category.id} value={category.name}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Choose the primary service category you'll provide
-                  </p>
-                </div>
-              )}
-
-              {/* Location for Sign Up */}
-              {isSignUp && (
-                <div>
-                  <Label htmlFor="location">Location *</Label>
-                  <Select
-                    value={formData.location}
-                    onValueChange={(value) => handleInputChange('location', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {NAMIBIAN_TOWNS.map((town) => (
-                        <SelectItem key={town.value} value={town.value}>
-                          {town.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Phone for Sign Up */}
-              {isSignUp && (
-                <div>
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    placeholder="+264 XX XXX XXXX"
-                  />
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
-              </Button>
-            </form>
-
-            {/* Forgot Password Link */}
-            {!isSignUp && (
-              <div className="mt-4 text-center">
-                <Button
-                  variant="link"
-                  className="text-purple-600"
-                  onClick={() => navigate('/auth/forgot-password')}
-                >
-                  Forgot your password?
-                </Button>
-              </div>
+                <WorkLocationSelect
+                  value={formData.current_work_location}
+                  onChange={(value) => handleInputChange('current_work_location', value)}
+                  error={errors.current_work_location}
+                />
+              </>
             )}
 
-            {/* Toggle Sign In/Up */}
-            <div className="mt-6 text-center">
-              <p className="text-gray-600">
-                {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-                <Button
-                  variant="link"
-                  className="p-0 ml-1 text-purple-600"
-                  onClick={() => {
-                    setIsSignUp(!isSignUp);
-                    setAuthError(null);
-                  }}
-                >
-                  {isSignUp ? 'Sign In' : 'Sign Up'}
-                </Button>
-              </p>
+            <div>
+              <Button
+                type="submit"
+                disabled={isLoading || !isFormValid}
+                className="w-full"
+              >
+                {isLoading ? (
+                  <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12 4V2m0 20v-2m8-8h2M4 12H2m15.364 6.364l1.414-1.414M2.636 5.636L4.05 4.222m16.728 0l-1.414 1.414M5.636 18.364L4.222 19.778" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                ) : (
+                  mode === 'signin' ? 'Sign In' : 'Create Account'
+                )}
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </form>
+          <div className="text-sm text-center">
+            {mode === 'signin' ? (
+              <>
+                Don't have an account?{' '}
+                <Button variant="link" onClick={() => setMode('signup')}>
+                  Sign Up
+                </Button>
+              </>
+            ) : (
+              <>
+                Already have an account?{' '}
+                <Button variant="link" onClick={() => setMode('signin')}>
+                  Sign In
+                </Button>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
+
+interface ProviderCategorySelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+}
+
+const providerCategories = [
+  { value: 'cleaning', label: 'Cleaning Services' },
+  { value: 'car_wash', label: 'Car Wash Services' },
+  { value: 'gardening', label: 'Gardening Services' },
+  { value: 'plumbing', label: 'Plumbing Services' },
+  { value: 'electrical', label: 'Electrical Services' },
+  { value: 'maintenance', label: 'General Maintenance' },
+];
+
+const ProviderCategorySelect: React.FC<ProviderCategorySelectProps> = ({ value, onChange, error }) => (
+  <div className="space-y-2">
+    <Label htmlFor="provider_category">Provider Category</Label>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={error ? 'border-red-500' : ''}>
+        <SelectValue placeholder="Select category" />
+      </SelectTrigger>
+      <SelectContent>
+        {providerCategories.map((category) => (
+          <SelectItem key={category.value} value={category.value}>
+            {category.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+    {error && <p className="text-sm text-red-500">{error}</p>}
+  </div>
+);
+
+interface WorkLocationSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+}
+
+const workLocations = [
+  { value: 'windhoek', label: 'Windhoek' },
+  { value: 'walvis_bay', label: 'Walvis Bay' },
+  { value: 'swakopmund', label: 'Swakopmund' },
+  { value: 'oshakati', label: 'Oshakati' },
+  { value: 'rundu', label: 'Rundu' },
+  { value: 'katima_mulilo', label: 'Katima Mulilo' },
+];
+
+const WorkLocationSelect: React.FC<WorkLocationSelectProps> = ({ value, onChange, error }) => (
+  <div className="space-y-2">
+    <Label htmlFor="current_work_location">Work Location</Label>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={error ? 'border-red-500' : ''}>
+        <SelectValue placeholder="Select location" />
+      </SelectTrigger>
+      <SelectContent>
+        {workLocations.map((location) => (
+          <SelectItem key={location.value} value={location.value}>
+            {location.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+    {error && <p className="text-sm text-red-500">{error}</p>}
+  </div>
+);
 
 export default Auth;

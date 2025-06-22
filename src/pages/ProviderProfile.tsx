@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,6 +64,31 @@ const ProviderProfile = () => {
     }
   }, [locationMessage, toast]);
 
+  const formatPhoneNumber = (phone: string): string => {
+    // Remove all non-digit characters
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // Handle different input formats
+    let formatted = cleaned;
+    if (cleaned.startsWith('264')) {
+      // Already has country code
+      formatted = cleaned;
+    } else if (cleaned.startsWith('0')) {
+      // Remove leading 0 and add country code
+      formatted = '264' + cleaned.substring(1);
+    } else if (cleaned.length === 9) {
+      // Just the mobile number, add country code
+      formatted = '264' + cleaned;
+    }
+    
+    // Format as +264 XX XXX XXXX for display
+    if (formatted.length === 12 && formatted.startsWith('264')) {
+      return `+264 ${formatted.substring(3, 5)} ${formatted.substring(5, 8)} ${formatted.substring(8)}`;
+    }
+    
+    return phone; // Return original if can't format
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -76,8 +100,23 @@ const ProviderProfile = () => {
       newErrors.provider_category = 'Provider category is required';
     }
 
-    if (formData.phone && !/^\+264\s\d{2}\s\d{3}\s\d{4}$/.test(formData.phone)) {
-      newErrors.phone = 'Phone must be in format +264 XX XXX XXXX';
+    if (formData.phone) {
+      // Remove all non-digit characters for validation
+      const cleanPhone = formData.phone.replace(/\D/g, '');
+      
+      // Check if it's a valid Namibian number
+      let isValid = false;
+      if (cleanPhone.startsWith('264') && cleanPhone.length === 12) {
+        isValid = true;
+      } else if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
+        isValid = true;
+      } else if (cleanPhone.length === 9) {
+        isValid = true;
+      }
+      
+      if (!isValid) {
+        newErrors.phone = 'Please enter a valid Namibian phone number';
+      }
     }
 
     if (!formData.current_work_location) {
@@ -95,11 +134,14 @@ const ProviderProfile = () => {
 
     setIsLoading(true);
     try {
+      // Format phone number before saving
+      const formattedPhone = formData.phone ? formatPhoneNumber(formData.phone) : null;
+      
       const { error } = await supabase
         .from('users')
         .update({
           full_name: formData.full_name,
-          phone: formData.phone || null,
+          phone: formattedPhone,
           current_work_location: formData.current_work_location,
           provider_category: formData.provider_category,
           updated_at: new Date().toISOString()
@@ -225,10 +267,13 @@ const ProviderProfile = () => {
                   id="phone"
                   value={formData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
-                  placeholder="+264 81 234 5678"
+                  placeholder="81 255 2536 or +264812552536"
                   className={errors.phone ? 'border-red-500' : ''}
                 />
                 {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
+                <p className="text-xs text-gray-500">
+                  Enter your Namibian mobile number (with or without +264)
+                </p>
               </div>
 
               <div className="space-y-2">

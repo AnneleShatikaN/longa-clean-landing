@@ -1,288 +1,275 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  GraduationCap, 
-  Play, 
+  BookOpen, 
   CheckCircle, 
-  Lock, 
-  Download,
+  AlertCircle, 
+  Play, 
   FileText,
-  Youtube,
-  Award
+  Award,
+  RefreshCw
 } from 'lucide-react';
-import { useProviderLearning } from '@/hooks/useProviderLearning';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { useLearningModules } from '@/hooks/useLearningModules';
 import { ModuleViewer } from './ModuleViewer';
 import { CertificateDisplay } from './CertificateDisplay';
-import { EnhancedLoading } from '@/components/ui/enhanced-loading';
 
-export const ProviderAcademy = () => {
-  const {
-    modules,
-    certificate,
-    isLoading,
-    error,
-    providerServiceType,
-    getProgressStats,
-    generateCertificatePDF
-  } = useProviderLearning();
-
-  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+export const ProviderAcademy: React.FC = () => {
+  const { user, refreshUser } = useAuth();
+  const navigate = useNavigate();
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [showCertificate, setShowCertificate] = useState(false);
 
-  const progressStats = getProgressStats();
-
-  const handleDownloadCertificate = async () => {
-    if (certificate) {
-      const pdfUrl = await generateCertificatePDF();
-      if (pdfUrl) {
-        window.open(pdfUrl, '_blank');
-      }
+  // Check if provider category is set
+  useEffect(() => {
+    if (user && user.role === 'provider' && !user.provider_category) {
+      console.log('Provider category not set, redirecting to profile');
+      navigate('/provider-profile', { 
+        state: { 
+          message: 'Please set your provider category to access training materials',
+          highlightCategory: true 
+        }
+      });
     }
-  };
+  }, [user, navigate]);
+
+  const {
+    modules,
+    progress,
+    certificates,
+    isLoading,
+    startModule,
+    completeModule,
+    submitQuiz,
+    refetch
+  } = useLearningModules(user?.provider_category as any);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <EnhancedLoading message="Loading your academy..." />
+      <div className="flex items-center justify-center p-8">
+        <RefreshCw className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
-  if (error) {
+  // Show error if no provider category
+  if (!user?.provider_category) {
     return (
-      <Card className="border-red-200 bg-red-50">
-        <CardContent className="p-6">
-          <p className="text-red-800">Error loading academy: {error}</p>
-        </CardContent>
-      </Card>
+      <div className="max-w-2xl mx-auto p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="space-y-2">
+              <p>Provider category not set. Please update your profile first.</p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate('/provider-profile')}
+              >
+                Go to Profile
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
-  if (!providerServiceType) {
+  const completedModules = progress?.filter(p => p.is_completed).length || 0;
+  const totalModules = modules?.length || 0;
+  const progressPercentage = totalModules > 0 ? (completedModules / totalModules) * 100 : 0;
+  const hasActiveCertificate = certificates?.some(cert => cert.is_active);
+
+  if (selectedModule) {
     return (
-      <Card className="border-yellow-200 bg-yellow-50">
-        <CardContent className="p-6">
-          <div className="text-center">
-            <GraduationCap className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-yellow-800 mb-2">
-              Service Type Required
-            </h3>
-            <p className="text-yellow-700">
-              Please select your service category in your profile to access the academy.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <ModuleViewer
+        moduleId={selectedModule}
+        onComplete={() => {
+          setSelectedModule(null);
+          refetch();
+        }}
+        onBack={() => setSelectedModule(null)}
+      />
     );
   }
 
-  // Show module viewer if a module is selected
-  if (selectedModuleId) {
-    const selectedModule = modules.find(m => m.id === selectedModuleId);
-    if (selectedModule) {
-      return (
-        <ModuleViewer
-          module={selectedModule}
-          onBack={() => setSelectedModuleId(null)}
-        />
-      );
-    }
-  }
-
-  // Show certificate if requested
-  if (showCertificate && certificate) {
+  if (showCertificate && hasActiveCertificate) {
     return (
       <CertificateDisplay
-        certificate={certificate}
-        providerName={""} // Will be filled from user context
+        serviceType={user.provider_category as any}
         onBack={() => setShowCertificate(false)}
       />
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Longa Academy
-        </h1>
-        <p className="text-lg text-gray-600">
-          {providerServiceType?.charAt(0).toUpperCase() + providerServiceType?.slice(1)} Training Program
-        </p>
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Provider Academy</h1>
+          <p className="text-gray-600">
+            Complete training for {user.provider_category?.replace('_', ' ')} services
+          </p>
+        </div>
+        {hasActiveCertificate && (
+          <Button onClick={() => setShowCertificate(true)} variant="outline">
+            <Award className="h-4 w-4 mr-2" />
+            View Certificate
+          </Button>
+        )}
       </div>
 
       {/* Progress Overview */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5" />
-            Your Progress
+            <BookOpen className="h-5 w-5" />
+            Training Progress
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">
-              {progressStats.completedModules} of {progressStats.totalModules} modules completed
-            </span>
-            <span className="text-sm text-gray-600">
-              {progressStats.progressPercentage}%
-            </span>
-          </div>
-          <Progress value={progressStats.progressPercentage} className="h-2" />
-          
-          {progressStats.isCompleted && certificate && (
-            <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Award className="h-6 w-6 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-800">
-                    Congratulations! Training Complete
-                  </p>
-                  <p className="text-sm text-green-600">
-                    Certificate ID: {certificate.certificate_id}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCertificate(true)}
-                >
-                  View Certificate
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleDownloadCertificate}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF
-                </Button>
-              </div>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Overall Progress</span>
+              <span className="text-sm text-gray-600">
+                {completedModules} of {totalModules} modules completed
+              </span>
             </div>
-          )}
+            <Progress value={progressPercentage} className="h-2" />
+            
+            {progressPercentage === 100 && !hasActiveCertificate && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Congratulations! You've completed all training modules. Your certificate will be generated shortly.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Modules List */}
-      <div className="grid gap-4">
-        {modules.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <GraduationCap className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">
-                No training modules available for {providerServiceType} yet.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          modules.map((module, index) => {
-            const isCompleted = module.progress?.is_completed || false;
-            const canAccess = index === 0 || modules[index - 1]?.progress?.is_completed;
+      <Tabs defaultValue="modules" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="modules">Training Modules</TabsTrigger>
+          <TabsTrigger value="certificates">Certificates</TabsTrigger>
+        </TabsList>
 
-            return (
-              <Card
-                key={module.id}
-                className={`transition-all ${
-                  canAccess 
-                    ? 'hover:shadow-md cursor-pointer' 
-                    : 'opacity-60 cursor-not-allowed'
-                } ${
-                  isCompleted ? 'border-green-200 bg-green-50' : ''
-                }`}
-                onClick={() => canAccess && setSelectedModuleId(module.id)}
-              >
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        isCompleted 
-                          ? 'bg-green-100 text-green-600' 
-                          : canAccess 
-                            ? 'bg-blue-100 text-blue-600' 
-                            : 'bg-gray-100 text-gray-400'
-                      }`}>
-                        {isCompleted ? (
-                          <CheckCircle className="h-5 w-5" />
-                        ) : canAccess ? (
-                          <Play className="h-5 w-5" />
-                        ) : (
-                          <Lock className="h-5 w-5" />
-                        )}
-                      </div>
-                      
+        <TabsContent value="modules">
+          <div className="grid gap-4">
+            {modules?.map((module) => {
+              const moduleProgress = progress?.find(p => p.module_id === module.id);
+              const isCompleted = moduleProgress?.is_completed || false;
+              const canStart = true; // For now, allow all modules to be started
+
+              return (
+                <Card key={module.id} className={isCompleted ? 'border-green-200' : ''}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">
-                          Module {index + 1}: {module.title}
-                        </h3>
-                        {module.description && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            {module.description}
-                          </p>
-                        )}
-                        
-                        <div className="flex items-center gap-4 mt-2">
-                          {module.youtube_url && (
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                              <Youtube className="h-3 w-3" />
-                              Video
-                            </div>
-                          )}
-                          {module.notes && (
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                              <FileText className="h-3 w-3" />
-                              Notes
-                            </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-medium">{module.title}</h3>
+                          {isCompleted && (
+                            <Badge variant="secondary" className="bg-green-100 text-green-700">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Completed
+                            </Badge>
                           )}
                         </div>
+                        <p className="text-sm text-gray-600 mb-3">{module.description}</p>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <FileText className="h-4 w-4" />
+                            {module.content_sections?.length || 0} sections
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <BookOpen className="h-4 w-4" />
+                            {module.estimated_duration} min
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="ml-4">
+                        {isCompleted ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedModule(module.id)}
+                          >
+                            Review
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            disabled={!canStart}
+                            onClick={() => setSelectedModule(module.id)}
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            {moduleProgress ? 'Continue' : 'Start'}
+                          </Button>
+                        )}
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </TabsContent>
 
-                    <div className="flex items-center gap-2">
-                      {module.progress && (
-                        <Badge variant={isCompleted ? 'default' : 'secondary'}>
-                          {isCompleted ? 'Completed' : `${module.progress.quiz_score}%`}
+        <TabsContent value="certificates">
+          <div className="space-y-4">
+            {certificates && certificates.length > 0 ? (
+              certificates.map((cert) => (
+                <Card key={cert.id}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium">{cert.service_type.replace('_', ' ')} Certificate</h3>
+                        <p className="text-sm text-gray-600">
+                          Issued: {new Date(cert.issued_at).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Certificate ID: {cert.certificate_id}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={cert.is_active ? "default" : "secondary"}>
+                          {cert.is_active ? 'Active' : 'Inactive'}
                         </Badge>
-                      )}
-                      
-                      {!canAccess && (
-                        <Badge variant="outline">
-                          Locked
-                        </Badge>
-                      )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowCertificate(true)}
+                        >
+                          View
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <Award className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="font-medium text-gray-900 mb-2">No Certificates Yet</h3>
+                  <p className="text-gray-600">
+                    Complete all training modules to earn your certificate
+                  </p>
                 </CardContent>
               </Card>
-            );
-          })
-        )}
-      </div>
-
-      {/* Verification Notice */}
-      {progressStats.isCompleted && certificate && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-6 w-6 text-blue-600" />
-              <div>
-                <h3 className="font-semibold text-blue-800">
-                  Ready for Verification
-                </h3>
-                <p className="text-blue-700 mt-1">
-                  You can now proceed to upload your verification documents to complete your provider registration.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

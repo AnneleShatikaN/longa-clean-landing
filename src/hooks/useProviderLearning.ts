@@ -170,13 +170,14 @@ export const useProviderLearning = () => {
             question_id: submission.question_id,
             selected_answer: submission.selected_answer,
             is_correct: isCorrect,
-            attempt_number: 1 // For now, we'll track attempt numbers later
+            attempt_number: 1
           });
         }
       }
 
       const score = Math.round((correctAnswers / questions.length) * 100);
-      const isPassed = correctAnswers === questions.length;
+      // Updated pass requirement: 80% minimum score
+      const isPassed = score >= 80;
 
       // Save quiz attempts
       const { error: attemptsError } = await supabase
@@ -203,11 +204,11 @@ export const useProviderLearning = () => {
       if (progressError) throw progressError;
 
       if (isPassed) {
-        toast.success('Quiz passed! Module completed.');
+        toast.success(`Quiz passed with ${score}%! Module completed.`);
         // Check if all modules are complete and generate certificate
         await checkAndGenerateCertificate();
       } else {
-        toast.error(`Quiz failed. Score: ${score}%. You need 100% to pass.`);
+        toast.error(`Quiz failed with ${score}%. You need at least 80% to pass. Please try again.`);
       }
 
       // Refresh data
@@ -225,16 +226,28 @@ export const useProviderLearning = () => {
     if (!user || !providerServiceType) return;
 
     try {
-      // Check if provider has completed all modules
+      // Check if provider has completed all modules with 80%+ score
       const { data: completionCheck, error } = await supabase
-        .rpc('check_service_completion', {
-          p_provider_id: user.id,
-          p_service_type: providerServiceType
-        });
+        .from('provider_learning_progress')
+        .select('quiz_score, is_completed')
+        .eq('provider_id', user.id)
+        .eq('service_type', providerServiceType);
 
       if (error) throw error;
 
-      if (completionCheck && !certificate) {
+      // Get total published modules for this service type
+      const { data: totalModules, error: modulesError } = await supabase
+        .from('learning_modules')
+        .select('id')
+        .eq('service_type', providerServiceType)
+        .eq('is_published', true);
+
+      if (modulesError) throw modulesError;
+
+      const allModulesCompleted = completionCheck?.length === totalModules?.length &&
+        completionCheck?.every(progress => progress.is_completed && progress.quiz_score >= 80);
+
+      if (allModulesCompleted && !certificate) {
         // Generate certificate
         const { data: certId, error: certIdError } = await supabase
           .rpc('generate_certificate_id', {
@@ -256,7 +269,7 @@ export const useProviderLearning = () => {
         if (certError) throw certError;
 
         setCertificate(newCert);
-        toast.success('Congratulations! Your certificate has been generated.');
+        toast.success('🎉 Congratulations! Your certificate has been generated.');
       }
     } catch (err) {
       console.error('Error checking completion:', err);

@@ -23,6 +23,16 @@ serve(async (req) => {
     // Extract user metadata
     const userData = record.raw_user_meta_data || {}
     
+    console.log('Creating user profile with data:', {
+      id: record.id,
+      email: record.email,
+      full_name: userData.full_name || record.email,
+      phone: userData.phone,
+      role: userData.role || 'client',
+      current_work_location: userData.current_work_location,
+      provider_category: userData.provider_category
+    })
+    
     // Insert user profile
     const { error } = await supabaseClient
       .from('users')
@@ -33,7 +43,7 @@ serve(async (req) => {
         full_name: userData.full_name || record.email,
         phone: userData.phone,
         role: userData.role || 'client',
-        current_work_location: userData.location,
+        current_work_location: userData.current_work_location,
         provider_category: userData.provider_category,
         is_active: true,
         rating: 0,
@@ -48,6 +58,7 @@ serve(async (req) => {
       })
     }
 
+    console.log('User profile created successfully')
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +12,6 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Upload, 
   FileText, 
-  User, 
   CreditCard, 
   CheckCircle,
   AlertCircle,
@@ -48,7 +46,8 @@ export const ProviderVerificationForm: React.FC = () => {
       navigate('/provider-profile', { 
         state: { 
           message: 'Please set your provider category before starting verification',
-          highlightCategory: true 
+          highlightCategory: true,
+          from: 'verification'
         }
       });
     }
@@ -66,7 +65,13 @@ export const ProviderVerificationForm: React.FC = () => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => navigate('/provider-profile')}
+                onClick={() => navigate('/provider-profile', {
+                  state: { 
+                    message: 'Please set your provider category to continue',
+                    highlightCategory: true,
+                    from: 'verification'
+                  }
+                })}
               >
                 Go to Profile
               </Button>
@@ -121,7 +126,13 @@ export const ProviderVerificationForm: React.FC = () => {
         description: "Provider category is required. Please update your profile first.",
         variant: "destructive",
       });
-      navigate('/provider-profile');
+      navigate('/provider-profile', {
+        state: { 
+          message: 'Please set your provider category to continue',
+          highlightCategory: true,
+          from: 'verification'
+        }
+      });
       return;
     }
 

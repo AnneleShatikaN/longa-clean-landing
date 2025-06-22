@@ -17,6 +17,7 @@ import AdminDashboard from '@/pages/AdminDashboard';
 import OneOffBooking from '@/pages/OneOffBooking';
 import BookingConfirmation from '@/pages/BookingConfirmation';
 import ProviderVerification from '@/pages/ProviderVerification';
+import ProviderProfile from '@/pages/ProviderProfile';
 import Search from '@/pages/Search';
 import Contact from '@/pages/Contact';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -50,6 +51,11 @@ function App() {
                   <Route path="/provider-dashboard" element={
                     <ProtectedRoute allowedRoles={['provider']}>
                       <ProviderDashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/provider-profile" element={
+                    <ProtectedRoute allowedRoles={['provider']}>
+                      <ProviderProfile />
                     </ProtectedRoute>
                   } />
                   <Route path="/admin-dashboard" element={

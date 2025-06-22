@@ -1,255 +1,306 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Star, MapPin, Calendar, Clock, ArrowLeft, MessageCircle } from 'lucide-react';
-import { useProviderProfiles } from '@/hooks/useProviderProfiles';
-import RatingSystem from '@/components/RatingSystem';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { ArrowLeft, User, Star, Calendar, MapPin, Phone, Mail, Save, AlertCircle } from 'lucide-react';
+
+const NAMIBIAN_TOWNS = [
+  { value: 'windhoek', label: 'Windhoek' },
+  { value: 'walvis-bay', label: 'Walvis Bay' },
+  { value: 'swakopmund', label: 'Swakopmund' },
+  { value: 'oshakati', label: 'Oshakati' },
+  { value: 'rundu', label: 'Rundu' },
+  { value: 'otjiwarongo', label: 'Otjiwarongo' },
+  { value: 'gobabis', label: 'Gobabis' },
+  { value: 'katima-mulilo', label: 'Katima Mulilo' },
+  { value: 'tsumeb', label: 'Tsumeb' },
+  { value: 'keetmanshoop', label: 'Keetmanshoop' },
+  { value: 'rehoboth', label: 'Rehoboth' },
+  { value: 'mariental', label: 'Mariental' }
+];
+
+const PROVIDER_CATEGORIES = [
+  { value: 'cleaning', label: 'Cleaning Services' },
+  { value: 'car_wash', label: 'Car Wash Services' },
+  { value: 'gardening', label: 'Gardening Services' },
+  { value: 'plumbing', label: 'Plumbing Services' },
+  { value: 'electrical', label: 'Electrical Services' },
+  { value: 'maintenance', label: 'General Maintenance' }
+];
 
 const ProviderProfile = () => {
-  const { providerId } = useParams<{ providerId: string }>();
   const navigate = useNavigate();
-  const { getProviderById } = useProviderProfiles();
-  const [provider, setProvider] = useState<any>(null);
-  const [services, setServices] = useState<any[]>([]);
-  const [ratings, setRatings] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
+  const { user, refreshUser } = useAuth();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: user?.full_name || '',
+    phone: user?.phone || '',
+    current_work_location: user?.current_work_location || 'windhoek',
+    provider_category: user?.provider_category || ''
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Check for highlight message from location state
+  const shouldHighlightCategory = location.state?.highlightCategory;
+  const locationMessage = location.state?.message;
 
   useEffect(() => {
-    const fetchProviderData = async () => {
-      if (!providerId) return;
+    if (locationMessage) {
+      toast({
+        title: "Profile Update Required",
+        description: locationMessage,
+        variant: "default",
+      });
+    }
+  }, [locationMessage, toast]);
 
-      try {
-        setIsLoading(true);
-        
-        // Get provider details
-        const providerData = await getProviderById(providerId);
-        setProvider(providerData);
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
 
-        // Get provider's completed bookings for ratings
-        const { data: bookings } = await supabase
-          .from('bookings')
-          .select(`
-            id,
-            rating,
-            review,
-            booking_date,
-            service:services(name),
-            client:users!bookings_client_id_fkey(full_name)
-          `)
-          .eq('provider_id', providerId)
-          .eq('status', 'completed')
-          .not('rating', 'is', null)
-          .order('created_at', { ascending: false });
+    if (!formData.full_name.trim()) {
+      newErrors.full_name = 'Full name is required';
+    }
 
-        // Transform ratings data
-        const ratingsData = (bookings || []).map((booking: any, index: number) => ({
-          id: index + 1,
-          jobId: booking.id,
-          clientName: booking.client?.full_name || 'Anonymous',
-          rating: booking.rating || 0,
-          comment: booking.review || '',
-          date: new Date(booking.booking_date).toLocaleDateString(),
-          service: booking.service?.name || 'Service'
-        }));
+    if (!formData.provider_category) {
+      newErrors.provider_category = 'Provider category is required';
+    }
 
-        setRatings(ratingsData);
+    if (formData.phone && !/^\+264\s\d{2}\s\d{3}\s\d{4}$/.test(formData.phone)) {
+      newErrors.phone = 'Phone must be in format +264 XX XXX XXXX';
+    }
 
-        // Get services (for future use)
-        const { data: servicesData } = await supabase
-          .from('services')
-          .select('*')
-          .eq('is_active', true);
+    if (!formData.current_work_location) {
+      newErrors.current_work_location = 'Work location is required';
+    }
 
-        setServices(servicesData || []);
-
-      } catch (error) {
-        console.error('Error fetching provider data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProviderData();
-  }, [providerId]);
-
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleWhatsAppContact = () => {
-    if (provider?.phone) {
-      const formattedPhone = provider.phone.replace(/\s+/g, '').replace('+', '');
-      const message = encodeURIComponent(`Hello ${provider.full_name}, I found your profile on Longa and would like to discuss your services.`);
-      window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          full_name: formData.full_name,
+          phone: formData.phone || null,
+          current_work_location: formData.current_work_location,
+          provider_category: formData.provider_category,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user?.id);
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        throw error;
+      }
+
+      await refreshUser();
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully. You can now proceed with verification.",
+      });
+
+      // Redirect back to verification if that's where they came from
+      if (location.state?.from === 'verification') {
+        navigate('/provider-verification');
+      } else {
+        navigate('/provider-dashboard');
+      }
+    } catch (error) {
+      console.error('Profile update error:', error);
+      toast({
+        title: "Update failed",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-64 bg-gray-200 rounded"></div>
-            <div className="h-48 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
 
-  if (!provider) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="text-center py-8">
-            <h2 className="text-xl font-semibold mb-2">Provider Not Found</h2>
-            <p className="text-gray-600 mb-4">The provider profile you're looking for doesn't exist.</p>
-            <Button onClick={() => navigate('/')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const getLocationLabel = (value: string) => {
+    return NAMIBIAN_TOWNS.find(town => town.value === value)?.label || value;
+  };
+
+  const getCategoryLabel = (value: string) => {
+    return PROVIDER_CATEGORIES.find(cat => cat.value === value)?.label || value;
+  };
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-6 max-w-4xl">
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
         {/* Header */}
-        <div className="mb-6">
+        <div className="flex items-center gap-4 mb-8">
           <Button
-            variant="ghost"
+            variant="outline"
+            size="sm"
             onClick={() => navigate(-1)}
-            className="mb-4"
+            className="flex items-center gap-2"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
+          <h1 className="text-3xl font-bold text-gray-900">Provider Profile</h1>
         </div>
 
-        {/* Provider Profile Card */}
-        <Card className="mb-6">
+        {shouldHighlightCategory && (
+          <Alert className="mb-6 border-yellow-200 bg-yellow-50">
+            <AlertCircle className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800">
+              Please set your provider category to continue with verification and access training materials.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Profile Form */}
+        <Card>
           <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-start gap-6">
-              <Avatar className="h-24 w-24 mx-auto md:mx-0">
-                <AvatarImage src={provider.avatar_url} alt={provider.full_name} />
-                <AvatarFallback className="text-2xl font-semibold">
-                  {getInitials(provider.full_name)}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className="flex-1 text-center md:text-left">
-                <CardTitle className="text-2xl mb-2">{provider.full_name}</CardTitle>
-                
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-4">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-5 w-5 fill-current text-yellow-400" />
-                    <span className="font-medium text-lg">
-                      {provider.rating > 0 ? provider.rating.toFixed(1) : 'Not yet rated'}
-                    </span>
-                    <span className="text-gray-600">({provider.total_jobs} jobs)</span>
-                  </div>
-                  
-                  {provider.current_work_location && (
-                    <div className="flex items-center gap-1 text-gray-600">
-                      <MapPin className="h-4 w-4" />
-                      <span className="capitalize">{provider.current_work_location}</span>
-                    </div>
-                  )}
-                  
-                  <Badge variant={provider.is_active ? "default" : "secondary"}>
-                    {provider.is_active ? "Available" : "Unavailable"}
-                  </Badge>
-                </div>
-
-                {provider.bio && (
-                  <p className="text-gray-700 mb-4">{provider.bio}</p>
-                )}
-
-                <div className="flex flex-wrap gap-2">
-                  {provider.phone && (
-                    <Button
-                      onClick={handleWhatsAppContact}
-                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      Contact via WhatsApp
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Availability Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Availability
+            <CardTitle className="flex items-center space-x-2">
+              <User className="h-5 w-5" />
+              <span>Profile Information</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-medium mb-2">Working Hours</h4>
-                <div className="flex items-center gap-1 text-gray-600">
-                  <Clock className="h-4 w-4" />
-                  <span>Monday - Friday: 8:00 AM - 6:00 PM</span>
-                </div>
-                <div className="flex items-center gap-1 text-gray-600 mt-1">
-                  <Clock className="h-4 w-4" />
-                  <span>Saturday: 9:00 AM - 4:00 PM</span>
-                </div>
-                <div className="flex items-center gap-1 text-gray-600 mt-1">
-                  <Clock className="h-4 w-4" />
-                  <span>Sunday: Closed</span>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="full_name">Full Name *</Label>
+                <Input
+                  id="full_name"
+                  value={formData.full_name}
+                  onChange={(e) => handleInputChange('full_name', e.target.value)}
+                  className={errors.full_name ? 'border-red-500' : ''}
+                />
+                {errors.full_name && <p className="text-sm text-red-500">{errors.full_name}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="provider_category">Provider Category *</Label>
+                <Select
+                  value={formData.provider_category}
+                  onValueChange={(value) => handleInputChange('provider_category', value)}
+                >
+                  <SelectTrigger className={`${errors.provider_category ? 'border-red-500' : ''} ${shouldHighlightCategory ? 'ring-2 ring-yellow-400' : ''}`}>
+                    <SelectValue placeholder="Select your service category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROVIDER_CATEGORIES.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.provider_category && <p className="text-sm text-red-500">{errors.provider_category}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  placeholder="+264 81 234 5678"
+                  className={errors.phone ? 'border-red-500' : ''}
+                />
+                {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="current_work_location">Work Location *</Label>
+                <Select
+                  value={formData.current_work_location}
+                  onValueChange={(value) => handleInputChange('current_work_location', value)}
+                >
+                  <SelectTrigger className={errors.current_work_location ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Select your work location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NAMIBIAN_TOWNS.map((town) => (
+                      <SelectItem key={town.value} value={town.value}>
+                        {town.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.current_work_location && <p className="text-sm text-red-500">{errors.current_work_location}</p>}
+              </div>
+
+              <div className="pt-4 border-t">
+                <h3 className="text-lg font-semibold mb-4">Current Profile Status</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Mail className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">Email:</span>
+                      <span className="font-medium">{user.email}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                      <span className="text-sm text-gray-600">Rating:</span>
+                      <span className="font-medium">{user.rating || 0}/5</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">Joined:</span>
+                      <span className="font-medium">
+                        {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-600">Status:</span>
+                      <Badge className={user.verification_status === 'verified' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                        {user.verification_status === 'verified' ? 'Active Provider' : 'Pending Verification'}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
               </div>
-              
-              <div>
-                <h4 className="font-medium mb-2">Service Areas</h4>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="capitalize">
-                    {provider.current_work_location || 'Windhoek'}
-                  </Badge>
-                </div>
+
+              <div className="flex space-x-2 pt-4">
+                <Button type="submit" disabled={isLoading} className="bg-green-600 hover:bg-green-700">
+                  <Save className="h-4 w-4 mr-2" />
+                  {isLoading ? 'Saving...' : 'Save Profile'}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => navigate('/provider-dashboard')}
+                >
+                  Cancel
+                </Button>
               </div>
-            </div>
+            </form>
           </CardContent>
         </Card>
-
-        {/* Service Categories */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Service Categories</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {services.length > 0 ? (
-                services.slice(0, 6).map((service) => (
-                  <Badge key={service.id} variant="outline">
-                    {service.name}
-                  </Badge>
-                ))
-              ) : (
-                <p className="text-gray-600">All general services available</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Ratings and Reviews */}
-        <RatingSystem ratings={ratings} />
       </div>
     </div>
   );

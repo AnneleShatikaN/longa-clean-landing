@@ -14,12 +14,12 @@ export const UnverifiedProviderMessage: React.FC = () => {
   const startVerification = () => {
     // Check if provider category is set
     if (!user?.provider_category) {
-      console.error('Provider category not set for user:', user?.id);
-      // Instead of blocking, redirect to profile to set category
+      console.log('Provider category not set, redirecting to profile');
       navigate('/provider-profile', { 
         state: { 
           message: 'Please set your provider category first',
-          highlightCategory: true 
+          highlightCategory: true,
+          from: 'verification'
         }
       });
       return;
@@ -31,12 +31,12 @@ export const UnverifiedProviderMessage: React.FC = () => {
   const startTraining = () => {
     // Check if provider category is set
     if (!user?.provider_category) {
-      console.error('Provider category not set for user:', user?.id);
-      // Instead of blocking, redirect to profile to set category
+      console.log('Provider category not set, redirecting to profile');
       navigate('/provider-profile', { 
         state: { 
           message: 'Please set your provider category to access training materials',
-          highlightCategory: true 
+          highlightCategory: true,
+          from: 'training'
         }
       });
       return;

@@ -18,14 +18,11 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useLearningModules } from '@/hooks/useLearningModules';
-import { ModuleViewer } from './ModuleViewer';
-import { CertificateDisplay } from './CertificateDisplay';
 
 export const ProviderAcademy: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
-  const [showCertificate, setShowCertificate] = useState(false);
 
   // Check if provider category is set
   useEffect(() => {
@@ -42,14 +39,17 @@ export const ProviderAcademy: React.FC = () => {
 
   const {
     modules,
-    progress,
-    certificates,
     isLoading,
-    startModule,
-    completeModule,
-    submitQuiz,
-    refetch
-  } = useLearningModules(user?.provider_category as any);
+    error,
+    fetchModules
+  } = useLearningModules();
+
+  // Fetch modules when component mounts and provider category is available
+  useEffect(() => {
+    if (user?.provider_category) {
+      fetchModules();
+    }
+  }, [user?.provider_category, fetchModules]);
 
   if (isLoading) {
     return (
@@ -82,32 +82,30 @@ export const ProviderAcademy: React.FC = () => {
     );
   }
 
-  const completedModules = progress?.filter(p => p.is_completed).length || 0;
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="space-y-2">
+              <p>Error loading training modules: {error}</p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => fetchModules()}
+              >
+                Try Again
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   const totalModules = modules?.length || 0;
-  const progressPercentage = totalModules > 0 ? (completedModules / totalModules) * 100 : 0;
-  const hasActiveCertificate = certificates?.some(cert => cert.is_active);
-
-  if (selectedModule) {
-    return (
-      <ModuleViewer
-        moduleId={selectedModule}
-        onComplete={() => {
-          setSelectedModule(null);
-          refetch();
-        }}
-        onBack={() => setSelectedModule(null)}
-      />
-    );
-  }
-
-  if (showCertificate && hasActiveCertificate) {
-    return (
-      <CertificateDisplay
-        serviceType={user.provider_category as any}
-        onBack={() => setShowCertificate(false)}
-      />
-    );
-  }
+  const progressPercentage = 0; // For now, we'll show 0% progress
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -118,12 +116,6 @@ export const ProviderAcademy: React.FC = () => {
             Complete training for {user.provider_category?.replace('_', ' ')} services
           </p>
         </div>
-        {hasActiveCertificate && (
-          <Button onClick={() => setShowCertificate(true)} variant="outline">
-            <Award className="h-4 w-4 mr-2" />
-            View Certificate
-          </Button>
-        )}
       </div>
 
       {/* Progress Overview */}
@@ -139,19 +131,10 @@ export const ProviderAcademy: React.FC = () => {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Overall Progress</span>
               <span className="text-sm text-gray-600">
-                {completedModules} of {totalModules} modules completed
+                0 of {totalModules} modules completed
               </span>
             </div>
             <Progress value={progressPercentage} className="h-2" />
-            
-            {progressPercentage === 100 && !hasActiveCertificate && (
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Congratulations! You've completed all training modules. Your certificate will be generated shortly.
-                </AlertDescription>
-              </Alert>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -164,109 +147,66 @@ export const ProviderAcademy: React.FC = () => {
 
         <TabsContent value="modules">
           <div className="grid gap-4">
-            {modules?.map((module) => {
-              const moduleProgress = progress?.find(p => p.module_id === module.id);
-              const isCompleted = moduleProgress?.is_completed || false;
-              const canStart = true; // For now, allow all modules to be started
-
-              return (
-                <Card key={module.id} className={isCompleted ? 'border-green-200' : ''}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-medium">{module.title}</h3>
-                          {isCompleted && (
-                            <Badge variant="secondary" className="bg-green-100 text-green-700">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Completed
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">{module.description}</p>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <FileText className="h-4 w-4" />
-                            {module.content_sections?.length || 0} sections
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <BookOpen className="h-4 w-4" />
-                            {module.estimated_duration} min
-                          </span>
-                        </div>
+            {modules?.map((module) => (
+              <Card key={module.id}>
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-medium">{module.title}</h3>
                       </div>
-                      
-                      <div className="ml-4">
-                        {isCompleted ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedModule(module.id)}
-                          >
-                            Review
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            disabled={!canStart}
-                            onClick={() => setSelectedModule(module.id)}
-                          >
-                            <Play className="h-4 w-4 mr-2" />
-                            {moduleProgress ? 'Continue' : 'Start'}
-                          </Button>
-                        )}
+                      <p className="text-sm text-gray-600 mb-3">{module.description}</p>
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-4 w-4" />
+                          Module content
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="h-4 w-4" />
+                          Training material
+                        </span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    
+                    <div className="ml-4">
+                      <Button
+                        size="sm"
+                        onClick={() => setSelectedModule(module.id)}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Start
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            
+            {totalModules === 0 && (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <BookOpen className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="font-medium text-gray-900 mb-2">No Training Modules Available</h3>
+                  <p className="text-gray-600">
+                    Training modules for {user.provider_category?.replace('_', ' ')} are not yet available.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
         <TabsContent value="certificates">
           <div className="space-y-4">
-            {certificates && certificates.length > 0 ? (
-              certificates.map((cert) => (
-                <Card key={cert.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium">{cert.service_type.replace('_', ' ')} Certificate</h3>
-                        <p className="text-sm text-gray-600">
-                          Issued: {new Date(cert.issued_at).toLocaleDateString()}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Certificate ID: {cert.certificate_id}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={cert.is_active ? "default" : "secondary"}>
-                          {cert.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowCertificate(true)}
-                        >
-                          View
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <Award className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <h3 className="font-medium text-gray-900 mb-2">No Certificates Yet</h3>
-                  <p className="text-gray-600">
-                    Complete all training modules to earn your certificate
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Award className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="font-medium text-gray-900 mb-2">No Certificates Yet</h3>
+                <p className="text-gray-600">
+                  Complete all training modules to earn your certificate
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>

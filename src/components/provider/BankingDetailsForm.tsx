@@ -99,91 +99,83 @@ const BankingDetailsForm: React.FC<BankingDetailsFormProps> = ({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Shield className="h-5 w-5 text-green-600" />
-          <span>Banking Details</span>
-        </CardTitle>
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <AlertCircle className="h-4 w-4" />
-          <span>Required for receiving payouts</span>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="bankName">Bank Name *</Label>
-            <Select 
-              value={formData.bankName} 
-              onValueChange={(value) => handleInputChange('bankName', value)}
-            >
-              <SelectTrigger className={errors.bankName ? 'border-red-500' : ''}>
-                <SelectValue placeholder="Select your bank" />
-              </SelectTrigger>
-              <SelectContent>
-                {NAMIBIAN_BANKS.map((bank) => (
-                  <SelectItem key={bank} value={bank}>
-                    {bank}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.bankName && <p className="text-sm text-red-500">{errors.bankName}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="accountNumber">Account Number *</Label>
-            <Input
-              id="accountNumber"
-              type="text"
-              value={formData.accountNumber}
-              onChange={(e) => handleInputChange('accountNumber', e.target.value)}
-              placeholder="1234567890"
-              className={errors.accountNumber ? 'border-red-500' : ''}
-              maxLength={12}
-            />
-            {errors.accountNumber && <p className="text-sm text-red-500">{errors.accountNumber}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="accountHolder">Account Holder Name *</Label>
-            <Input
-              id="accountHolder"
-              type="text"
-              value={formData.accountHolder}
-              onChange={(e) => handleInputChange('accountHolder', e.target.value)}
-              placeholder="John Doe"
-              className={errors.accountHolder ? 'border-red-500' : ''}
-            />
-            {errors.accountHolder && <p className="text-sm text-red-500">{errors.accountHolder}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="branchCode">Branch Code (Optional)</Label>
-            <Input
-              id="branchCode"
-              type="text"
-              value={formData.branchCode}
-              onChange={(e) => handleInputChange('branchCode', e.target.value)}
-              placeholder="123456"
-              className={errors.branchCode ? 'border-red-500' : ''}
-              maxLength={6}
-            />
-            {errors.branchCode && <p className="text-sm text-red-500">{errors.branchCode}</p>}
-          </div>
-
-          <Button 
-            type="submit" 
-            disabled={isLoading}
-            className="w-full bg-green-600 hover:bg-green-700"
+    <div className="space-y-4">
+      <div className="flex items-center space-x-2 text-sm text-gray-600">
+        <AlertCircle className="h-4 w-4" />
+        <span>Required for receiving payouts</span>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="bankName">Bank Name *</Label>
+          <Select 
+            value={formData.bankName} 
+            onValueChange={(value) => handleInputChange('bankName', value)}
           >
-            <Save className="h-4 w-4 mr-2" />
-            {isLoading ? 'Saving...' : 'Save Banking Details'}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            <SelectTrigger className={errors.bankName ? 'border-red-500' : ''}>
+              <SelectValue placeholder="Select your bank" />
+            </SelectTrigger>
+            <SelectContent>
+              {NAMIBIAN_BANKS.map((bank) => (
+                <SelectItem key={bank} value={bank}>
+                  {bank}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.bankName && <p className="text-sm text-red-500">{errors.bankName}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="accountNumber">Account Number *</Label>
+          <Input
+            id="accountNumber"
+            type="text"
+            value={formData.accountNumber}
+            onChange={(e) => handleInputChange('accountNumber', e.target.value)}
+            placeholder="1234567890"
+            className={errors.accountNumber ? 'border-red-500' : ''}
+            maxLength={12}
+          />
+          {errors.accountNumber && <p className="text-sm text-red-500">{errors.accountNumber}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="accountHolder">Account Holder Name *</Label>
+          <Input
+            id="accountHolder"
+            type="text"
+            value={formData.accountHolder}
+            onChange={(e) => handleInputChange('accountHolder', e.target.value)}
+            placeholder="John Doe"
+            className={errors.accountHolder ? 'border-red-500' : ''}
+          />
+          {errors.accountHolder && <p className="text-sm text-red-500">{errors.accountHolder}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="branchCode">Branch Code (Optional)</Label>
+          <Input
+            id="branchCode"
+            type="text"
+            value={formData.branchCode}
+            onChange={(e) => handleInputChange('branchCode', e.target.value)}
+            placeholder="123456"
+            className={errors.branchCode ? 'border-red-500' : ''}
+            maxLength={6}
+          />
+          {errors.branchCode && <p className="text-sm text-red-500">{errors.branchCode}</p>}
+        </div>
+
+        <Button 
+          type="submit" 
+          disabled={isLoading}
+          className="w-full bg-green-600 hover:bg-green-700"
+        >
+          <Save className="h-4 w-4 mr-2" />
+          {isLoading ? 'Saving...' : 'Save Banking Details'}
+        </Button>
+      </form>
+    </div>
   );
 };
 

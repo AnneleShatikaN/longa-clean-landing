@@ -19,7 +19,7 @@ import {
   AlertCircle,
   RefreshCw
 } from 'lucide-react';
-import { BankingDetailsForm } from './BankingDetailsForm';
+import BankingDetailsForm from './BankingDetailsForm';
 
 interface DocumentUpload {
   type: string;
@@ -106,6 +106,12 @@ export const ProviderVerificationForm: React.FC = () => {
       });
 
     if (dbError) throw dbError;
+  };
+
+  const handleBankingSave = async (bankingData: any) => {
+    // Save banking details logic here
+    console.log('Saving banking data:', bankingData);
+    setBankingComplete(true);
   };
 
   const handleSubmit = async () => {
@@ -266,7 +272,7 @@ export const ProviderVerificationForm: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <BankingDetailsForm onComplete={() => setBankingComplete(true)} />
+          <BankingDetailsForm onSave={handleBankingSave} />
         </CardContent>
       </Card>
 

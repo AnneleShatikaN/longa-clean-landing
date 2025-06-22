@@ -65,16 +65,19 @@ export const UnverifiedProviderMessage: React.FC = () => {
           )}
           
           <p className="text-gray-600">
-            Welcome to our platform! To start receiving job requests, you need to complete your verification process.
+            Welcome to our platform! To start receiving job requests, you need to complete your setup process.
           </p>
           
           <div className="space-y-3">
             <div className="flex items-center gap-3 p-3 border rounded-lg">
               <BookOpen className="h-5 w-5 text-blue-500" />
               <div className="flex-1">
-                <h3 className="font-medium">Step 1: Complete Training</h3>
+                <h3 className="font-medium">Step 1: Complete Longa Academy Training</h3>
                 <p className="text-sm text-gray-600">
-                  Learn about our platform standards and service requirements
+                  Learn platform standards, safety protocols, and service requirements
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  ⚠️ Required: Must pass mini-quiz with 80% minimum score
                 </p>
               </div>
               <Button onClick={startTraining} variant="outline" size="sm">
@@ -82,23 +85,33 @@ export const UnverifiedProviderMessage: React.FC = () => {
               </Button>
             </div>
             
-            <div className="flex items-center gap-3 p-3 border rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-500" />
+            <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
+              <CheckCircle className="h-5 w-5 text-gray-400" />
               <div className="flex-1">
-                <h3 className="font-medium">Step 2: Submit Verification</h3>
-                <p className="text-sm text-gray-600">
-                  Upload required documents and complete verification
+                <h3 className="font-medium text-gray-600">Step 2: Upload Verification Documents</h3>
+                <p className="text-sm text-gray-500">
+                  Submit required documents including your academy certificate
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  🔒 Unlocked after completing academy training
                 </p>
               </div>
-              <Button onClick={startVerification} size="sm">
-                Start Verification
+              <Button 
+                onClick={startVerification} 
+                size="sm" 
+                disabled={true}
+                variant="outline"
+                className="opacity-50"
+              >
+                Complete Training First
               </Button>
             </div>
           </div>
           
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-700">
-              <strong>Need help?</strong> Contact our support team if you encounter any issues during the setup process.
+              <strong>Important:</strong> You must complete academy training before uploading documents. 
+              This ensures all providers meet our quality standards.
             </p>
           </div>
         </CardContent>

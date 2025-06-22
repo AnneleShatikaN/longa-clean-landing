@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useLearningModules } from '@/hooks/useLearningModules';
+import { useProviderLearning } from '@/hooks/useProviderLearning';
+import { ModuleViewer } from './ModuleViewer';
 
 export const ProviderAcademy: React.FC = () => {
   const { user, refreshUser } = useAuth();
@@ -31,7 +32,8 @@ export const ProviderAcademy: React.FC = () => {
       navigate('/provider-profile', { 
         state: { 
           message: 'Please set your provider category to access training materials',
-          highlightCategory: true 
+          highlightCategory: true,
+          from: 'academy'
         }
       });
     }
@@ -39,25 +41,12 @@ export const ProviderAcademy: React.FC = () => {
 
   const {
     modules,
+    certificate,
     isLoading,
     error,
-    fetchModules
-  } = useLearningModules();
-
-  // Fetch modules when component mounts and provider category is available
-  useEffect(() => {
-    if (user?.provider_category) {
-      fetchModules();
-    }
-  }, [user?.provider_category, fetchModules]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <RefreshCw className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+    getProgressStats,
+    refreshData
+  } = useProviderLearning();
 
   // Show error if no provider category
   if (!user?.provider_category) {
@@ -71,13 +60,28 @@ export const ProviderAcademy: React.FC = () => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => navigate('/provider-profile')}
+                onClick={() => navigate('/provider-profile', {
+                  state: { 
+                    message: 'Please set your provider category to access training materials',
+                    highlightCategory: true,
+                    from: 'academy'
+                  }
+                })}
               >
                 Go to Profile
               </Button>
             </div>
           </AlertDescription>
         </Alert>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <RefreshCw className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading academy content...</span>
       </div>
     );
   }
@@ -93,7 +97,7 @@ export const ProviderAcademy: React.FC = () => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => fetchModules()}
+                onClick={() => refreshData()}
               >
                 Try Again
               </Button>
@@ -104,18 +108,36 @@ export const ProviderAcademy: React.FC = () => {
     );
   }
 
-  const totalModules = modules?.length || 0;
-  const progressPercentage = 0; // For now, we'll show 0% progress
+  // Show module viewer if a module is selected
+  if (selectedModule) {
+    const module = modules.find(m => m.id === selectedModule);
+    if (module) {
+      return (
+        <ModuleViewer 
+          module={module} 
+          onBack={() => setSelectedModule(null)} 
+        />
+      );
+    }
+  }
+
+  const progressStats = getProgressStats();
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Provider Academy</h1>
+          <h1 className="text-2xl font-bold">Longa Academy</h1>
           <p className="text-gray-600">
             Complete training for {user.provider_category?.replace('_', ' ')} services
           </p>
         </div>
+        {certificate && (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            <Award className="h-4 w-4 mr-1" />
+            Certified
+          </Badge>
+        )}
       </div>
 
       {/* Progress Overview */}
@@ -131,10 +153,20 @@ export const ProviderAcademy: React.FC = () => {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Overall Progress</span>
               <span className="text-sm text-gray-600">
-                0 of {totalModules} modules completed
+                {progressStats.completedModules} of {progressStats.totalModules} modules completed
               </span>
             </div>
-            <Progress value={progressPercentage} className="h-2" />
+            <Progress value={progressStats.progressPercentage} className="h-2" />
+            
+            {progressStats.isCompleted && (
+              <Alert className="border-green-200 bg-green-50">
+                <Award className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  <strong>Congratulations!</strong> You have completed all training modules and earned your certificate.
+                  You can now proceed to document verification.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -147,24 +179,32 @@ export const ProviderAcademy: React.FC = () => {
 
         <TabsContent value="modules">
           <div className="grid gap-4">
-            {modules?.map((module) => (
+            {modules.map((module) => (
               <Card key={module.id}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-medium">{module.title}</h3>
+                        {module.progress?.is_completed && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Completed
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm text-gray-600 mb-3">{module.description}</p>
                       <div className="flex items-center gap-4 text-sm text-gray-500">
                         <span className="flex items-center gap-1">
                           <FileText className="h-4 w-4" />
-                          Module content
+                          Training content
                         </span>
-                        <span className="flex items-center gap-1">
-                          <BookOpen className="h-4 w-4" />
-                          Training material
-                        </span>
+                        {module.progress?.quiz_score && (
+                          <span className="flex items-center gap-1">
+                            <Award className="h-4 w-4" />
+                            Score: {module.progress.quiz_score}%
+                          </span>
+                        )}
                       </div>
                     </div>
                     
@@ -172,9 +212,19 @@ export const ProviderAcademy: React.FC = () => {
                       <Button
                         size="sm"
                         onClick={() => setSelectedModule(module.id)}
+                        variant={module.progress?.is_completed ? "outline" : "default"}
                       >
-                        <Play className="h-4 w-4 mr-2" />
-                        Start
+                        {module.progress?.is_completed ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Review
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 mr-2" />
+                            Start
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -182,7 +232,7 @@ export const ProviderAcademy: React.FC = () => {
               </Card>
             ))}
             
-            {totalModules === 0 && (
+            {modules.length === 0 && (
               <Card>
                 <CardContent className="p-6 text-center">
                   <BookOpen className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -198,15 +248,59 @@ export const ProviderAcademy: React.FC = () => {
 
         <TabsContent value="certificates">
           <div className="space-y-4">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Award className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <h3 className="font-medium text-gray-900 mb-2">No Certificates Yet</h3>
-                <p className="text-gray-600">
-                  Complete all training modules to earn your certificate
-                </p>
-              </CardContent>
-            </Card>
+            {certificate ? (
+              <Card className="border-green-200 bg-green-50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-green-800">
+                    <Award className="h-5 w-5" />
+                    Longa Academy Certificate
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-green-700">Certificate ID:</span>
+                      <p className="text-green-800">{certificate.certificate_id}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-green-700">Issued Date:</span>
+                      <p className="text-green-800">
+                        {new Date(certificate.issued_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-green-700">Service Type:</span>
+                      <p className="text-green-800">
+                        {certificate.service_type.replace('_', ' ')}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-green-700">Status:</span>
+                      <p className="text-green-800">Active</p>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-4 border-t border-green-200">
+                    <Button 
+                      onClick={() => navigate('/provider-verification')}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      Proceed to Document Verification
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <Award className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="font-medium text-gray-900 mb-2">No Certificate Yet</h3>
+                  <p className="text-gray-600">
+                    Complete all training modules with 80%+ score to earn your certificate
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
       </Tabs>

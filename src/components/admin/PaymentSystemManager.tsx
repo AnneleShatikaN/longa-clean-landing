@@ -8,6 +8,10 @@ import { DynamicBankDepositInstructions } from '@/components/payment/DynamicBank
 import { CheckCircle, Users, CreditCard, Settings } from 'lucide-react';
 
 export const PaymentSystemManager = () => {
+  const handleMarkAsPaid = () => {
+    console.log('Payment marked as paid (admin preview)');
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -48,6 +52,7 @@ export const PaymentSystemManager = () => {
               <DynamicBankDepositInstructions 
                 amount={150} 
                 serviceId="sample-service-id"
+                onMarkAsPaid={handleMarkAsPaid}
               />
             </CardContent>
           </Card>

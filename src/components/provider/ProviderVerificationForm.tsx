@@ -68,7 +68,7 @@ export const ProviderVerificationForm: React.FC = () => {
           .from('provider_certificates')
           .select('*')
           .eq('provider_id', user.id)
-          .eq('service_type', user.provider_category)
+          .eq('service_type', user.provider_category as 'cleaning' | 'gardening' | 'plumbing' | 'electrical' | 'carpentry' | 'painting' | 'maintenance' | 'car_wash')
           .eq('is_active', true)
           .single();
 

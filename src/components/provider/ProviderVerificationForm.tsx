@@ -68,7 +68,7 @@ export const ProviderVerificationForm: React.FC = () => {
           .from('provider_certificates')
           .select('*')
           .eq('provider_id', user.id)
-          .eq('service_type', user.provider_category)
+          .eq('service_type', user.provider_category as string)
           .eq('is_active', true)
           .single();
 
@@ -148,7 +148,7 @@ export const ProviderVerificationForm: React.FC = () => {
             <Alert className="border-yellow-300 bg-yellow-100">
               <Award className="h-4 w-4 text-yellow-600" />
               <AlertDescription className="text-yellow-800">
-                <strong>Training Required:</strong> You must complete your Longa Academy mini-course for {user.provider_category?.replace('_', ' ')} services before uploading verification documents.
+                <strong>Training Required:</strong> You must complete your Longa Academy mini-course for {user?.provider_category?.replace('_', ' ')} services before uploading verification documents.
               </AlertDescription>
             </Alert>
             
@@ -173,12 +173,7 @@ export const ProviderVerificationForm: React.FC = () => {
 
             <div className="pt-4 border-t">
               <Button 
-                onClick={() => navigate('/provider-profile', {
-                  state: { 
-                    message: 'Please complete your academy training first',
-                    from: 'verification'
-                  }
-                })}
+                onClick={() => navigate('/provider-academy')}
                 className="w-full"
               >
                 <BookOpen className="h-4 w-4 mr-2" />
@@ -312,7 +307,7 @@ export const ProviderVerificationForm: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold">Provider Verification</h1>
         <p className="text-gray-600">
-          Complete verification for {user.provider_category?.replace('_', ' ')} services
+          Complete verification for {user?.provider_category?.replace('_', ' ')} services
         </p>
       </div>
 

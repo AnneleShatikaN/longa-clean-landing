@@ -1,6 +1,5 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 export type DataMode = 'live';
 
@@ -14,7 +13,7 @@ interface DataModeContextType {
 
 const DataModeContext = createContext<DataModeContextType | undefined>(undefined);
 
-export const DataModeProvider = ({ children }: { children: ReactNode }) => {
+export const DataModeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isDataMode] = useState(false); // Always false since we only use live mode
   const [dataMode] = useState<DataMode>('live'); // Always live
   const [isLoading, setIsLoading] = useState(false); // No loading needed for fixed mode

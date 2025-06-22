@@ -1,5 +1,4 @@
-
-export type ServiceType = 'cleaning' | 'gardening' | 'plumbing' | 'electrical' | 'carpentry' | 'painting' | 'maintenance';
+export type ServiceType = 'cleaning' | 'gardening' | 'plumbing' | 'electrical' | 'carpentry' | 'painting' | 'maintenance' | 'car_wash';
 
 export interface LearningModule {
   id: string;

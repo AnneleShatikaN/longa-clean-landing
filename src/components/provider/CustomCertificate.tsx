@@ -45,7 +45,7 @@ export const CustomCertificate: React.FC<CustomCertificateProps> = ({
             'Quality Standards'
           ]
         };
-      default:
+      case 'car_wash':
         return {
           academyName: 'Longa Car Wash Academy',
           profession: 'verified Car Wash Professional',
@@ -57,6 +57,20 @@ export const CustomCertificate: React.FC<CustomCertificateProps> = ({
             'Safety & Hygiene',
             'Professional Service',
             'Quality Control'
+          ]
+        };
+      default:
+        return {
+          academyName: 'Longa Academy',
+          profession: 'verified Professional',
+          certificatePrefix: 'LONGA-CERT',
+          topics: [
+            'Professional Standards',
+            'Service Quality',
+            'Client Relations',
+            'Safety Practices',
+            'Business Ethics',
+            'Continuous Learning'
           ]
         };
     }

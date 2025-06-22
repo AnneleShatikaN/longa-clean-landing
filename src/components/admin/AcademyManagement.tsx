@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,6 +13,7 @@ import { ModuleDetailsModal } from './academy/ModuleDetailsModal';
 const SERVICE_TYPES: { value: ServiceType; label: string }[] = [
   { value: 'cleaning', label: 'Cleaning' },
   { value: 'gardening', label: 'Gardening' },
+  { value: 'car_wash', label: 'Car Wash' },
   { value: 'plumbing', label: 'Plumbing' },
   { value: 'electrical', label: 'Electrical' },
   { value: 'carpentry', label: 'Carpentry' },
@@ -71,7 +71,7 @@ export const AcademyManagement = () => {
       </div>
 
       <Tabs value={selectedServiceType} onValueChange={(value) => setSelectedServiceType(value as ServiceType)}>
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           {SERVICE_TYPES.map((type) => (
             <TabsTrigger key={type.value} value={type.value} className="text-sm">
               {type.label}

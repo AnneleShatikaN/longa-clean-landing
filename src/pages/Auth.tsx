@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,10 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Mail, KeyRound, User, CheckCircle, AlertTriangle } from "lucide-react";
+import { EmailVerificationPrompt } from '@/components/auth/EmailVerificationPrompt';
 
 const Auth = () => {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'verification'>('signin');
   const [isLoading, setIsLoading] = useState(false);
+  const [signupEmail, setSignupEmail] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -67,7 +70,20 @@ const Auth = () => {
     setIsLoading(true);
     try {
       const { error } = await signIn(formData.email, formData.password);
-      if (error) throw error;
+      if (error) {
+        // Check if error is related to email verification
+        if (error.message.includes('verify') || error.message.includes('confirm')) {
+          setSignupEmail(formData.email);
+          setMode('verification');
+          toast({
+            title: "Email verification required",
+            description: "Please verify your email address before signing in.",
+            variant: "destructive"
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "Signed in!",
@@ -103,6 +119,7 @@ const Auth = () => {
         email: formData.email,
         password: formData.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             full_name: formData.full_name,
             phone: formData.phone,
@@ -115,31 +132,26 @@ const Auth = () => {
 
       if (error) throw error;
 
-      // Additional step: Update the user record directly after signup to ensure all fields are saved
-      if (data.user && formData.role === 'provider') {
-        console.log('Updating provider profile after signup...');
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({
-            provider_category: formData.provider_category,
-            current_work_location: formData.current_work_location,
-            phone: formData.phone
-          })
-          .eq('id', data.user.id);
-
-        if (updateError) {
-          console.error('Error updating provider profile:', updateError);
-        } else {
-          console.log('Provider profile updated successfully');
-        }
+      // Check if user needs email verification
+      if (data.user && !data.session) {
+        setSignupEmail(formData.email);
+        setMode('verification');
+        toast({
+          title: "Account created successfully!",
+          description: "Please check your email to verify your account before signing in.",
+        });
+        return;
       }
 
-      toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
-      });
+      // If user is immediately signed in (email confirmation disabled)
+      if (data.session) {
+        toast({
+          title: "Account created and signed in!",
+          description: "Welcome to our platform!",
+        });
+        navigate('/client-dashboard');
+      }
       
-      setMode('signin');
     } catch (error: any) {
       console.error('Signup error:', error);
       toast({
@@ -169,6 +181,20 @@ const Auth = () => {
   };
 
   const isFormValid = Object.keys(errors).length === 0;
+
+  // Show email verification prompt
+  if (mode === 'verification') {
+    return (
+      <EmailVerificationPrompt
+        email={signupEmail}
+        onBackToSignIn={() => {
+          setMode('signin');
+          setFormData(prev => ({ ...prev, email: signupEmail, password: '' }));
+        }}
+        onBackToSignUp={() => setMode('signup')}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">

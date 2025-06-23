@@ -62,6 +62,38 @@ const Auth = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const getLoginErrorMessage = (error: any) => {
+    const errorMessage = error.message?.toLowerCase() || '';
+    
+    if (errorMessage.includes('invalid login credentials') || 
+        errorMessage.includes('invalid credentials') ||
+        errorMessage.includes('email not confirmed')) {
+      return "Incorrect email or password. Please try again.";
+    }
+    
+    if (errorMessage.includes('email not found') || 
+        errorMessage.includes('user not found')) {
+      return "No account found with that email address.";
+    }
+    
+    if (errorMessage.includes('too many requests') || 
+        errorMessage.includes('rate limit')) {
+      return "Too many login attempts. Please wait a moment before trying again.";
+    }
+    
+    if (errorMessage.includes('verify') || 
+        errorMessage.includes('confirm')) {
+      return "Please verify your email address before signing in.";
+    }
+    
+    if (errorMessage.includes('password')) {
+      return "Incorrect password. Please try again.";
+    }
+    
+    // Fallback for any other errors
+    return "Unable to sign in. Please check your credentials and try again.";
+  };
+
   const redirectToDashboard = (userRole: string) => {
     console.log('Redirecting user with role:', userRole);
     
@@ -146,9 +178,10 @@ const Auth = () => {
       }
     } catch (error: any) {
       console.error('Signin error:', error);
+      const friendlyMessage = getLoginErrorMessage(error);
       toast({
         title: "Sign in failed",
-        description: error.message,
+        description: friendlyMessage,
         variant: "destructive"
       });
     } finally {

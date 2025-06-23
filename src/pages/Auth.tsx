@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,6 +62,30 @@ const Auth = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const redirectToDashboard = (userRole: string) => {
+    console.log('Redirecting user with role:', userRole);
+    
+    switch (userRole) {
+      case 'client':
+        navigate('/client-dashboard');
+        break;
+      case 'provider':
+        navigate('/provider-dashboard');
+        break;
+      case 'admin':
+        navigate('/admin-dashboard');
+        break;
+      default:
+        console.warn('Unknown user role:', userRole);
+        toast({
+          title: "Setup required",
+          description: "Please complete your profile setup to continue.",
+          variant: "destructive"
+        });
+        navigate('/auth');
+    }
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -85,11 +108,42 @@ const Auth = () => {
         throw error;
       }
 
-      toast({
-        title: "Signed in!",
-        description: "You have successfully signed in.",
-      });
-      navigate('/client-dashboard');
+      // Get user profile to determine role-based redirect
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: userProfile, error: profileError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching user profile:', profileError);
+          toast({
+            title: "Profile error",
+            description: "Unable to load your profile. Please try again.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        toast({
+          title: "Signed in!",
+          description: "You have successfully signed in.",
+        });
+
+        // Redirect based on user role
+        if (userProfile?.role) {
+          redirectToDashboard(userProfile.role);
+        } else {
+          toast({
+            title: "Setup required",
+            description: "Please complete your profile setup to continue.",
+            variant: "destructive"
+          });
+          navigate('/auth');
+        }
+      }
     } catch (error: any) {
       console.error('Signin error:', error);
       toast({
@@ -149,7 +203,7 @@ const Auth = () => {
           title: "Account created and signed in!",
           description: "Welcome to our platform!",
         });
-        navigate('/client-dashboard');
+        redirectToDashboard(formData.role);
       }
       
     } catch (error: any) {
